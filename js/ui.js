@@ -153,30 +153,91 @@ export function createUI({ data, initialView, onView, onCompareRequest, onCompar
     pick.hidden = false; $('button', pick).onclick = () => onCompareCancelPick();
   }
   function hidePick() { pick.hidden = true; }
+  let cmpOpen = false; // stats table expanded; kept while the same comparison stays up
+  function setCmpOpen(on) {
+    cmpOpen = on;
+    bar.classList.toggle('open', on);
+    const grab = $('.cmp-grab', bar), btn = $('[data-act="stats"]', bar);
+    grab?.setAttribute('aria-expanded', String(on)); grab?.setAttribute('aria-label', on ? 'Hide stats' : 'Compare stats');
+    btn?.setAttribute('aria-expanded', String(on));
+    if (btn) btn.textContent = on ? 'Hide stats' : 'Compare stats';
+    if (!on) bar.scrollTop = 0;
+  }
+  /** Side-by-side facts; the larger number in each row is highlighted in that country's colour. */
+  function statsTable(a, b) {
+    const A = a.o.info, B = b.o.info, ua = a.o.unit, ub = b.o.unit;
+    const area = (i, u) => i.areaOfficial || u.area;
+    const density = (i, u) => i.pop && area(i, u) > 50 ? i.pop / area(i, u) : null;
+    const perPerson = i => i.gdp && i.pop ? i.gdp * 1e6 / i.pop : null;
+    const num = (label, va, vb, fmt) => {
+      if (va == null && vb == null) return '';
+      const win = va != null && vb != null && va !== vb ? (va > vb ? 'a' : 'b') : '';
+      const ratio = win ? Math.max(va, vb) / Math.min(va, vb) : 0;
+      const r = ratio >= 1.05 ? `<small>${ratio >= 10 ? Math.round(ratio) : ratio.toFixed(1)}×</small>` : '';
+      return `<div class="cs-row"><span class="cs-a${win === 'a' ? ' win' : ''}">${va != null ? fmt(va) : '—'}</span>`
+        + `<span class="cs-k">${label}${r}</span><span class="cs-b${win === 'b' ? ' win' : ''}">${vb != null ? fmt(vb) : '—'}</span></div>`;
+    };
+    const txt = (label, va, vb) => va || vb
+      ? `<div class="cs-row txt"><span class="cs-a">${esc(va || '—')}</span><span class="cs-k">${label}</span><span class="cs-b">${esc(vb || '—')}</span></div>` : '';
+    return [
+      num('Population', A.pop, B.pop, v => fmtCompact.format(v)),
+      num('Area', area(A, ua), area(B, ub), fmtArea),
+      num('People per km²', density(A, ua), density(B, ub), v => fmtInt.format(Math.round(v))),
+      num('GDP', A.gdp, B.gdp, fmtGdp),
+      num('GDP per person', perPerson(A), perPerson(B), v => '$' + fmtInt.format(Math.round(v))),
+      num('Land neighbours', A.borders?.length ?? null, B.borders?.length ?? null, v => String(v)),
+      txt('Capital', A.capital, B.capital),
+      txt('Region', A.subregion || A.continent, B.subregion || B.continent),
+      txt('Languages', A.languages?.slice(0, 3).join(', '), B.languages?.slice(0, 3).join(', ')),
+      txt('Currency', A.currencies?.join(', '), B.currencies?.join(', ')),
+    ].join('');
+  }
   function showCompare(state) {
-    if (!state) { bar.hidden = true; return; }
+    if (!state) { bar.hidden = true; cmpOpen = false; bar.classList.remove('open'); return; }
     const { a, b } = state;
     const A = { n: a.o.unit.n, area: a.area }, B = { n: b.o.unit.n, area: b.area };
     const big = A.area >= B.area ? [A, B] : [B, A];
     const r = big[0].area / big[1].area;
     const ratio = r >= 1.5 ? `<b>${r >= 10 ? Math.round(r) : r.toFixed(1)}×</b> the size of` : r >= 1.01 ? `<b>${Math.round((r - 1) * 100)}%</b> larger than` : 'about the same size as';
     const sub = x => `${fmtArea(x.area)}${x.trimmed ? ' · <em>main territory</em>' : ''}`;
+    const pairKey = a.o.key + '|' + b.o.key, samePair = bar.dataset.pair === pairKey && !bar.hidden;
+    if (!samePair) cmpOpen = false;
+    bar.dataset.pair = pairKey;
+    bar.style.setProperty('--ca', a.hex); bar.style.setProperty('--cb', b.hex);
     bar.innerHTML = `
+      <button class="cmp-grab" type="button" aria-label="Compare stats" aria-expanded="false" aria-controls="cmp-stats"></button>
       <div class="cmp-row">
         <div class="cmp-item" style="--c:${a.hex}"><i></i><div><b>${esc(A.n)}</b><span>${sub(a)}</span></div></div>
         <span class="cmp-vs">vs</span>
         <div class="cmp-item" style="--c:${b.hex}"><i></i><div><b>${esc(B.n)}</b><span>${sub(b)}</span></div></div>
       </div>
       <p class="cmp-ratio">${esc(big[0].n)} is ${ratio} ${esc(big[1].n)}</p>
+      <div id="cmp-stats" class="cmp-stats">${statsTable(a, b)}</div>
       <div class="cmp-actions">
         <span class="cmp-tip">Drag a piece to move it · drag the ocean to spin</span>
+        <button class="btn small ghost" type="button" data-act="stats" aria-expanded="false" aria-controls="cmp-stats">Compare stats</button>
         <button class="btn small ghost" type="button" data-act="reset">Side by side</button>
         <button class="btn small primary" type="button" data-act="done">Done</button>
       </div>`;
-    bar.hidden = false; bar.classList.remove('in'); void bar.offsetWidth; bar.classList.add('in');
+    bar.hidden = false;
+    if (!samePair) { bar.classList.remove('in'); void bar.offsetWidth; bar.classList.add('in'); }
+    setCmpOpen(cmpOpen);
+    $('.cmp-grab', bar).onclick = () => setCmpOpen(!cmpOpen);
+    $('[data-act="stats"]', bar).onclick = () => setCmpOpen(!cmpOpen);
     $('[data-act="reset"]', bar).onclick = () => onCompareReset();
     $('[data-act="done"]', bar).onclick = () => onCompareEnd();
   }
+
+  // swipe up on the compare bar for the stats, down to put them away
+  let cmpSwipe = null;
+  bar.addEventListener('touchstart', e => { if (e.touches.length === 1) cmpSwipe = { y: e.touches[0].clientY, t: performance.now(), top: bar.scrollTop }; }, { passive: true });
+  bar.addEventListener('touchend', e => {
+    if (!cmpSwipe) return;
+    const dy = e.changedTouches[0].clientY - cmpSwipe.y, s = cmpSwipe; cmpSwipe = null;
+    if (performance.now() - s.t > 600 || Math.abs(dy) < 40) return;
+    if (dy < 0 && !cmpOpen) setCmpOpen(true);
+    else if (dy > 0 && cmpOpen && s.top <= 0) setCmpOpen(false);
+  }, { passive: true });
 
   // ---------- hover tooltip ----------
   const tip = $('#tooltip');
