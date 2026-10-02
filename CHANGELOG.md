@@ -5,6 +5,7 @@ All notable changes to EarthInteractive are documented here.
 ## [Unreleased]
 
 ### Added
+- **Compare stats**: pull up the compare bar (handle, swipe up, or *Compare stats*) for a side-by-side table: population, area, density, GDP, GDP per person, neighbours, capital, region, languages and currency, with the larger value highlighted and the ratio shown.
 - **Phone country card** opens as a short peek (name, flag, key facts) so the globe stays visible; swipe up or tap the handle for everything, swipe down to close.
 - **Flag images** in the country card and search (Windows doesn't render flag emoji).
 - **Installable app + offline**: web app manifest, icons and a service worker; repeat visits load from cache.
