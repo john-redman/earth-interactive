@@ -6,7 +6,8 @@
 - [ ] Current line of control for eastern Ukraine in De Facto view
 - [ ] Real recorded crowd-scream loops (`sounds/`, CC0) to replace the synthesised crowd
 - [ ] Ad network integration (`js/ads.js`) and policy check for animated pages
-- [ ] Hosting, domain, analytics, Open Graph image
+- [x] Hosting (GitHub Pages)
+- [ ] Custom domain, analytics, Open Graph image
 - [ ] Bundle + minify for production (Vite) — `data/world.js` is ~1.1 MB raw
 - [ ] Flag images (Windows doesn't render flag emoji)
 

@@ -56,4 +56,4 @@ No unit-test framework yet. Verify changes by:
 
 ## Open items
 
-See `docs/roadmap.md`. Highest priority before launch: fresher population/GDP data, editorial review of border views, real recorded crowd audio, ad network integration, hosting + domain.
+See `docs/roadmap.md`. Highest priority before launch: fresher population/GDP data, editorial review of border views, real recorded crowd audio, ad network integration, custom domain. Hosting: GitHub Pages via `.github/workflows/pages.yml` (deploys on push to `main`; publishes only `index.html`, `css/`, `js/`, `data/`, `vendor/`).
