@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>EarthInteractive</title>
+  <meta name="description" content="Spin a true-to-scale 3D globe, explore every country and compare their real sizes.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+  <script type="importmap">{ "imports": { "three": "./vendor/three/three.module.min.js", "three/addons/": "./vendor/three/" } }</script>
+</head>
+<body>
+  <!--APP-->
+  <main id="stage" class="stage">
+    <canvas id="globe" aria-label="Interactive 3D globe. Drag to spin, click a country for details."></canvas>
+
+    <div class="top-left">
+      <div id="view-switch" class="view-switch" role="radiogroup" aria-label="Border view"></div>
+      <div id="view-caption" class="view-caption" aria-live="polite"></div>
+    </div>
+
+    <nav id="dock" class="dock" aria-label="Explore">
+      <button type="button" class="dock-btn" data-dock="search" title="Search countries (press /)">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg><span>Search</span><kbd>/</kbd></button>
+      <div class="dock-item">
+        <button type="button" class="dock-btn" data-dock="play" aria-haspopup="menu" aria-expanded="false" title="Geography games">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="1" fill="currentColor"/></svg><span>Play</span></button>
+        <div id="play-menu" class="menu" role="menu" hidden></div>
+      </div>
+      <div class="dock-item">
+        <button type="button" class="dock-btn" data-dock="lens" aria-haspopup="menu" aria-expanded="false" title="Colour the globe by data">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 18V11M9.5 18V6M15 18v-9M20.5 18V13"/></svg><span>Data</span></button>
+        <div id="lens-menu" class="menu" role="menu" hidden></div>
+      </div>
+    </nav>
+    <div id="search" class="search" hidden></div>
+    <section id="quiz" class="quiz" aria-label="Geography game" hidden></section>
+    <div id="legend" class="legend" aria-live="polite" hidden></div>
+    <div id="clock" class="clock" title="The shaded side of the globe is where it is night right now"></div>
+    <aside class="ad-slot left" aria-label="Advertisement"></aside>
+    <aside class="ad-slot right" aria-label="Advertisement"></aside>
+
+    <div id="anchor-dot" class="anchor-dot" hidden></div>
+    <section id="popup" class="popup" role="dialog" aria-label="Country details" hidden></section>
+    <div id="pick-banner" class="pick-banner" role="status" hidden></div>
+    <section id="compare-bar" class="compare-bar" aria-label="Size comparison" hidden></section>
+    <div id="tooltip" class="tooltip" hidden></div>
+    <div id="toast" class="toast" role="status" hidden></div>
+
+    <div id="hint" class="hint">
+      <span><kbd>Drag</kbd> to spin</span><span><kbd>Click</kbd> a country</span><span><kbd>Scroll</kbd> to zoom</span><span class="hint-key"><kbd>/</kbd> to search</span>
+    </div>
+
+    <div class="brand"><span class="brand-mark"></span>EarthInteractive</div>
+    <button id="sound-toggle" class="sound-toggle" type="button" aria-pressed="true" aria-label="Sound">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path class="spk" d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path class="wave" d="M15.5 9a4 4 0 010 6M18 6.5a7.5 7.5 0 010 11"/><path class="cross" d="M16 9.5l5 5M21 9.5l-5 5"/></svg>
+    </button>
+    <div class="credit">Borders: Natural Earth · Data: Natural Earth, mledoze/countries</div>
+
+    <div class="loader" aria-hidden="true"><div class="loader-orb"></div><p>Building the globe…</p></div>
+  </main>
+  <script type="module" src="js/main.js"></script>
+  <!--/APP-->
+</body>
+</html>

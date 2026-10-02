@@ -1,0 +1,18 @@
+{
+  "name": "earth-interactive",
+  "version": "0.4.0",
+  "description": "An interactive, true-to-scale 3D globe for the browser",
+  "type": "module",
+  "scripts": {
+    "dev": "npx serve . -p 5173",
+    "build:data": "node tools/build-data.mjs",
+    "check": "node tools/check.mjs"
+  },
+  "devDependencies": {
+    "d3-geo": "^3.1.1",
+    "polygon-clipping": "^0.15.6"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

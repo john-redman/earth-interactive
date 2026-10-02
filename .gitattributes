@@ -1,0 +1,27 @@
+# Auto detect text files and normalize line endings
+* text=auto
+
+# JS/JSON
+*.js text eol=lf
+*.mjs text eol=lf
+*.json text eol=lf
+
+# Markdown
+*.md text eol=lf
+
+# HTML/CSS
+*.html text eol=lf
+*.css text eol=lf
+*.svg text eol=lf
+
+# Binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.otf binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.wav binary
+*.mp3 binary
