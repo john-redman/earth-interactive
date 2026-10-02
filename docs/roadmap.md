@@ -7,9 +7,10 @@
 - [ ] Real recorded crowd-scream loops (`sounds/`, CC0) to replace the synthesised crowd
 - [ ] Ad network integration (`js/ads.js`) and policy check for animated pages
 - [x] Hosting (GitHub Pages)
-- [ ] Custom domain, analytics, Open Graph image
+- [x] Open Graph / link-preview image (`og-image.png`), installable PWA with offline cache
+- [ ] Custom domain, analytics
 - [ ] Bundle + minify for production (Vite) — `data/world.js` is ~1.1 MB raw
-- [ ] Flag images (Windows doesn't render flag emoji)
+- [x] Flag images (Windows doesn't render flag emoji) — `vendor/flags/`
 
 ## Next features
 - [ ] Higher-detail borders when zoomed in (Natural Earth 1:10m, loaded on demand)

@@ -33,6 +33,32 @@ function densify(ring, step) {
   return out; // open ring (no repeated closing point)
 }
 
+/** Douglas–Peucker in lon/lat (degrees). Closed ring in, simplified closed ring out. */
+export function simplifyRing(ring, tol) {
+  if (tol <= 0 || ring.length < 5) return ring;
+  const keep = new Uint8Array(ring.length); keep[0] = keep[ring.length - 1] = 1;
+  const tol2 = tol * tol, stack = [[0, ring.length - 1]];
+  while (stack.length) {
+    const [a, b] = stack.pop();
+    const [ax, ay] = ring[a], [bx, by] = ring[b], dx = bx - ax, dy = by - ay, len2 = dx * dx + dy * dy;
+    let worst = -1, wd = tol2;
+    for (let i = a + 1; i < b; i++) {
+      const [px, py] = ring[i];
+      const t = len2 ? Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / len2)) : 0;
+      const ex = px - ax - t * dx, ey = py - ay - t * dy, d = ex * ex + ey * ey;
+      if (d > wd) { wd = d; worst = i; }
+    }
+    if (worst > 0) { keep[worst] = 1; stack.push([a, worst], [worst, b]); }
+  }
+  const out = ring.filter((_, i) => keep[i]);
+  return out.length >= 4 ? out : ring;
+}
+
+/** Border rings simplified by `tol` degrees, then densified so long edges still hug the sphere. */
+export function borderRings(multi, tol, step = 1) {
+  return multi.flatMap(poly => poly.map(r => densify(simplifyRing(r, tol), step)).filter(r => r.length >= 2));
+}
+
 const isSeam = (a, b) =>
   (Math.abs(a[1]) > 89.9 && Math.abs(b[1]) > 89.9) ||
   (Math.abs(a[0]) > 179.9 && Math.abs(b[0]) > 179.9 && Math.sign(a[0]) === Math.sign(b[0]));

@@ -4,7 +4,19 @@ All notable changes to EarthInteractive are documented here.
 
 ## [Unreleased]
 
+### Added
+- **Phone country card** opens as a short peek (name, flag, key facts) so the globe stays visible; swipe up or tap the handle for everything, swipe down to close.
+- **Flag images** in the country card and search (Windows doesn't render flag emoji).
+- **Installable app + offline**: web app manifest, icons and a service worker; repeat visits load from cache.
+- **Link previews**: Open Graph / X card tags and a 1200×630 preview image.
+- **Loading progress**: the loader shows the data download and country drawing, with a progress bar.
+- **Bottom ad banner** on phones and tablets (728×90 / 468×60 / 320×50); the stage shrinks so it never covers controls.
+- **Recenter button** (bottom right, or <kbd>R</kbd> / <kbd>Home</kbd>): closes cards and compare, flies back to the start-up framing and resumes the idle spin.
+
 ### Changed
+- Phones draw simplified borders (98k → 31k segments); fills keep full detail.
+- With *reduce motion* on, the globe no longer auto-rotates and flights jump straight to their target.
+- The globe no longer starts auto-rotating while a country card is open; the idle spin resumes after the card is closed.
 - **Mobile performance**: phones and tablets render with a lighter quality tier (no MSAA, pixel ratio capped at 1.5, cheaper ocean shader, lighter spheres, solid panels instead of live background blur), and an adaptive governor lowers resolution further when the frame rate drops. Force a tier with `?quality=low|high`.
 - Countries entirely behind the horizon are no longer drawn (roughly 25–80% fewer draw calls depending on the view).
 - Triangulation measures edge length on the sphere, cutting fill triangles from ~307k to ~101k (Antarctica alone was ~208k) and speeding up start-up.

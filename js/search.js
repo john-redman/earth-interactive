@@ -1,4 +1,5 @@
 // Country search: press "/" or Ctrl/⌘ K, type a country, capital or other name, Enter to fly there.
+import { flagImg } from './flags.js';
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 export const norm = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9 ]+/g, ' ').trim();
 
@@ -41,7 +42,7 @@ export function createSearch({ getObjects, onPick }) {
   function paint() {
     list.innerHTML = results.map((o, i) => `
       <li role="option" id="sr-${i}" aria-selected="${i === active}" data-i="${i}" class="${i === active ? 'on' : ''}">
-        <span class="sr-flag">${o.info.flag || '<i></i>'}</span>
+        <span class="sr-flag">${flagImg(o.info, 'sr-flag-img') || '<i></i>'}</span>
         <span class="sr-txt"><b>${esc(o.unit.n)}</b><small>${esc([o.info.capital, o.info.subregion || o.info.continent].filter(Boolean).join(' · '))}</small></span>
       </li>`).join('') || (input.value.trim() ? '<li class="sr-empty">No country matches that name</li>' : '');
     input.setAttribute('aria-activedescendant', results.length ? 'sr-' + active : '');

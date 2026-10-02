@@ -5,6 +5,29 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>EarthInteractive</title>
   <meta name="description" content="Spin a true-to-scale 3D globe, explore every country and compare their real sizes.">
+  <meta name="theme-color" content="#03040b">
+  <link rel="canonical" href="https://john-redman.github.io/earth-interactive/">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="icon" href="icons/icon-192.png" type="image/png" sizes="192x192">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Earth">
+  <!-- link previews (Open Graph / X) -->
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="EarthInteractive">
+  <meta property="og:title" content="EarthInteractive: spin the world, compare real country sizes">
+  <meta property="og:description" content="A true-to-scale 3D globe. Tap any country for facts, see how big countries really are side by side, and play a daily geography challenge.">
+  <meta property="og:url" content="https://john-redman.github.io/earth-interactive/">
+  <meta property="og:image" content="https://john-redman.github.io/earth-interactive/og-image.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="A 3D globe with colourful country borders over Africa and Europe">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="EarthInteractive: spin the world, compare real country sizes">
+  <meta name="twitter:description" content="A true-to-scale 3D globe. Tap any country for facts, compare real sizes, play a daily geography challenge.">
+  <meta name="twitter:image" content="https://john-redman.github.io/earth-interactive/og-image.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -54,13 +77,17 @@
     </div>
 
     <div class="brand"><span class="brand-mark"></span>EarthInteractive</div>
-    <button id="sound-toggle" class="sound-toggle" type="button" aria-pressed="true" aria-label="Sound">
+    <button id="recenter" class="corner-btn recenter" type="button" aria-label="Recenter globe" title="Recenter (R)">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2.2"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3"/></svg>
+    </button>
+    <button id="sound-toggle" class="corner-btn sound-toggle" type="button" aria-pressed="true" aria-label="Sound">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path class="spk" d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path class="wave" d="M15.5 9a4 4 0 010 6M18 6.5a7.5 7.5 0 010 11"/><path class="cross" d="M16 9.5l5 5M21 9.5l-5 5"/></svg>
     </button>
     <div class="credit">Borders: Natural Earth · Data: Natural Earth, mledoze/countries</div>
 
-    <div class="loader" aria-hidden="true"><div class="loader-orb"></div><p>Building the globe…</p></div>
+    <div class="loader" aria-hidden="true"><div class="loader-orb"></div><p>Loading map data…</p><div class="loader-bar"><i></i></div></div>
   </main>
+  <aside class="ad-banner" aria-label="Advertisement" hidden></aside>
   <script type="module" src="js/main.js"></script>
   <!--/APP-->
 </body>

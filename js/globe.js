@@ -132,7 +132,8 @@ export function createGlobe(canvas) {
 
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(35, 1, 0.01, 200);
-  camera.position.set(0, 0.35, 3.2); // fit() sets the real distance
+  const HOME_DIR = new THREE.Vector3(0, 0.35, 3.2).normalize(); // start-up framing; recenter() returns here
+  camera.position.copy(HOME_DIR).multiplyScalar(3.2); // fit() sets the real distance
 
   const world = new THREE.Group(); // everything on the globe lives here
   scene.add(world);
@@ -149,16 +150,25 @@ export function createGlobe(canvas) {
   controls.enablePan = false;
   controls.rotateSpeed = 0.5; controls.zoomSpeed = 0.7;
   controls.minDistance = 1.25; controls.maxDistance = 7;
-  controls.autoRotate = true; controls.autoRotateSpeed = 0.35;
+  controls.autoRotate = !matchMedia('(prefers-reduced-motion: reduce)').matches; controls.autoRotateSpeed = 0.35;
 
-  // Idle → gentle auto-rotate; any interaction pauses it.
+  // Idle → gentle auto-rotate; any interaction pauses it. Holds (e.g. an open country card) keep it off.
   let idleTimer;
-  const pauseAuto = () => { controls.autoRotate = false; clearTimeout(idleTimer); idleTimer = setTimeout(() => { if (!globe.lockAuto) controls.autoRotate = true; }, 12000); };
+  const holds = new Set();
+  const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
+  const autoAllowed = () => !globe.lockAuto && !holds.size && !reducedMotion.matches;
+  const pauseAuto = () => { controls.autoRotate = false; clearTimeout(idleTimer); idleTimer = setTimeout(() => { if (autoAllowed()) controls.autoRotate = true; }, 12000); };
   canvas.addEventListener('pointerdown', pauseAuto);
   canvas.addEventListener('wheel', pauseAuto, { passive: true });
 
   const globe = {
     renderer, scene, camera, controls, world, ocean, lockAuto: false, pauseAuto,
+    /** Keep the idle auto-rotate off while `reason` is held. Releasing returns whether it was held. */
+    hold(reason, on) { if (on) { holds.add(reason); controls.autoRotate = false; return true; } return holds.delete(reason); },
+    /** Start the idle auto-rotate now instead of after the idle delay. */
+    resumeAuto() { clearTimeout(idleTimer); controls.autoRotate = autoAllowed(); },
+    /** Fly back to the start-up framing. */
+    flyHome(ms = 1100) { globe.flyTo(HOME_DIR, globe.fitDistance, ms); },
     insetX: 0, // horizontal px reserved by side banners
     fitDistance: 3.2,
     size: new THREE.Vector2(),
@@ -181,6 +191,7 @@ export function createGlobe(canvas) {
     },
     /** Smoothly turn the camera to face `dir` (unit vector) at distance `dist`. */
     flyTo(dir, dist = camera.position.length(), ms = 1100) {
+      if (reducedMotion.matches) ms = 1; // jump instead of flying
       const from = camera.position.clone().normalize(); const to = dir.clone().normalize();
       const d0 = camera.position.length(); const t0 = performance.now();
       const q = new THREE.Quaternion().setFromUnitVectors(from, to);

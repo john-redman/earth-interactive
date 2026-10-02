@@ -1,4 +1,5 @@
 // DOM UI: view switch pill, country popup, compare bar, pick banner, hint, hover tooltip.
+import { flagImg } from './flags.js';
 const $ = (sel, el = document) => el.querySelector(sel);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
@@ -68,10 +69,11 @@ export function createUI({ data, initialView, onView, onCompareRequest, onCompar
     const wiki = i.wikidata ? `https://www.wikidata.org/wiki/Special:GoToLinkedPage/enwiki/${i.wikidata}` : `https://en.wikipedia.org/wiki/Special:Search?search=${encodeURIComponent(u.n)}`;
     pop.style.setProperty('--c', o.color);
     pop.innerHTML = `
+      <button class="pop-grab" type="button" aria-label="Show more" aria-expanded="false"></button>
       <button class="pop-x" type="button" aria-label="Close">✕</button>
       <button class="pop-x pop-link" type="button" data-act="share" title="Copy a link to ${esc(u.n)}" aria-label="Copy link">${ICON_LINK}</button>
       <div class="pop-head">
-        ${i.flag ? `<span class="pop-flag">${i.flag}</span>` : `<span class="pop-swatch"></span>`}
+        ${flagImg(i, 'pop-flag') || `<span class="pop-swatch"></span>`}
         <div><h2>${esc(u.n)}</h2>${i.formal && i.formal !== u.n ? `<p class="pop-sub">${esc(i.formal)}</p>` : ''}</div>
       </div>
       <div class="badges">${badges.join('')}</div>
@@ -83,8 +85,11 @@ export function createUI({ data, initialView, onView, onCompareRequest, onCompar
         <button class="btn primary" type="button" data-act="compare">${ICON_COMPARE} Compare size</button>
         <a class="btn ghost" href="${wiki}" target="_blank" rel="noopener">Learn more ↗</a>
       </div>`;
-    pop.hidden = false; dot.hidden = false;
-    pop.classList.remove('in'); void pop.offsetWidth; pop.classList.add('in');
+    const same = pop.dataset.key === o.key && !pop.hidden;
+    pop.dataset.key = o.key;
+    pop.hidden = false; dot.hidden = false; document.body.classList.add('card-open');
+    if (!same) { setPeek(true); pop.scrollTop = 0; pop.classList.remove('in'); void pop.offsetWidth; pop.classList.add('in'); }
+    else setPeek(pop.classList.contains('peek'));
     $('.pop-x', pop).onclick = () => onClosePopup();
     $('[data-act="compare"]', pop).onclick = () => onCompareRequest(o);
     $('[data-act="share"]', pop).onclick = () => onShare?.(o);
@@ -96,7 +101,34 @@ export function createUI({ data, initialView, onView, onCompareRequest, onCompar
     if (!list.length) return i.landlocked === false && (u.t === 'country' || u.t === 'limited') ? '<div class="pop-nb"><span>Neighbours</span><small>No land borders</small></div>' : '';
     return `<div class="pop-nb"><span>Neighbours</span><div>${list.map(n => `<button type="button" class="chip" data-nb="${esc(n.key)}">${esc(n.name)}</button>`).join('')}</div></div>`;
   }
-  function hidePopup() { popFor = null; pop.hidden = true; dot.hidden = true; }
+  function hidePopup() { popFor = null; pop.hidden = true; dot.hidden = true; delete pop.dataset.key; document.body.classList.remove('card-open'); }
+
+  // Phone sheet: opens as a short peek (name + key facts) so the globe stays visible.
+  // Swipe up or tap the handle to expand; swipe down to shrink, then to close.
+  function setPeek(on) {
+    pop.classList.toggle('peek', on);
+    const grab = $('.pop-grab', pop);
+    if (grab) { grab.setAttribute('aria-expanded', String(!on)); grab.setAttribute('aria-label', on ? 'Show more' : 'Show less'); }
+    if (on) pop.scrollTop = 0;
+  }
+  let swipe = null;
+  pop.addEventListener('click', e => {
+    if (!pop.classList.contains('sheet')) return;
+    if (e.target.closest('.pop-grab')) setPeek(!pop.classList.contains('peek'));
+    else if (pop.classList.contains('peek') && e.target.closest('.pop-head')) setPeek(false);
+  });
+  pop.addEventListener('touchstart', e => {
+    if (!pop.classList.contains('sheet') || e.touches.length !== 1) return;
+    swipe = { y: e.touches[0].clientY, t: performance.now(), top: pop.scrollTop };
+  }, { passive: true });
+  pop.addEventListener('touchend', e => {
+    if (!swipe) return;
+    const dy = e.changedTouches[0].clientY - swipe.y, quick = performance.now() - swipe.t < 600, s = swipe; swipe = null;
+    if (!quick || Math.abs(dy) < 40) return;
+    const peek = pop.classList.contains('peek');
+    if (dy < 0 && peek) setPeek(false);
+    else if (dy > 0 && s.top <= 0) { if (peek) onClosePopup(); else setPeek(true); }
+  }, { passive: true });
   /** Called every frame with the projected anchor. */
   function placePopup(x, y, visible, vw, vh) {
     if (pop.hidden) return;

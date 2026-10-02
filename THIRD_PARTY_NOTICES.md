@@ -9,6 +9,7 @@ EarthInteractive uses the following open-source projects:
 | **three.js** (r170) | MIT | Vendored at `vendor/three/` | © 2010–2024 three.js authors |
 | **Natural Earth** | Public Domain | Borders (Admin-0, breakaway/disputed areas) at 1:50m | [naturalearthdata.com](https://www.naturalearthdata.com) |
 | **mledoze/countries** | ODbL 1.0 | Country facts (capital, languages, currency) | Attribution required; shown in footer |
+| **flag-icons** (7.5.0) | MIT | Flag SVGs vendored at `vendor/flags/` (only the codes the map uses) | © 2013 Panayiotis Lipiridis |
 | **Plus Jakarta Sans** | OFL 1.1 | UI typography | © Tokotype (via Google Fonts) |
 
 ## Build-time only
