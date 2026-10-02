@@ -37,7 +37,8 @@ Unit keys are Natural Earth `ADM0_A3` codes (e.g. `FRA`), or `X_<SLUG>` for disp
 ## Gotchas (learned the hard way)
 
 - **Country fills** use `depthTest: false` + a per-fragment far-side discard, because large flat triangles sag below the ocean sphere. A **stencil** (`EqualStencilFunc` + `IncrementStencilOp`) makes each pixel blend once — without it shared triangle edges show bright seams. Compare pieces use their own stencil refs (100+id). The renderer needs `stencil: true`.
-- **Triangulation**: earcut in lon/lat, then longest-edge bisection (`maxEdge` 6°). 4-way subdivision explodes the triangle count on earcut slivers — don't go back to it.
+- **Triangulation**: earcut in lon/lat, then longest-edge bisection (`maxEdge` 6°, measured on the sphere: Δlon × cos lat). 4-way subdivision explodes the triangle count on earcut slivers — don't go back to it. Measuring in raw degrees turned Antarctica alone into ~200k triangles.
+- **Mobile performance** (`js/perf.js`): touch devices get the `low` tier — no MSAA, pixel ratio ≤ 1.5, two ocean noise octaves, lighter spheres, no `backdrop-filter` (`:root[data-quality="low"]` in CSS). The governor drops the pixel ratio in 0.25 steps when median frame time > 22 ms. `CountryLayer.cull()` hides countries behind the horizon every frame; anything that needs a hidden country drawn must account for it. Test with `?quality=low` on desktop.
 - **LineMaterial resolution** is in CSS pixels (`layer.resizeLines()` on resize); extra line materials must be registered.
 - **Rotation is owned by `js/spin.js`**, not OrbitControls (`enableRotate = false`). OrbitControls still does zoom and idle auto-rotate. Pointer-down stops the spin immediately; release velocity becomes momentum.
 - **Click vs drag**: a click is < 6 px movement and < 650 ms; anything else is a spin. Keep this — it's a core UX promise.

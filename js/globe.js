@@ -2,6 +2,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { SKY } from './sun.js';
+import { QUALITY, ResolutionGovernor } from './perf.js';
 
 export const LIGHT_DIR_VIEW = new THREE.Vector3(-0.45, 0.55, 0.7).normalize(); // light fixed relative to the viewer
 
@@ -32,6 +33,7 @@ float snoise(vec3 v){
 
 function oceanMaterial() {
   return new THREE.ShaderMaterial({
+    defines: { OCTAVES: QUALITY.oceanOctaves },
     uniforms: { uTime: { value: 0 }, uLight: { value: LIGHT_DIR_VIEW }, uSun: SKY.uSun, uNight: SKY.uNight },
     vertexShader: /* glsl */`
       varying vec3 vPos; varying vec3 vN; varying vec3 vView;
@@ -52,7 +54,11 @@ function oceanMaterial() {
         // two slow drifting swell layers + a fine ripple layer
         float n1 = snoise(vPos * 5.0 + vec3(t*0.020, t*0.012, -t*0.016));
         float n2 = snoise(vPos * 13.0 + vec3(-t*0.045, t*0.030, t*0.038));
+        #if OCTAVES > 2
         float n3 = snoise(vPos * 34.0 + vec3(t*0.09, -t*0.07, t*0.05));
+        #else
+        float n3 = n2 * 0.6; // fine ripples are invisible on small screens; skip the third noise lookup
+        #endif
         float waves = n1*0.55 + n2*0.30 + n3*0.15;
         vec3 Np = normalize(N + vec3(n2, n3, n1) * 0.06);
         float facing = clamp(dot(N, vView), 0.0, 1.0);
@@ -90,7 +96,7 @@ function atmosphere() {
       void main(){ float x = clamp(-dot(vN, vView), 0.0, 1.0); float i = pow(smoothstep(0.0, 0.55, x), 2.6); gl_FragColor = vec4(0.32, 0.52, 1.0, 1.0) * i * 0.75; }`,
     side: THREE.BackSide, blending: THREE.AdditiveBlending, transparent: true, depthWrite: false,
   });
-  return new THREE.Mesh(new THREE.SphereGeometry(1.16, 96, 64), m);
+  return new THREE.Mesh(new THREE.SphereGeometry(1.16, ...QUALITY.atmosphereSegments), m);
 }
 
 function graticule() {
@@ -103,7 +109,7 @@ function graticule() {
 }
 
 function stars() {
-  const n = 700, p = new Float32Array(n * 3), s = new Float32Array(n);
+  const n = QUALITY.stars, p = new Float32Array(n * 3), s = new Float32Array(n);
   for (let i = 0; i < n; i++) {
     const v = new THREE.Vector3().randomDirection().multiplyScalar(40 + Math.random() * 20);
     p.set([v.x, v.y, v.z], i * 3); s[i] = Math.random();
@@ -120,8 +126,8 @@ function stars() {
 }
 
 export function createGlobe(canvas) {
-  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, stencil: true, powerPreference: 'high-performance' });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: QUALITY.antialias, alpha: true, stencil: true, powerPreference: 'high-performance' });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, QUALITY.maxPixelRatio));
   renderer.outputColorSpace = THREE.SRGBColorSpace;
 
   const scene = new THREE.Scene();
@@ -131,7 +137,7 @@ export function createGlobe(canvas) {
   const world = new THREE.Group(); // everything on the globe lives here
   scene.add(world);
 
-  const ocean = new THREE.Mesh(new THREE.SphereGeometry(1, 160, 120), oceanMaterial());
+  const ocean = new THREE.Mesh(new THREE.SphereGeometry(1, ...QUALITY.oceanSegments), oceanMaterial());
   ocean.renderOrder = -10;
   world.add(ocean, graticule());
   scene.add(atmosphere());
@@ -189,6 +195,12 @@ export function createGlobe(canvas) {
     },
   };
   globe.fitDistance = 3.2;
+  // drop resolution on devices that can't hold the frame rate (never above the starting ratio)
+  globe.governor = new ResolutionGovernor(renderer.getPixelRatio(), pr => {
+    renderer.setPixelRatio(pr);
+    renderer.setSize(globe.size.x, globe.size.y, false);
+    starField.material.uniforms.uPR.value = pr;
+  });
   window.addEventListener('resize', () => globe.resize());
   return globe;
 }

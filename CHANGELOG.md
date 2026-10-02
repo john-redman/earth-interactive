@@ -2,6 +2,13 @@
 
 All notable changes to EarthInteractive are documented here.
 
+## [Unreleased]
+
+### Changed
+- **Mobile performance**: phones and tablets render with a lighter quality tier (no MSAA, pixel ratio capped at 1.5, cheaper ocean shader, lighter spheres, solid panels instead of live background blur), and an adaptive governor lowers resolution further when the frame rate drops. Force a tier with `?quality=low|high`.
+- Countries entirely behind the horizon are no longer drawn (roughly 25–80% fewer draw calls depending on the view).
+- Triangulation measures edge length on the sphere, cutting fill triangles from ~307k to ~101k (Antarctica alone was ~208k) and speeding up start-up.
+
 ## [0.4.0] – 2026-10-02
 
 ### Added

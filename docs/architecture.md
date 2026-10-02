@@ -20,11 +20,12 @@ Static site, no bundler. `index.html` loads `js/main.js` as an ES module; an imp
 | `quiz.js` | Daily Challenge (seeded by local date) and Find it | `createQuiz` |
 | `ui.js` | View switch pill, country card, compare bar, pick banner, tooltip, toast, first-run hint | `createUI`, `fmtArea` |
 | `ads.js` | Banner slots and sizing | `ADS`, `mountAds` |
+| `perf.js` | Device quality tier (`low` on touch/weak devices; `?quality=low\|high` overrides) and the resolution governor that lowers the pixel ratio when frames run long | `TIER`, `QUALITY`, `ResolutionGovernor` |
 
 ## Rendering order
 
 1. Ocean sphere (opaque, writes depth, `renderOrder -10`)
-2. Country fills (transparent, no depth test, stencil-once, far side discarded in shader)
+2. Country fills (transparent, no depth test, stencil-once, far side discarded in shader; countries wholly behind the horizon are hidden each frame by `CountryLayer.cull()`)
 3. Country borders (`LineSegments2`, depth-tested at r = 1.0028)
 4. Compare pieces: shadow → walls → top → rim (`renderOrder 10 + 4·z`)
 5. Atmosphere (additive, back-side)

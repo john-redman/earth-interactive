@@ -61,7 +61,13 @@ export function triangulate(multi, { maxEdge = 6, ringStep = 1 } = {}) {
       if (m === undefined) { m = pts.length; pts.push([(pts[a][0] + pts[b][0]) / 2, (pts[a][1] + pts[b][1]) / 2]); mid.set(k, m); }
       return m;
     };
-    const d2 = (a, b) => { const dx = pts[a][0] - pts[b][0], dy = pts[a][1] - pts[b][1]; return dx * dx + dy * dy; };
+    // edge length on the sphere, not in raw degrees: a degree of longitude shrinks towards the poles
+    // (raw degrees split Antarctica into ~200k triangles, two thirds of the whole map).
+    // cos of the endpoint nearer the equator keeps this an upper bound along the parallel.
+    const d2 = (a, b) => {
+      const dx = (pts[a][0] - pts[b][0]) * Math.max(Math.cos(pts[a][1] * DEG), Math.cos(pts[b][1] * DEG)), dy = pts[a][1] - pts[b][1];
+      return dx * dx + dy * dy;
+    };
     // longest-edge bisection: only splits along the long side, so thin earcut slivers stay cheap
     const outTris = [];
     const stack = tris.map(t => [t[0], t[1], t[2]]);
