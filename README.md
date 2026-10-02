@@ -2,7 +2,9 @@
 
 An interactive, true-to-scale 3D globe for the browser. Spin it, open any country for facts, compare the real sizes of countries with pop-out puzzle pieces, recolour the world by data, and play a daily geography challenge.
 
-> Private repository. All rights reserved — see [LICENSE](LICENSE).
+**Live:** https://john-redman.github.io/earth-interactive/
+
+> Public source, all rights reserved — see [LICENSE](LICENSE).
 
 ## Features
 
@@ -56,6 +58,7 @@ tools/check.mjs          syntax + data consistency checks (CI)
 tools/sources/           pinned upstream data (Natural Earth, mledoze/countries)
 sounds/                  optional recorded audio (see sounds/README.md)
 docs/                    architecture, border-view policy, roadmap
+.github/workflows/       ci.yml (checks) · pages.yml (GitHub Pages deploy)
 ```
 
 ## Scripts
@@ -80,8 +83,18 @@ docs/                    architecture, border-view policy, roadmap
 
 ## Deploying
 
-Upload the repository root to any static host (Netlify, Vercel, Cloudflare Pages, GitHub Pages).
-Exclude `tools/`, `docs/` and `node_modules/` from the published artefact if you want a lean deploy.
+The site is hosted on **GitHub Pages** and deploys automatically on every push to `main`
+via [`.github/workflows/pages.yml`](.github/workflows/pages.yml):
+
+1. Runs `npm run check`.
+2. Copies only the app files (`index.html`, `css/`, `js/`, `data/`, `vendor/`, plus `LICENSE` and notices) into `_site/` —
+   `tools/`, `docs/` and `node_modules/` are not published.
+3. Uploads and deploys that artefact to https://john-redman.github.io/earth-interactive/.
+
+One-time setup: **Settings → Pages → Build and deployment → Source: GitHub Actions**.
+To redeploy without a code change, run the workflow manually from the **Actions** tab.
+
+All asset paths are relative, so the app works from the `/earth-interactive/` sub-path (and from any other static host).
 
 ## Data & licences
 
