@@ -304,6 +304,7 @@ let prevNow = performance.now();
 function frame(now) {
   const t = now / 1000;
   const dt = Math.max(0, (now - prevNow) / 1000); prevNow = now;
+  globe.governor.frame(dt * 1000);
   globe.flight?.(now);
   spin.update(now, dt);
   globe.controls.update();

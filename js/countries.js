@@ -72,6 +72,7 @@ export class CountryLayer {
     this.dim = null;                 // Set of keys kept in colour during compare (others greyed)
     this.sockets = new Set();        // keys whose pieces are popped out
     this.fade = 1;
+    this.camLocal = new THREE.Vector3();
   }
 
   geom(id) {
@@ -86,7 +87,14 @@ export class CountryLayer {
     fillGeom.setIndex(new THREE.BufferAttribute(tri.index, 1));
     fillGeom.computeBoundingSphere();
     const lineGeom = new LineSegmentsGeometry().setPositions(borderSegments(tri.rings, R_LINE));
-    g = { multi, tri, bbox: bboxOf(multi), centroid: sphereCentroid(tri.positions, tri.index), fillGeom, lineGeom };
+    const centroid = sphereCentroid(tri.positions, tri.index);
+    // angular radius around the centroid, so cull() can tell when the whole shape is behind the horizon
+    let minDot = 1;
+    for (let i = 0; i < tri.positions.length; i += 3) {
+      const x = tri.positions[i], y = tri.positions[i + 1], z = tri.positions[i + 2];
+      minDot = Math.min(minDot, (x * centroid.x + y * centroid.y + z * centroid.z) / Math.hypot(x, y, z));
+    }
+    g = { multi, tri, bbox: bboxOf(multi), centroid, spread: Math.acos(Math.max(-1, minDot)), fillGeom, lineGeom };
     this.geomCache.set(id, g);
     return g;
   }
@@ -196,5 +204,18 @@ export class CountryLayer {
   registerLineMaterial(m) { (this.extraLineMaterials ||= new Set()).add(m); this.resizeLines(); }
   unregisterLineMaterial(m) { this.extraLineMaterials?.delete(m); }
 
-  tick(now) { this.fadeAnim?.(now); }
+  /** Hide countries that are entirely behind the horizon: about half the draw calls and triangles on any frame. */
+  cull() {
+    if (!this.view) return;
+    const cam = this.globe.world.worldToLocal(this.camLocal.copy(this.globe.camera.position));
+    const d = cam.length(); cam.divideScalar(d);
+    const horizon = Math.acos(Math.min(1, 1 / d));
+    for (const o of this.view.objects) {
+      const reach = horizon + o.g.spread + 0.03; // small margin for line width and the raised border radius
+      const vis = reach >= Math.PI || o.g.centroid.dot(cam) > Math.cos(reach);
+      o.fill.visible = vis; o.border.visible = vis;
+    }
+  }
+
+  tick(now) { this.fadeAnim?.(now); this.cull(); }
 }
