@@ -1,0 +1,22 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm install --no-audit --no-fund
+      - name: Syntax + data consistency
+        run: npm run check
+      - name: Generated data is up to date
+        run: |
+          npm run build:data
+          git diff --exit-code -- data/world.js || (echo "::error::data/world.js is stale — run 'npm run build:data' and commit" && exit 1)
