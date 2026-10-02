@@ -3,7 +3,8 @@ import * as THREE from 'three';
 import { LineSegments2 } from 'three/addons/lines/LineSegments2.js';
 import { LineSegmentsGeometry } from 'three/addons/lines/LineSegmentsGeometry.js';
 import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
-import { decodeGeom, triangulate, borderSegments, sphereCentroid, bboxOf, pointInMulti } from './geo.js';
+import { decodeGeom, triangulate, borderSegments, borderRings, sphereCentroid, bboxOf, pointInMulti } from './geo.js';
+import { QUALITY } from './perf.js';
 import { LIGHT_DIR_VIEW } from './globe.js';
 import { SKY } from './sun.js';
 
@@ -86,7 +87,9 @@ export class CountryLayer {
     fillGeom.setAttribute('position', new THREE.BufferAttribute(pos, 3));
     fillGeom.setIndex(new THREE.BufferAttribute(tri.index, 1));
     fillGeom.computeBoundingSphere();
-    const lineGeom = new LineSegmentsGeometry().setPositions(borderSegments(tri.rings, R_LINE));
+    // phones draw lighter borders (fills keep full detail, so coastlines still read the same)
+    const rings = QUALITY.borderTolerance > 0 ? borderRings(multi, QUALITY.borderTolerance) : tri.rings;
+    const lineGeom = new LineSegmentsGeometry().setPositions(borderSegments(rings, R_LINE));
     const centroid = sphereCentroid(tri.positions, tri.index);
     // angular radius around the centroid, so cull() can tell when the whole shape is behind the horizon
     let minDot = 1;
@@ -101,10 +104,28 @@ export class CountryLayer {
 
   build(viewKey) {
     if (this.viewCache.has(viewKey)) return this.viewCache.get(viewKey);
+    const steps = this.buildSteps(viewKey);
+    let r; while (!(r = steps.next()).done);
+    return r.value;
+  }
+
+  /** Same as build(), in ~12 ms slices so the page stays responsive; onProgress(0…1). */
+  async buildAsync(viewKey, onProgress) {
+    if (this.viewCache.has(viewKey)) return this.viewCache.get(viewKey);
+    const steps = this.buildSteps(viewKey);
+    let r, t = performance.now();
+    while (!(r = steps.next()).done) {
+      if (performance.now() - t > 12) { onProgress?.(r.value); await new Promise(res => setTimeout(res, 0)); t = performance.now(); }
+    }
+    onProgress?.(1);
+    return r.value;
+  }
+
+  *buildSteps(viewKey) {
     const v = this.data.views[viewKey];
     const group = new THREE.Group(); group.name = 'view:' + viewKey;
     const objects = []; const byKey = new Map(); const grid = new Map();
-    for (const unit of v.units) {
+    for (const [n, unit] of v.units.entries()) {
       const g = this.geom(unit.g);
       const color = PALETTE[unit.c] ?? PALETTE[1];
       const hatch = unit.t === 'disputed';
@@ -124,6 +145,7 @@ export class CountryLayer {
         for (let gy = Math.floor((y0 + 90) / 10); gy <= Math.floor((y1 + 90) / 10); gy++) {
           const k = gx + ':' + gy; if (!grid.has(k)) grid.set(k, []); grid.get(k).push(o);
         }
+      yield (n + 1) / v.units.length;
     }
     const entry = { key: viewKey, group, objects, byKey, grid };
     this.viewCache.set(viewKey, entry);

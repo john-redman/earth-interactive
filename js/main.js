@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import data from '../data/world.js';
+import { loadWorld, setLoader } from './load.js';
 import { createGlobe, tickGlobe } from './globe.js';
 import { CountryLayer } from './countries.js';
 import { Compare } from './compare.js';
@@ -12,6 +12,14 @@ import { SKY, updateSun } from './sun.js';
 import { LENSES, LENS_ORDER, buildLens, renderLegend } from './lens.js';
 import { createSearch } from './search.js';
 import { createQuiz } from './quiz.js';
+
+const data = await loadWorld();
+
+// Offline + instant repeat visits (skipped on localhost so development always sees fresh files)
+if ('serviceWorker' in navigator && !/^(localhost|127\.0\.0\.1)$/.test(location.hostname)) {
+  const register = () => navigator.serviceWorker.register('sw.js').catch(() => {});
+  if (document.readyState === 'complete') register(); else addEventListener('load', register);
+}
 
 const canvas = document.getElementById('globe');
 const stage = document.getElementById('stage');
@@ -339,7 +347,9 @@ function frame(now) {
 }
 
 // Build the first view after the loader has painted, then warm the others in the background.
-requestAnimationFrame(() => setTimeout(() => {
+requestAnimationFrame(() => setTimeout(async () => {
+  await layer.buildAsync(viewKey, f => setLoader(`Drawing countries… ${Math.round(f * 100)}%`, 0.7 + 0.3 * f));
+  setLoader(null, 1);
   layer.setView(viewKey);
   applyLens();
   document.body.classList.add('ready');

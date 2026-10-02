@@ -150,12 +150,13 @@ export function createGlobe(canvas) {
   controls.enablePan = false;
   controls.rotateSpeed = 0.5; controls.zoomSpeed = 0.7;
   controls.minDistance = 1.25; controls.maxDistance = 7;
-  controls.autoRotate = true; controls.autoRotateSpeed = 0.35;
+  controls.autoRotate = !matchMedia('(prefers-reduced-motion: reduce)').matches; controls.autoRotateSpeed = 0.35;
 
   // Idle → gentle auto-rotate; any interaction pauses it. Holds (e.g. an open country card) keep it off.
   let idleTimer;
   const holds = new Set();
-  const autoAllowed = () => !globe.lockAuto && !holds.size;
+  const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
+  const autoAllowed = () => !globe.lockAuto && !holds.size && !reducedMotion.matches;
   const pauseAuto = () => { controls.autoRotate = false; clearTimeout(idleTimer); idleTimer = setTimeout(() => { if (autoAllowed()) controls.autoRotate = true; }, 12000); };
   canvas.addEventListener('pointerdown', pauseAuto);
   canvas.addEventListener('wheel', pauseAuto, { passive: true });
@@ -190,6 +191,7 @@ export function createGlobe(canvas) {
     },
     /** Smoothly turn the camera to face `dir` (unit vector) at distance `dist`. */
     flyTo(dir, dist = camera.position.length(), ms = 1100) {
+      if (reducedMotion.matches) ms = 1; // jump instead of flying
       const from = camera.position.clone().normalize(); const to = dir.clone().normalize();
       const d0 = camera.position.length(); const t0 = performance.now();
       const q = new THREE.Quaternion().setFromUnitVectors(from, to);
