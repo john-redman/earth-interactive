@@ -164,19 +164,23 @@ body.ads-on .ad-slot { display: block; }
 body:not(.ready) .hint { opacity: 0; }
 .brand { position: absolute; left: 22px; bottom: 18px; z-index: 10; display: flex; align-items: center; gap: 8px; font-weight: 800; font-size: 14px; letter-spacing: -0.01em; color: rgba(255,255,255,0.88); pointer-events: none; }
 .brand-mark { width: 16px; height: 16px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #c8e6ff, #4f8dff 45%, #6a2bd8 100%); box-shadow: 0 0 12px rgba(120,140,255,0.6); }
-.credit { position: absolute; right: 66px; bottom: 18px; z-index: 10; font-size: 10.5px; color: rgba(255,255,255,0.36); pointer-events: none; }
+.credit { position: absolute; right: 110px; bottom: 18px; z-index: 10; font-size: 10.5px; color: rgba(255,255,255,0.36); pointer-events: none; }
 .loader { position: absolute; inset: 0; display: grid; place-content: center; justify-items: center; gap: 16px; z-index: 50; color: var(--muted); font-size: 13px; transition: opacity 0.6s ease; pointer-events: none; }
 .loader-orb { width: 54px; height: 54px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #9cc8ff, #2b5fd9 50%, #1b1458 100%); box-shadow: 0 0 40px rgba(90,130,255,0.55); animation: breathe 1.4s ease-in-out infinite alternate; }
 @keyframes breathe { from { transform: scale(0.92); opacity: 0.7; } to { transform: scale(1.04); opacity: 1; } }
 body.ready .loader { opacity: 0; }
 
 /* ───────────── Sound toggle ───────────── */
-.sound-toggle { position: absolute; right: 20px; bottom: 10px; z-index: 12; width: 36px; height: 36px; display: grid; place-items: center; border-radius: 50%; cursor: pointer;
+/* Round corner buttons (recenter, sound) */
+.corner-btn { position: absolute; bottom: 10px; z-index: 12; width: 36px; height: 36px; display: grid; place-items: center; border-radius: 50%; cursor: pointer;
   color: rgba(255,255,255,0.8); background: rgba(255,255,255,0.06); border: 1px solid var(--glass-border);
   backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); transition: background 0.2s, color 0.2s; }
-.sound-toggle:hover { background: rgba(255,255,255,0.13); color: #fff; }
-.sound-toggle:focus-visible { outline: 2px solid var(--accent-2); outline-offset: 2px; }
-.sound-toggle svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.corner-btn:hover { background: rgba(255,255,255,0.13); color: #fff; }
+.corner-btn:focus-visible { outline: 2px solid var(--accent-2); outline-offset: 2px; }
+.corner-btn svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.sound-toggle { right: 20px; }
+.recenter { right: 64px; }
+body.quiz-on .recenter { display: none; }
 .sound-toggle .cross { display: none; }
 .sound-toggle.muted { color: rgba(255,255,255,0.45); }
 .sound-toggle.muted .wave { display: none; }
@@ -301,7 +305,9 @@ body.quiz-on .legend, body.comparing .legend { display: none; }
   .hint .hint-key { display: none; }
   body.quiz-on .dock, body.comparing .dock { display: none; }
   .credit { display: none; }
-  .sound-toggle { right: 14px; bottom: 12px; width: 34px; height: 34px; }
+  .corner-btn { bottom: 12px; width: 34px; height: 34px; }
+  .sound-toggle { right: 14px; }
+  .recenter { right: 56px; }
   .dock { top: auto; right: 12px; bottom: 54px; flex-direction: column; }
   .dock-btn { width: 44px; height: 44px; padding: 0; justify-content: center; }
   .dock-btn span, .dock-btn kbd { display: none; }
@@ -321,11 +327,11 @@ body.quiz-on .legend, body.comparing .legend { display: none; }
 :root[data-quality="low"] { --glass: rgba(14, 16, 38, 0.95); }
 :root[data-quality="low"] .view-switch, :root[data-quality="low"] .ad-slot, :root[data-quality="low"] .popup,
 :root[data-quality="low"] .pick-banner, :root[data-quality="low"] .compare-bar, :root[data-quality="low"] .toast,
-:root[data-quality="low"] .tooltip, :root[data-quality="low"] .sound-toggle, :root[data-quality="low"] .dock-btn,
+:root[data-quality="low"] .tooltip, :root[data-quality="low"] .corner-btn, :root[data-quality="low"] .dock-btn,
 :root[data-quality="low"] .menu, :root[data-quality="low"] .quiz, :root[data-quality="low"] .legend {
   backdrop-filter: none; -webkit-backdrop-filter: none;
 }
-:root[data-quality="low"] .view-switch, :root[data-quality="low"] .sound-toggle, :root[data-quality="low"] .dock-btn:not(:hover):not(.on):not([aria-expanded="true"]) {
+:root[data-quality="low"] .view-switch, :root[data-quality="low"] .corner-btn, :root[data-quality="low"] .dock-btn:not(:hover):not(.on):not([aria-expanded="true"]) {
   background: rgba(14, 16, 38, 0.78);
 }
 

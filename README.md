@@ -19,6 +19,7 @@ An interactive, true-to-scale 3D globe for the browser. Spin it, open any countr
 | **Games** | *Daily Challenge* (same 5 countries for everyone, shareable result) and *Find it* (10 rounds); distance-based scoring |
 | **Flywheel spin** | The globe keeps its momentum; grab to stop. A hard flick starts *rollercoaster mode* — a 3D-audio screaming crowd |
 | **Ads** | Left/right banner slots (160×600 → 120×240), hidden on small screens |
+| **Recenter** | Bottom-right button (or `R` / `Home`) flies back to the start-up view and resumes the idle spin; the globe holds still while a country card is open |
 | **Deep links** | `?c=FRA` · `?compare=FRA,DEU` · `?play=daily` · `?view=un` |
 
 ## Quick start

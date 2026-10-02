@@ -96,6 +96,7 @@ function openCountry(o, { fly = false, point = null } = {}) {
   anchor = (point || o.g.centroid).clone().normalize();
   ui.showPopup(o, viewKey, extras(o));
   if (fly) flyToCountry(o); else spin.brake();
+  globe.hold('card', true); // the globe stays put while a country card is open
   globe.pauseAuto();
   setParam('c', o.key);
 }
@@ -167,7 +168,21 @@ function tickSun() {
 }
 tickSun(); setInterval(tickSun, 30000);
 
-function closePopup() { ui.hidePopup(); anchor = null; if (mode === 'browse') layer.setSelected(null); setParam('c', null); }
+function closePopup() {
+  ui.hidePopup(); anchor = null; if (mode === 'browse') layer.setSelected(null); setParam('c', null);
+  if (globe.hold('card', false)) globe.pauseAuto(); // card closed: idle auto-rotate resumes after the usual delay
+}
+
+// Recenter: back to the start-up framing, spinning again
+function recenter() {
+  if (mode === 'quiz') return;
+  closeMenus();
+  if (mode === 'compare') endCompare(true); else if (mode === 'pick') cancelPick();
+  closePopup();
+  spin.stop(); globe.flyHome();
+  globe.resumeAuto();
+}
+document.getElementById('recenter').addEventListener('click', recenter);
 function cancelPick() { mode = 'browse'; pickFrom = null; ui.hidePick(); layer.setSelected(null); }
 function endCompare(immediate) { compare.end(immediate); mode = 'browse'; ui.showCompare(null); }
 
@@ -282,6 +297,7 @@ window.addEventListener('keydown', e => {
     else if (mode === 'compare') endCompare(); else if (mode === 'pick') cancelPick(); else if (mode !== 'quiz') closePopup();
     return;
   }
+  if ((e.key === 'Home' || e.key.toLowerCase() === 'r') && !e.metaKey && !e.ctrlKey && !e.altKey && mode !== 'quiz') { e.preventDefault(); recenter(); return; }
   if (e.key === 'Enter' && quiz.canAdvance && !e.target.closest?.('button')) { quiz.next(); return; }
   // keyboard spinning & zoom
   const step = 0.12;

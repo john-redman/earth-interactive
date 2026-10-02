@@ -4,7 +4,11 @@ All notable changes to EarthInteractive are documented here.
 
 ## [Unreleased]
 
+### Added
+- **Recenter button** (bottom right, or <kbd>R</kbd> / <kbd>Home</kbd>): closes cards and compare, flies back to the start-up framing and resumes the idle spin.
+
 ### Changed
+- The globe no longer starts auto-rotating while a country card is open; the idle spin resumes after the card is closed.
 - **Mobile performance**: phones and tablets render with a lighter quality tier (no MSAA, pixel ratio capped at 1.5, cheaper ocean shader, lighter spheres, solid panels instead of live background blur), and an adaptive governor lowers resolution further when the frame rate drops. Force a tier with `?quality=low|high`.
 - Countries entirely behind the horizon are no longer drawn (roughly 25–80% fewer draw calls depending on the view).
 - Triangulation measures edge length on the sphere, cutting fill triangles from ~307k to ~101k (Antarctica alone was ~208k) and speeding up start-up.
