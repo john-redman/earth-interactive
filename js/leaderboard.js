@@ -2,6 +2,7 @@
 // your own row highlighted. Renders nothing when no API is configured (js/net/api.js API_BASE).
 import { online, getPlayer, setName, submitScore, getLeaderboard } from './net/api.js';
 import { cleanName, nameProblem, NAME_MESSAGES, NAME_MAX } from './net/profanity.js';
+import { generateName } from './net/names.js';
 
 const int = new Intl.NumberFormat('en-US');
 const TITLES = { daily: 'Daily leaderboard', classic: 'Find it · today' };
@@ -46,6 +47,7 @@ export function createLeaderboard({ container, limit = 10 }) {
       <div class="lb-row">
         <input class="lb-input" id="${id}-n" name="name" type="text" maxlength="${NAME_MAX}" autocomplete="nickname"
           autocapitalize="off" spellcheck="false" aria-describedby="${id}-m" required>
+        <button class="btn small ghost lb-shuffle" type="button" title="Suggest another name">Shuffle</button>
         <button class="btn small primary" type="submit">Save</button>
       </div>
       <p class="lb-msg" id="${id}-m" aria-live="polite"></p>
@@ -70,14 +72,16 @@ export function createLeaderboard({ container, limit = 10 }) {
   }
   function openForm(prompt) {
     form.hidden = false; rename.hidden = true;
-    input.value = getPlayer().name || '';
+    input.value = getPlayer().name || generateName(); // start with a witty suggestion; typing replaces it
+    showProblem(null);
     msg.textContent = prompt || '';
-    input.focus({ preventScroll: true });
+    input.focus({ preventScroll: true }); input.select();
   }
   function closeForm() { form.hidden = true; rename.hidden = !getPlayer().name; showProblem(null); }
 
   input.addEventListener('input', () => showProblem(nameProblem(input.value)));
   rename.addEventListener('click', () => openForm());
+  el.querySelector('.lb-shuffle').addEventListener('click', () => { input.value = generateName(); showProblem(null); input.focus({ preventScroll: true }); });
   rename.hidden = !getPlayer().name;
 
   form.addEventListener('submit', async e => {

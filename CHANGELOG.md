@@ -5,6 +5,11 @@ All notable changes to EarthInteractive are documented here.
 ## [Unreleased]
 
 ### Changed
+- **Terrifying ride audio**: the rollercoaster crowd now panics instead of cheering: shrieks, wails and distant groans in a dissonant cluster, a throbbing sub-bass dread drone that swells with spin speed, and blood-curdling fly-by screams that rush past via HRTF. Still fully synthesised (no recordings bundled).
+- **Steady borders**: every country gets a fixed draw order (overlays last), so shared borders and overlapping fills no longer swap places as the globe turns. Phone borders are simplified per shared stretch, so neighbours still meet on exactly the same line (98k → 32k segments).
+- **HD pin**: the map pin is a crisp SVG overlay at full device resolution, with a drop-in bounce and ground shadow.
+- **Cards follow your finger**: the phone card and the compare stats panel track the drag 1:1 and settle by position and flick speed (short ↔ full ↔ closed). Swipe up on the compare pill to open the stats.
+- **Leaderboard names** start with a witty geography suggestion ("Tectonic Toucan 42", "Lord of the Fjords"); *Shuffle* for another, or type your own.
 - **Less covering the globe**: tapping a country now drops a 3D pin with a small tag (flag, name, *Compare*, *Info*). The full card opens only from *Info*; closing it returns to the tag. Comparisons show only a *Compare stats* pill (plus ✕ to end) at the bottom; the full stats panel opens from it.
 - **Livelier ocean**: faster, cross-warped swells, rolling swell bands, stronger glints and glittering crests.
 

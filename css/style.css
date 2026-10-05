@@ -112,7 +112,7 @@ img.pop-flag { width: 40px; height: 30px; flex: none; object-fit: cover; border-
 .pop-note { margin: 10px 0 0; padding: 8px 10px; border-radius: 10px; font-size: 11.5px; line-height: 1.45; color: rgba(235,236,255,0.86); background: rgba(157,77,255,0.12); border-left: 2px solid var(--accent); }
 .pop-note span { display: block; font-size: 10px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent-2); margin-bottom: 2px; }
 .pop-actions { display: flex; gap: 8px; margin-top: 12px; }
-.popup.sheet { top: auto; left: 8px; right: 8px; bottom: max(8px, env(safe-area-inset-bottom)); width: auto; max-height: 70vh; overflow: auto; overscroll-behavior: contain; transform: none !important; padding-top: 22px; transition: max-height 0.28s ease; }
+.popup.sheet { top: auto; left: 8px; right: 8px; bottom: max(8px, env(safe-area-inset-bottom)); width: auto; max-height: 70vh; overflow: auto; overscroll-behavior: contain; transform: none !important; padding-top: 22px; transition: max-height 0.3s cubic-bezier(0.2, 0.9, 0.3, 1), translate 0.3s cubic-bezier(0.2, 0.9, 0.3, 1); touch-action: pan-y; }
 .popup.sheet { background: rgb(14, 16, 38); } /* solid: nothing from underneath reads through on small screens */
 .popup.sheet.peek { max-height: 196px; overflow: hidden; }
 body.card-open .hint { opacity: 0; }
@@ -123,7 +123,17 @@ body.card-open .hint { opacity: 0; }
 .popup.sheet .pop-grab:focus-visible { outline: 2px solid var(--accent-2); outline-offset: -2px; border-radius: 8px; }
 .popup.sheet .pop-x { top: 14px; }
 
-/* ───────────── Pin tag (small label above the 3D pin) ───────────── */
+/* ───────────── Map pin (SVG overlay, crisp at any resolution) ───────────── */
+.map-pin { position: absolute; top: 0; left: 0; z-index: 26; width: 40px; height: 58px; pointer-events: none; transition: opacity 0.2s ease; will-change: transform;
+  filter: drop-shadow(0 3px 4px rgba(0, 0, 0, 0.35)); }
+.map-pin svg { display: block; overflow: visible; }
+.map-pin.away { opacity: 0; }
+.map-pin.drop .pin-body { animation: pinDrop 0.55s cubic-bezier(0.3, 0.9, 0.4, 1.25) both; }
+.map-pin.drop .pin-shadow { animation: pinShadow 0.55s ease-out both; transform-origin: 20px 55.5px; }
+@keyframes pinDrop { from { transform: translateY(-46px); opacity: 0; } 35% { opacity: 1; } to { transform: none; } }
+@keyframes pinShadow { from { transform: scale(0.3); opacity: 0; } to { transform: none; opacity: 1; } }
+
+/* ───────────── Pin tag (small label above the pin) ───────────── */
 .pin-tag { position: absolute; top: 0; left: 0; z-index: 28; padding: 8px; border-radius: 14px; background: rgb(14, 16, 38); border: 1px solid var(--glass-border);
   box-shadow: 0 12px 30px rgba(0, 0, 0, 0.45); transition: opacity 0.2s ease; will-change: transform; }
 .pin-tag::after { content: ''; position: absolute; left: 50%; bottom: -6px; width: 10px; height: 10px; transform: translateX(-50%) rotate(45deg); background: rgb(14, 16, 38); border-right: 1px solid var(--glass-border); border-bottom: 1px solid var(--glass-border); }
@@ -193,7 +203,8 @@ img.tag-flag { width: 24px; height: 18px; flex: none; object-fit: cover; border-
 .cmp-ratio b { color: var(--accent-2); font-size: 15px; }
 .cmp-actions { display: flex; gap: 8px; align-items: center; }
 .cmp-tip { flex: 1; font-size: 11.5px; color: var(--muted); }
-.compare-bar { max-height: 72vh; overflow: auto; overscroll-behavior: contain; padding-top: 20px; }
+.compare-bar { max-height: 72vh; overflow: auto; overscroll-behavior: contain; padding-top: 20px; transition: translate 0.3s cubic-bezier(0.2, 0.9, 0.3, 1), max-height 0.3s cubic-bezier(0.2, 0.9, 0.3, 1); }
+.popup.dragging, .compare-bar.dragging { transition: none !important; user-select: none; }
 .cmp-grab { position: absolute; top: 0; left: 50%; transform: translateX(-50%); width: 72px; height: 20px; padding: 0; border: 0; background: none; cursor: pointer; }
 .cmp-grab::before { content: ''; position: absolute; left: 22px; right: 22px; top: 8px; height: 4px; border-radius: 2px; background: rgba(255,255,255,0.32); }
 .cmp-grab:focus-visible { outline: 2px solid var(--accent-2); outline-offset: -2px; border-radius: 8px; }

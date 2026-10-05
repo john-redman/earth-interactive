@@ -1,81 +1,58 @@
-// 3D map pin that marks the selected country: a glossy head on a thin needle with a soft ring where it
-// meets the ground. It drops in with a small bounce and keeps a constant on-screen size as you zoom.
-import * as THREE from 'three';
+// Map pin for the selected country. Drawn as an SVG overlay rather than a mesh, so it stays razor sharp at
+// any pixel ratio (the globe itself may render at reduced resolution on phones). It is placed every frame
+// at the projected point, drops in with a small bounce and fades out when its spot turns away.
+const W = 40, H = 58;          // CSS px; the needle tip sits at the bottom centre
+let uid = 0;
 
-const HEIGHT = 0.09; // needle + head, in globe radii at the reference camera distance
-const Y = new THREE.Vector3(0, 1, 0);
+/** Mix two #rrggbb colours (t = share of b). */
+const mix = (a, b, t) => '#' + [1, 3, 5].map(i => Math.round(parseInt(a.slice(i, i + 2), 16) * (1 - t) + parseInt(b.slice(i, i + 2), 16) * t).toString(16).padStart(2, '0')).join('');
 
-/** Matcap gives the pin a lit, glossy look without adding lights to the scene. */
-function matcap(hex) {
-  const c = document.createElement('canvas'); c.width = c.height = 128;
-  const g = c.getContext('2d');
-  const base = new THREE.Color(hex);
-  const grad = g.createRadialGradient(46, 40, 4, 64, 64, 64);
-  grad.addColorStop(0, '#ffffff');
-  grad.addColorStop(0.18, '#' + base.clone().lerp(new THREE.Color('#ffffff'), 0.45).getHexString());
-  grad.addColorStop(0.65, '#' + base.getHexString());
-  grad.addColorStop(1, '#' + base.clone().multiplyScalar(0.35).getHexString());
-  g.fillStyle = grad; g.fillRect(0, 0, 128, 128);
-  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
-  return t;
+function svg(color) {
+  const id = 'pin' + (++uid);
+  return `<svg viewBox="0 0 40 58" width="${W}" height="${H}" aria-hidden="true">
+    <defs>
+      <radialGradient id="${id}h" cx="38%" cy="32%" r="70%">
+        <stop offset="0" stop-color="#fff"/>
+        <stop offset="0.16" stop-color="${mix(color, '#ffffff', 0.55)}"/>
+        <stop offset="0.6" stop-color="${color}"/>
+        <stop offset="1" stop-color="${mix(color, '#000000', 0.55)}"/>
+      </radialGradient>
+      <linearGradient id="${id}n" x1="0" x2="1">
+        <stop offset="0" stop-color="#8d94ad"/><stop offset="0.45" stop-color="#ffffff"/><stop offset="1" stop-color="#6c7390"/>
+      </linearGradient>
+      <radialGradient id="${id}s"><stop offset="0" stop-color="#000" stop-opacity="0.55"/><stop offset="1" stop-color="#000" stop-opacity="0"/></radialGradient>
+    </defs>
+    <ellipse class="pin-shadow" cx="20" cy="55.5" rx="9" ry="2.6" fill="url(#${id}s)"/>
+    <g class="pin-body">
+      <path d="M18.6 26 L20 56 L21.4 26 Z" fill="url(#${id}n)"/>
+      <circle cx="20" cy="15" r="12.5" fill="url(#${id}h)"/>
+      <circle cx="20" cy="15" r="12.5" fill="none" stroke="rgba(0,0,0,0.25)" stroke-width="0.8"/>
+      <ellipse cx="15.6" cy="9.6" rx="4.2" ry="2.6" fill="#fff" opacity="0.75" transform="rotate(-28 15.6 9.6)"/>
+    </g>
+  </svg>`;
 }
 
 export class Pin {
-  constructor(globe, { color = '#9d4dff' } = {}) {
-    this.globe = globe;
-    this.group = new THREE.Group(); this.group.visible = false; this.group.renderOrder = 6;
-    const head = new THREE.Mesh(new THREE.SphereGeometry(0.19, 24, 16), new THREE.MeshMatcapMaterial({ matcap: matcap(color), transparent: true }));
-    head.position.y = 0.84;
-    const needle = new THREE.Mesh(new THREE.CylinderGeometry(0.022, 0.006, 0.72, 10), new THREE.MeshMatcapMaterial({ matcap: matcap('#e8ecff'), transparent: true }));
-    needle.position.y = 0.36;
-    const ring = new THREE.Mesh(new THREE.RingGeometry(0.05, 0.13, 32), new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.55, depthWrite: false, side: THREE.DoubleSide }));
-    ring.rotation.x = -Math.PI / 2; ring.position.y = 0.004;
-    // transparent (at full opacity) so the pin sorts after the country fills, which skip the depth test
-    for (const m of [head, needle, ring]) m.renderOrder = 6;
-    this.body = new THREE.Group(); this.body.add(needle, head);
-    this.ring = ring;
-    this.group.add(this.body, ring);
-    globe.world.add(this.group);
-    this.normal = new THREE.Vector3(); this.dir = new THREE.Vector3(); this.up = new THREE.Vector3(); this.headWorld = new THREE.Vector3();
-    this.anim = null; this.scale = 1;
-    this.reduced = matchMedia('(prefers-reduced-motion: reduce)');
+  constructor(stage, { color = '#9d4dff' } = {}) {
+    this.el = document.createElement('div');
+    this.el.className = 'map-pin'; this.el.hidden = true;
+    this.el.innerHTML = svg(color);
+    stage.append(this.el);
+    this.height = H - 4; // where the tag should sit above the tip
   }
 
-  /** Drop the pin at a unit vector on the globe. */
-  show(dir) {
-    this.normal.copy(dir).normalize();
-    this.group.position.copy(this.normal);
-    this.group.visible = true;
-    this.t0 = performance.now();
-    this.anim = !this.reduced.matches;
+  show() {
+    this.el.hidden = false;
+    this.el.classList.remove('drop'); void this.el.offsetWidth; this.el.classList.add('drop');
   }
 
-  hide() { this.group.visible = false; this.anim = null; }
-  get visible() { return this.group.visible; }
+  hide() { this.el.hidden = true; }
+  get visible() { return !this.el.hidden; }
 
-  tick(now) {
-    if (!this.group.visible) return;
-    // constant apparent size: scale with distance from the camera to the pin
-    const d = this.globe.camera.position.distanceTo(this.normal);
-    this.scale = HEIGHT * THREE.MathUtils.clamp(d / 2.2, 0.2, 1.6);
-    this.group.scale.setScalar(this.scale);
-    // lean towards screen-up so the pin reads as a pin, not a dot seen end-on
-    this.up.setFromMatrixColumn(this.globe.camera.matrixWorld, 1);
-    this.dir.copy(this.normal).multiplyScalar(0.55).addScaledVector(this.up, 0.85).normalize();
-    if (this.dir.dot(this.normal) < 0.2) this.dir.copy(this.normal); // pin near the rim: stand straight up
-    this.group.quaternion.setFromUnitVectors(Y, this.dir);
-    if (this.anim) {
-      const k = Math.min(1, (now - this.t0) / 520);
-      const drop = 1 - k, bounce = Math.sin(k * Math.PI) * 0.12 * (1 - k);
-      this.body.position.y = drop * drop * 1.6 + bounce;
-      this.ring.scale.setScalar(0.4 + 0.6 * k);
-      this.ring.material.opacity = 0.55 * k;
-      if (k >= 1) { this.anim = false; this.body.position.y = 0; }
-    }
-  }
-
-  /** World position of the pin head (for the DOM tag above it). */
-  head(target = this.headWorld) {
-    return target.copy(this.normal).addScaledVector(this.dir, this.scale * (this.body.position.y + 1.05));
+  /** Called every frame with the projected anchor (CSS px). */
+  place(x, y, visible) {
+    if (this.el.hidden) return;
+    this.el.style.transform = `translate(${(x - W / 2).toFixed(1)}px, ${(y - H).toFixed(1)}px)`;
+    this.el.classList.toggle('away', !visible);
   }
 }

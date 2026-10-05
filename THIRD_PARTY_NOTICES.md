@@ -29,6 +29,10 @@ EarthInteractive uses the following open-source projects:
 
 **Population & GDP**: Estimates from Natural Earth (mostly 2019 data).
 
+**Audio**: All rollercoaster sounds (crowd, dread bed, fly-by screams, wind) are synthesised in the
+browser by `js/thrills.js`; no third-party recordings are bundled. Any recorded loop added under
+`sounds/` must be CC0 / public domain and listed here with title, author, URL and licence.
+
 ---
 
 ## License compliance

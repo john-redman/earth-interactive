@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { LineSegments2 } from 'three/addons/lines/LineSegments2.js';
 import { LineSegmentsGeometry } from 'three/addons/lines/LineSegmentsGeometry.js';
 import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
-import { decodeGeom, triangulate, borderSegments, borderRings, sphereCentroid, bboxOf, pointInMulti } from './geo.js';
+import { decodeGeom, triangulate, borderSegments, borderRings, buildTopology, sphereCentroid, bboxOf, pointInMulti } from './geo.js';
 import { QUALITY } from './perf.js';
 import { LIGHT_DIR_VIEW } from './globe.js';
 import { SKY } from './sun.js';
@@ -88,7 +88,8 @@ export class CountryLayer {
     fillGeom.setIndex(new THREE.BufferAttribute(tri.index, 1));
     fillGeom.computeBoundingSphere();
     // phones draw lighter borders (fills keep full detail, so coastlines still read the same)
-    const rings = QUALITY.borderTolerance > 0 ? borderRings(multi, QUALITY.borderTolerance) : tri.rings;
+    if (QUALITY.borderTolerance > 0) this.ownerOf ||= buildTopology(this.data); // once, ~100 ms
+    const rings = QUALITY.borderTolerance > 0 ? borderRings(multi, QUALITY.borderTolerance, this.ownerOf) : tri.rings;
     const lineGeom = new LineSegmentsGeometry().setPositions(borderSegments(rings, R_LINE));
     const centroid = sphereCentroid(tri.positions, tri.index);
     // angular radius around the centroid, so cull() can tell when the whole shape is behind the horizon
@@ -130,14 +131,18 @@ export class CountryLayer {
       const color = PALETTE[unit.c] ?? PALETTE[1];
       const hatch = unit.t === 'disputed';
       const fill = new THREE.Mesh(g.fillGeom, fillMaterial(color, { hatch }));
-      fill.renderOrder = 1;
+      // fixed draw order per country (overlays last): neighbours share border lines and overlapping fills, and
+      // three.js would otherwise re-sort them by camera distance every frame, so they flicker as the globe turns
+      const layerRank = { country: 0, limited: 0, territory: 1, breakaway: 2, disputed: 3 }[unit.t] ?? 0;
+      const order = (layerRank * v.units.length + n) / (4 * v.units.length) * 0.9;
+      fill.renderOrder = 1 + order;
       const lm = lineMaterial(borderColorFor(color), { dashed: hatch || unit.t === 'breakaway' });
       this.lineMaterials.add(lm);
       const border = new LineSegments2(g.lineGeom, lm);
       if (lm.dashed) border.computeLineDistances();
-      border.renderOrder = 2;
+      border.renderOrder = 2 + order;
       group.add(fill, border);
-      const o = { key: unit.k, unit, info: this.data.info[unit.k] || {}, g, fill, border, color, hatch };
+      const o = { key: unit.k, unit, info: this.data.info[unit.k] || {}, g, fill, border, color, hatch, lineOrder: 2 + order };
       objects.push(o); byKey.set(unit.k, o);
       // coarse 10° grid for fast picking
       const [x0, y0, x1, y1] = g.bbox;
@@ -215,7 +220,7 @@ export class CountryLayer {
     f.uniforms.uBright.value = bright;
     l.color.set(lineHex); l.opacity = lo * this.fade; l.linewidth = w;
     if (l.dashed !== dashed) { l.dashed = dashed; if (dashed) o.border.computeLineDistances(); l.needsUpdate = true; }
-    o.border.renderOrder = o === this.selected || o === this.hover || mark ? 3 : 2;
+    o.border.renderOrder = o === this.selected || o === this.hover || mark ? 3 : o.lineOrder;
   }
 
   resizeLines() {

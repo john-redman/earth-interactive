@@ -33,30 +33,72 @@ function densify(ring, step) {
   return out; // open ring (no repeated closing point)
 }
 
-/** Douglas–Peucker in lon/lat (degrees). Closed ring in, simplified closed ring out. */
-export function simplifyRing(ring, tol) {
-  if (tol <= 0 || ring.length < 5) return ring;
-  const keep = new Uint8Array(ring.length); keep[0] = keep[ring.length - 1] = 1;
-  const tol2 = tol * tol, stack = [[0, ring.length - 1]];
+/**
+ * Shared-border topology for simplifying borders consistently. For every vertex in the data it records
+ * which geometries use it; a border stretch shared by two countries then has the same owners all along.
+ * Returns pointKey(lon, lat) → owner signature (e.g. "12,57").
+ */
+export function buildTopology(data) {
+  const owners = new Map();
+  data.geoms.forEach((enc, id) => {
+    for (const poly of enc) for (const ring of poly) {
+      let x = 0, y = 0;
+      for (let i = 0; i < ring.length; i += 2) {
+        x += ring[i]; y += ring[i + 1];
+        const k = (x + 200000) * 400000 + (y + 100000);
+        const o = owners.get(k);
+        if (!o) owners.set(k, [id]); else if (!o.includes(id)) o.push(id);
+      }
+    }
+  });
+  const sig = new Map();
+  for (const [k, o] of owners) sig.set(k, o.sort((a, b) => a - b).join(','));
+  const P = data.precision;
+  return (lon, lat) => sig.get((Math.round(lon * P) + 200000) * 400000 + (Math.round(lat * P) + 100000)) || '';
+}
+
+function dpKeep(pts, a, b, tol2, keep) {
+  const stack = [[a, b]];
   while (stack.length) {
-    const [a, b] = stack.pop();
-    const [ax, ay] = ring[a], [bx, by] = ring[b], dx = bx - ax, dy = by - ay, len2 = dx * dx + dy * dy;
+    const [i0, i1] = stack.pop();
+    const [ax, ay] = pts[i0], [bx, by] = pts[i1], dx = bx - ax, dy = by - ay, len2 = dx * dx + dy * dy;
     let worst = -1, wd = tol2;
-    for (let i = a + 1; i < b; i++) {
-      const [px, py] = ring[i];
+    for (let i = i0 + 1; i < i1; i++) {
+      const [px, py] = pts[i];
       const t = len2 ? Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / len2)) : 0;
       const ex = px - ax - t * dx, ey = py - ay - t * dy, d = ex * ex + ey * ey;
       if (d > wd) { wd = d; worst = i; }
     }
-    if (worst > 0) { keep[worst] = 1; stack.push([a, worst], [worst, b]); }
+    if (worst > 0) { keep[worst] = 1; stack.push([i0, worst], [worst, i1]); }
   }
-  const out = ring.filter((_, i) => keep[i]);
+}
+
+/**
+ * Douglas–Peucker that keeps shared borders identical on both sides: the ring is cut wherever its set of
+ * neighbours changes, and each stretch is simplified on its own (a stretch reads the same from either
+ * country, just reversed, so both get the same points).
+ */
+export function simplifyShared(ring, tol, ownerOf) {
+  const n = ring.length - 1; // closed ring: last point repeats the first
+  if (tol <= 0 || n < 4) return ring;
+  const sig = ring.slice(0, n).map(([x, y]) => ownerOf(x, y));
+  const keep = new Uint8Array(n + 1);
+  const fixed = [];
+  for (let i = 0; i < n; i++) if (sig[i] !== sig[(i + n - 1) % n] || sig[i] !== sig[(i + 1) % n]) fixed.push(i);
+  if (fixed.length < 2) { fixed.length = 0; fixed.push(0, n >> 1); } // island: any two anchors will do
+  // walk the closed ring as one open array starting at the first anchor
+  const start = fixed[0], pts = [];
+  for (let i = 0; i <= n; i++) pts.push(ring[(start + i) % n]);
+  const anchors = fixed.map(i => (i - start + n) % n).concat(n);
+  for (const a of anchors) keep[a] = 1;
+  for (let j = 0; j < anchors.length - 1; j++) dpKeep(pts, anchors[j], anchors[j + 1], tol * tol, keep);
+  const out = pts.filter((_, i) => keep[i]);
   return out.length >= 4 ? out : ring;
 }
 
-/** Border rings simplified by `tol` degrees, then densified so long edges still hug the sphere. */
-export function borderRings(multi, tol, step = 1) {
-  return multi.flatMap(poly => poly.map(r => densify(simplifyRing(r, tol), step)).filter(r => r.length >= 2));
+/** Border rings simplified by `tol` degrees (shared stretches identically), then densified to hug the sphere. */
+export function borderRings(multi, tol, ownerOf, step = 1) {
+  return multi.flatMap(poly => poly.map(r => densify(simplifyShared(r, tol, ownerOf), step)).filter(r => r.length >= 2));
 }
 
 const isSeam = (a, b) =>

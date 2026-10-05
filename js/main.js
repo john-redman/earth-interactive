@@ -31,7 +31,7 @@ const compare = new Compare(globe, layer);
 const spin = new Spin(globe);
 globe.controls.enableRotate = false; // rotation is ours (flywheel); OrbitControls keeps zoom + idle auto-rotate
 const thrills = new Thrills(globe, spin);
-const pin = new Pin(globe);
+const pin = new Pin(document.getElementById('stage'));
 
 // sound toggle (bottom-right)
 const soundBtn = document.getElementById('sound-toggle');
@@ -109,7 +109,7 @@ function openCountry(o, { fly = false, point = null } = {}) {
   layer.setSelected(o);
   anchor = (point || o.g.centroid).clone().normalize();
   ui.hidePopup(); ui.showTag(o);
-  pin.show(anchor);
+  pin.show();
   if (fly) flyToCountry(o); else spin.brake();
   globe.hold('card', true); // the globe stays put while a country card is open
   globe.pauseAuto();
@@ -354,15 +354,15 @@ function frame(now) {
   layer.tick(now);
   compare.tick(now);
   thrills.tick(now);
-  pin.tick(now);
   if (anchor) {
     camDir.copy(globe.camera.position).normalize();
     const vis = anchor.dot(camDir) > 0.2;
     const { x: W, y: H } = globe.size;
-    pin.head(tmp).project(globe.camera);
-    ui.placeTag((tmp.x + 1) / 2 * W, (1 - tmp.y) / 2 * H, vis, W, H);
     tmp.copy(anchor).multiplyScalar(1.002).project(globe.camera);
-    ui.placePopup((tmp.x + 1) / 2 * W, (1 - tmp.y) / 2 * H, vis, W, H);
+    const ax = (tmp.x + 1) / 2 * W, ay = (1 - tmp.y) / 2 * H;
+    pin.place(ax, ay, vis);
+    ui.placeTag(ax, ay - pin.height, vis, W, H);
+    ui.placePopup(ax, ay, vis, W, H);
   }
   globe.renderer.render(globe.scene, globe.camera);
   requestAnimationFrame(frame);
