@@ -51,27 +51,29 @@ function oceanMaterial() {
       void main(){
         vec3 N = normalize(vN);
         float t = uTime;
-        // two slow drifting swell layers + a fine ripple layer
-        float n1 = snoise(vPos * 5.0 + vec3(t*0.020, t*0.012, -t*0.016));
-        float n2 = snoise(vPos * 13.0 + vec3(-t*0.045, t*0.030, t*0.038));
+        // drifting swell layers + a fine ripple layer; the swells also warp each other so the sea churns
+        float n1 = snoise(vPos * 5.0 + vec3(t*0.060, t*0.036, -t*0.048));
+        float n2 = snoise(vPos * 13.0 + vec3(n1 * 0.35) + vec3(-t*0.13, t*0.09, t*0.11));
         #if OCTAVES > 2
-        float n3 = snoise(vPos * 34.0 + vec3(t*0.09, -t*0.07, t*0.05));
+        float n3 = snoise(vPos * 34.0 + vec3(n2 * 0.25) + vec3(t*0.26, -t*0.20, t*0.15));
         #else
-        float n3 = n2 * 0.6; // fine ripples are invisible on small screens; skip the third noise lookup
+        float n3 = sin(dot(vPos, vec3(41.0, 23.0, 37.0)) + n2 * 4.0 + t * 1.3) * 0.5; // cheap ripple instead of a third noise lookup
         #endif
-        float waves = n1*0.55 + n2*0.30 + n3*0.15;
-        vec3 Np = normalize(N + vec3(n2, n3, n1) * 0.06);
+        // long rolling swell bands that travel across the ocean
+        float band = sin(dot(vPos, vec3(17.0, 6.0, 11.0)) * 1.6 + n1 * 3.0 - t * 0.9);
+        float waves = n1*0.45 + n2*0.30 + n3*0.15 + band*0.10;
+        vec3 Np = normalize(N + vec3(n2 + band * 0.3, n3, n1) * 0.11);
         float facing = clamp(dot(N, vView), 0.0, 1.0);
         vec3 deep = vec3(0.020, 0.062, 0.150);
         vec3 mid  = vec3(0.035, 0.150, 0.330);
         vec3 col = mix(deep, mid, pow(facing, 1.6));
-        col += vec3(0.02, 0.06, 0.10) * waves;                 // swell tint
+        col += vec3(0.03, 0.08, 0.14) * waves;                 // swell tint
         float diff = clamp(dot(Np, uLight), 0.0, 1.0);
         col *= 0.55 + 0.6 * diff;
         vec3 H = normalize(uLight + vView);
         float spec = pow(max(dot(Np, H), 0.0), 90.0);
-        col += vec3(0.55, 0.75, 1.0) * spec * 0.22;             // moving sun glint
-        float sparkle = smoothstep(0.55, 0.75, n3 * 0.6 + n2 * 0.4) * 0.05 * diff;
+        col += vec3(0.55, 0.75, 1.0) * spec * 0.32;             // moving sun glint
+        float sparkle = smoothstep(0.5, 0.72, n3 * 0.6 + n2 * 0.4) * (0.06 + 0.04 * sin(t * 2.3 + n1 * 9.0)) * diff; // glittering crests
         col += vec3(0.6, 0.85, 1.0) * sparkle;
         // real-time day & night, with a faint warm band along the terminator
         float sd = dot(normalize(vPos), uSun);

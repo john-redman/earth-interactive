@@ -16,7 +16,7 @@ const ICONS = {
 const SHORT = { un: 'UN', defacto: 'De facto', neutral: 'Neutral' };
 const KIND_LABEL = { country: 'Country', territory: 'Territory', limited: 'Limited recognition', breakaway: 'Breakaway region', disputed: 'Disputed area' };
 
-export function createUI({ data, initialView, onView, onCompareRequest, onCompareCancelPick, onCompareReset, onCompareEnd, onClosePopup, onNeighbour, onShare }) {
+export function createUI({ data, initialView, onView, onCompareRequest, onCompareCancelPick, onCompareReset, onCompareEnd, onClosePopup, onNeighbour, onShare, onInfo }) {
   // ---------- view switch ----------
   const vs = $('#view-switch');
   const order = ['un', 'defacto', 'neutral'];
@@ -87,7 +87,7 @@ export function createUI({ data, initialView, onView, onCompareRequest, onCompar
       </div>`;
     const same = pop.dataset.key === o.key && !pop.hidden;
     pop.dataset.key = o.key;
-    pop.hidden = false; dot.hidden = false; document.body.classList.add('card-open');
+    pop.hidden = false; document.body.classList.add('card-open'); // the 3D pin marks the spot, so no anchor dot
     if (!same) { setPeek(true); pop.scrollTop = 0; pop.classList.remove('in'); void pop.offsetWidth; pop.classList.add('in'); }
     else setPeek(pop.classList.contains('peek'));
     $('.pop-x', pop).onclick = () => onClosePopup();
@@ -129,6 +129,32 @@ export function createUI({ data, initialView, onView, onCompareRequest, onCompar
     if (dy < 0 && peek) setPeek(false);
     else if (dy > 0 && s.top <= 0) { if (peek) onClosePopup(); else setPeek(true); }
   }, { passive: true });
+  // ---------- pin tag: flag + name + two choices, floating above the 3D pin ----------
+  const tag = $('#pin-tag');
+  let tagFor = null;
+  function showTag(o) {
+    tagFor = o;
+    tag.innerHTML = `
+      <div class="tag-name">${flagImg(o.info, 'tag-flag') || '<span class="tag-swatch"></span>'}<b>${esc(o.unit.n)}</b></div>
+      <div class="tag-acts">
+        <button type="button" class="tag-btn" data-act="compare">${ICON_COMPARE}<span>Compare</span></button>
+        <button type="button" class="tag-btn primary" data-act="info">${ICON_INFO}<span>Info</span></button>
+      </div>`;
+    tag.style.setProperty('--c', o.color);
+    tag.hidden = false; tag.classList.remove('in'); void tag.offsetWidth; tag.classList.add('in');
+    $('[data-act="compare"]', tag).onclick = () => onCompareRequest(o);
+    $('[data-act="info"]', tag).onclick = () => onInfo?.(o);
+  }
+  function hideTag() { tagFor = null; tag.hidden = true; }
+  /** Called every frame with the projected pin head. */
+  function placeTag(x, y, visible, vw) {
+    if (tag.hidden) return;
+    const w = tag.offsetWidth, h = tag.offsetHeight, m = 8;
+    const px = Math.max(m, Math.min(x - w / 2, vw - w - m)), py = Math.max(m + 60, y - h - 10);
+    tag.style.transform = `translate(${Math.round(px)}px, ${Math.round(py)}px)`;
+    tag.classList.toggle('away', !visible);
+  }
+
   /** Called every frame with the projected anchor. */
   function placePopup(x, y, visible, vw, vh) {
     if (pop.hidden) return;
@@ -154,9 +180,16 @@ export function createUI({ data, initialView, onView, onCompareRequest, onCompar
   }
   function hidePick() { pick.hidden = true; }
   let cmpOpen = false; // stats table expanded; kept while the same comparison stays up
-  function setCmpOpen(on) {
+  const pill = $('#compare-pill');
+  pill.innerHTML = `<button type="button" class="pill-main" data-act="stats" aria-controls="compare-bar">${ICON_COMPARE}<span>Compare stats</span></button>`
+    + `<button type="button" class="pill-x" data-act="done" aria-label="End comparison" title="End comparison">✕</button>`;
+  $('[data-act="stats"]', pill).onclick = () => setCmpOpen(true);
+  $('[data-act="done"]', pill).onclick = () => onCompareEnd();
+  function setCmpOpen(on, animate = true) {
     cmpOpen = on;
     bar.classList.toggle('open', on);
+    bar.hidden = !on; pill.hidden = on;
+    if (on && animate) { bar.classList.remove('in'); void bar.offsetWidth; bar.classList.add('in'); }
     const grab = $('.cmp-grab', bar), btn = $('[data-act="stats"]', bar);
     grab?.setAttribute('aria-expanded', String(on)); grab?.setAttribute('aria-label', on ? 'Hide stats' : 'Compare stats');
     btn?.setAttribute('aria-expanded', String(on));
@@ -193,7 +226,7 @@ export function createUI({ data, initialView, onView, onCompareRequest, onCompar
     ].join('');
   }
   function showCompare(state) {
-    if (!state) { bar.hidden = true; cmpOpen = false; bar.classList.remove('open'); return; }
+    if (!state) { bar.hidden = true; pill.hidden = true; cmpOpen = false; bar.classList.remove('open'); return; }
     const { a, b } = state;
     const A = { n: a.o.unit.n, area: a.area }, B = { n: b.o.unit.n, area: b.area };
     const big = A.area >= B.area ? [A, B] : [B, A];
@@ -219,9 +252,8 @@ export function createUI({ data, initialView, onView, onCompareRequest, onCompar
         <button class="btn small ghost" type="button" data-act="reset">Side by side</button>
         <button class="btn small primary" type="button" data-act="done">Done</button>
       </div>`;
-    bar.hidden = false;
-    if (!samePair) { bar.classList.remove('in'); void bar.offsetWidth; bar.classList.add('in'); }
-    setCmpOpen(cmpOpen);
+    if (!samePair) { pill.classList.remove('in'); void pill.offsetWidth; pill.classList.add('in'); }
+    setCmpOpen(cmpOpen, !samePair);
     $('.cmp-grab', bar).onclick = () => setCmpOpen(!cmpOpen);
     $('[data-act="stats"]', bar).onclick = () => setCmpOpen(!cmpOpen);
     $('[data-act="reset"]', bar).onclick = () => onCompareReset();
@@ -257,8 +289,9 @@ export function createUI({ data, initialView, onView, onCompareRequest, onCompar
   const toast = $('#toast'); let toastT;
   function showToast(msg) { toast.textContent = msg; toast.hidden = false; toast.classList.remove('in'); void toast.offsetWidth; toast.classList.add('in'); clearTimeout(toastT); toastT = setTimeout(() => (toast.hidden = true), 2600); }
 
-  return { showPopup, hidePopup, placePopup, get popFor() { return popFor; }, showPick, hidePick, showCompare, showTip, dismissHint, showToast, setViewSilently(k) { current = k; paintSwitch(); } };
+  return { showPopup, hidePopup, placePopup, get popFor() { return popFor; }, showTag, hideTag, placeTag, get tagFor() { return tagFor; }, showPick, hidePick, showCompare, showTip, dismissHint, showToast, setViewSilently(k) { current = k; paintSwitch(); } };
 }
 
 const ICON_LINK = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 14a4 4 0 005.7 0l3-3a4 4 0 00-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 00-5.7 0l-3 3a4 4 0 005.7 5.7l1-1"/></svg>';
+const ICON_INFO = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 11v5.5M12 7.6v.4"/></svg>';
 const ICON_COMPARE = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="7" width="8" height="10" rx="2"/><rect x="13" y="4" width="8" height="16" rx="2"/></svg>';
