@@ -14,6 +14,7 @@ import { createSearch } from './search.js';
 import { createQuiz } from './quiz.js';
 import { shareBase } from './site.js';
 import { Pin } from './pin.js';
+import { track } from './analytics.js';
 
 const data = await loadWorld();
 
@@ -68,7 +69,12 @@ const ui = createUI({
   onShare: o => copyLink(o),
 });
 
-compare.onChange = state => { ui.showCompare(state); document.body.classList.toggle('comparing', !!state); setParam('compare', state ? `${state.a.o.key},${state.b.o.key}` : null); };
+let trackedPair = '';
+compare.onChange = state => {
+  const pair = state ? `${state.a.o.key},${state.b.o.key}` : '';
+  if (pair && pair !== trackedPair) track('compare', pair); // counted once per pair, not on every drag
+  trackedPair = pair;
+  ui.showCompare(state); document.body.classList.toggle('comparing', !!state); setParam('compare', state ? `${state.a.o.key},${state.b.o.key}` : null); };
 thrills.onFirstScream = () => setTimeout(() => ui.showToast('Hold on tight! Sound can be muted bottom-right.'), 900);
 
 function switchView(k) {
@@ -121,6 +127,7 @@ function openCountry(o, { fly = false, point = null } = {}) {
   globe.hold('card', true); // the globe stays put while a country card is open
   globe.pauseAuto();
   setParam('c', o.key);
+  track(`country/${o.key}`, o.unit.n);
 }
 function openInfo(o) {
   if (selected !== o) openCountry(o);
@@ -158,6 +165,7 @@ function applyLens() {
 }
 
 // ---------- dock: search, play, data ----------
+function startGame(m) { track(`play/${m}`); quiz.start(m); }
 const search = createSearch({ getObjects: () => layer.view?.objects || [], onPick: o => { if (mode === 'quiz') return; if (mode === 'compare') endCompare(true); openCountry(o, { fly: true }); } });
 const quiz = createQuiz({
   data, layer, globe,
@@ -179,7 +187,7 @@ function openMenu(k) {
     m.innerHTML = `
       <button type="button" role="menuitem" data-play="daily"><span class="m-ico">5</span><span><b>Daily Challenge</b><small>Same 5 countries for everyone today</small></span>${done ? '<span class="m-done">Done ✓</span>' : ''}</button>
       <button type="button" role="menuitem" data-play="classic"><span class="m-ico">10</span><span><b>Find it</b><small>${best ? 'Your best: ' + best.toLocaleString('en-US') + ' pts' : 'Ten countries, getting smaller'}</small></span></button>`;
-    m.querySelectorAll('[data-play]').forEach(b => (b.onclick = () => { closeMenus(); quiz.start(b.dataset.play); }));
+    m.querySelectorAll('[data-play]').forEach(b => (b.onclick = () => { closeMenus(); startGame(b.dataset.play); }));
   } else {
     m.innerHTML = LENS_ORDER.map(k2 => `<button type="button" role="menuitemradio" aria-checked="${k2 === lensKey}" data-lens="${k2}"><span class="m-ramp ${k2 === 'none' ? 'none' : ''}"></span><span><b>${LENSES[k2].short}</b><small>${k2 === 'none' ? 'Political colours, live day & night' : LENSES[k2].label}</small></span></button>`).join('');
     m.querySelectorAll('[data-lens]').forEach(b => (b.onclick = () => { lensKey = b.dataset.lens; closeMenus(); applyLens(); }));
@@ -385,7 +393,7 @@ requestAnimationFrame(() => setTimeout(async () => {
   // deep links: ?c=FRA · ?compare=FRA,DEU · ?play=daily
   const c = params.get('c'), cmp = params.get('compare')?.split(','), play = params.get('play');
   if (cmp?.length === 2 && layer.get(cmp[0]) && layer.get(cmp[1])) { mode = 'compare'; compare.start(layer.get(cmp[0]), layer.get(cmp[1])); }
-  else if (play === 'daily' || play === 'classic') quiz.start(play);
+  else if (play === 'daily' || play === 'classic') startGame(play);
   else if (c && layer.get(c)) openCountry(layer.get(c), { fly: true });
   requestAnimationFrame(frame);
   const idle = window.requestIdleCallback || (fn => setTimeout(fn, 400));

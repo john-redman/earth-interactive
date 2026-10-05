@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>EarthInteractive</title>
-  <meta name="description" content="Spin a true-to-scale 3D globe, explore every country and compare their real sizes.">
+  <title>EarthInteractive: 3D globe, true size of countries compared</title>
+  <meta name="description" content="Spin a true-to-scale 3D globe, compare the true size of countries side by side, explore facts about every country and play a daily geography game. Free, no sign-up.">
   <meta name="theme-color" content="#03040b">
   <link rel="canonical" href="https://john-redman.github.io/earth-interactive/">
   <link rel="manifest" href="manifest.webmanifest">
@@ -28,6 +28,10 @@
   <meta name="twitter:title" content="EarthInteractive: spin the world, compare real country sizes">
   <meta name="twitter:description" content="A true-to-scale 3D globe. Tap any country for facts, compare real sizes, play a daily geography challenge.">
   <meta name="twitter:image" content="https://john-redman.github.io/earth-interactive/og-image.png">
+  <script type="application/ld+json">{"@context":"https://schema.org","@graph":[
+    {"@type":"WebSite","@id":"https://john-redman.github.io/earth-interactive/#website","name":"EarthInteractive","url":"https://john-redman.github.io/earth-interactive/","description":"A true-to-scale 3D globe for comparing the real size of countries."},
+    {"@type":"WebApplication","@id":"https://john-redman.github.io/earth-interactive/#app","name":"EarthInteractive","url":"https://john-redman.github.io/earth-interactive/","applicationCategory":"EducationalApplication","applicationSubCategory":"Geography","operatingSystem":"Any (web browser)","browserRequirements":"Requires JavaScript and WebGL","isAccessibleForFree":true,"offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"image":"https://john-redman.github.io/earth-interactive/og-image.png","description":"Spin a true-to-scale 3D globe, compare the true size of countries side by side, explore country facts and play a daily geography game.","featureList":["True size country comparison","3D globe","Country facts","Three border views","Population, density and GDP maps","Daily geography challenge"],"isPartOf":{"@id":"https://john-redman.github.io/earth-interactive/#website"}}
+  ]}</script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -78,7 +82,10 @@
       <span><kbd>Drag</kbd> to spin</span><span><kbd>Click</kbd> a country</span><span><kbd>Scroll</kbd> to zoom</span><span class="hint-key"><kbd>/</kbd> to search</span>
     </div>
 
-    <div class="brand"><span class="brand-mark"></span>EarthInteractive</div>
+    <h1 class="brand"><span class="brand-mark" aria-hidden="true"></span>EarthInteractive</h1>
+    <nav class="site-links" aria-label="Site">
+      <a href="about.html">About</a><a href="how-to-play.html">How to play</a><a href="countries/">Countries</a><a class="sl-wide" href="compare/">Comparisons</a><a class="sl-wide" href="why-maps-lie.html">Why maps lie</a><a href="privacy.html">Privacy</a><a data-site="kofi" href="https://ko-fi.com/" hidden>Support</a>
+    </nav>
     <div id="app-links" hidden></div>
     <button id="recenter" class="corner-btn recenter" type="button" aria-label="Recenter globe" title="Recenter (R)">
       <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2.2"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3"/></svg>
@@ -86,11 +93,18 @@
     <button id="sound-toggle" class="corner-btn sound-toggle" type="button" aria-pressed="true" aria-label="Sound">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path class="spk" d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path class="wave" d="M15.5 9a4 4 0 010 6M18 6.5a7.5 7.5 0 010 11"/><path class="cross" d="M16 9.5l5 5M21 9.5l-5 5"/></svg>
     </button>
-    <div class="credit">Borders: Natural Earth · Data: Natural Earth, mledoze/countries</div>
+    <div class="credit">Borders: Natural Earth · Data: Natural Earth, mledoze/countries, World Bank</div>
 
     <div class="loader" aria-hidden="true"><div class="loader-orb"></div><p>Loading map data…</p><div class="loader-bar"><i></i></div></div>
   </main>
   <aside class="ad-banner" aria-label="Advertisement" hidden></aside>
+  <noscript>
+    <div class="noscript">
+      <p><b>EarthInteractive needs JavaScript and WebGL</b> to draw the 3D globe. It shows every country at its true size, lets you compare two countries side by side, and has a daily geography game.</p>
+      <p>Without JavaScript you can still read about <a href="countries/">every country</a>, browse <a href="compare/">country size comparisons</a>, or learn <a href="why-maps-lie.html">why flat maps distort size</a>.</p>
+      <p><a href="about.html">About</a> · <a href="how-to-play.html">How to play</a> · <a href="privacy.html">Privacy</a> · <a href="terms.html">Terms</a> · <a href="contact.html">Contact</a></p>
+    </div>
+  </noscript>
   <script type="module" src="js/main.js"></script>
   <!--/APP-->
 </body>

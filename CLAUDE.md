@@ -52,6 +52,8 @@ Unit keys are Natural Earth `ADM0_A3` codes (e.g. `FRA`), or `X_<SLUG>` for disp
 - **Border views are editorial and politically sensitive.** Change `tools/views.config.mjs` only on explicit request, explain the change in the PR, and update `docs/border-views.md`.
 - `data/world.js` is ~1.1 MB and generated; CI fails if it is stale relative to the sources.
 - Quiz questions only use keys that are a `country` in **all three** views, so a game survives view switches.
+- **Text/SEO pages** (`docs/seo.md`): `about.html` … `contact.html` are hand-written; `countries/`, `compare/`, `404.html`, `sitemap.xml`, `robots.txt` are generated at deploy by `tools/build-pages.mjs _site` and never committed (`npm run build:pages` → `dist-pages/` to preview). Shared head/header/footer live in the script; after changing them run `node tools/build-pages.mjs --sync`. Config is `tools/site.config.mjs`; its `url` must equal `SITE_URL` in `js/site.js` and `goatcounter` must equal `GOATCOUNTER_CODE` in `js/analytics.js` (the build fails otherwise). Slugs are public URLs — don't rename them.
+- **Service worker navigation**: only the scope root / `index.html` is mapped to the cached globe; every other navigation is network-first with a cached fallback. Never map all navigations to `./` again — it would serve the globe for `/countries/...`.
 
 ## Testing
 

@@ -16,6 +16,8 @@ jobs:
       - run: npm install --no-audit --no-fund
       - name: Syntax + data consistency
         run: npm run check
+      - name: Static pages build
+        run: node tools/build-pages.mjs "$RUNNER_TEMP/pages"
       - name: Generated data is up to date
         run: |
           npm run build:data
