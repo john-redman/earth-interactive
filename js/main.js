@@ -14,6 +14,7 @@ import { createSearch } from './search.js';
 import { createQuiz } from './quiz.js';
 import { shareBase } from './site.js';
 import { Pin } from './pin.js';
+import { createSfx } from './sfx.js';
 import { track } from './analytics.js';
 
 const data = await loadWorld();
@@ -40,6 +41,15 @@ const spin = new Spin(globe);
 globe.controls.enableRotate = false; // rotation is ours (flywheel); OrbitControls keeps zoom + idle auto-rotate
 const thrills = new Thrills(globe, spin);
 const pin = new Pin(document.getElementById('stage'));
+const sfx = createSfx({ muted: () => thrills.muted });
+
+/** Soft ring that spreads from where the globe was tapped. */
+function ripple(x, y, strong) {
+  const r = stage.getBoundingClientRect(), el = document.createElement('span');
+  el.className = 'tap-ripple' + (strong ? ' strong' : '');
+  el.style.left = x - r.left + 'px'; el.style.top = y - r.top + 'px';
+  stage.append(el); setTimeout(() => el.remove(), 650); // a timer, not animationend: reduced motion skips the animation
+}
 
 // sound toggle (bottom-right)
 const soundBtn = document.getElementById('sound-toggle');
@@ -318,15 +328,16 @@ function onClick(x, y) {
   ui.showTip(null);
   if (mode === 'compare') return;
   const r = countryAt(x, y);
+  if (r) ripple(x, y, !!r.o);
   if (mode === 'quiz') { if (r && quiz.waiting) quiz.answer(r.o, r.point); return; }
   if (mode === 'pick') {
     if (r?.o && r.o !== pickFrom) {
       const a = pickFrom; ui.hidePick(); pickFrom = null; mode = 'compare';
-      layer.setHover(null); compare.start(a, r.o);
+      layer.setHover(null); compare.start(a, r.o); sfx.play('confirm');
     } else if (r?.o === pickFrom) ui.showToast('Pick a different country');
     return;
   }
-  if (r?.o) openCountry(r.o, { point: r.point });
+  if (r?.o) { openCountry(r.o, { point: r.point }); sfx.play('tap'); }
   else closePopup();
 }
 
@@ -402,7 +413,7 @@ requestAnimationFrame(() => setTimeout(async () => {
 
 // Small public API for later integrations / debugging
 window.EarthInteractive = {
-  globe, layer, compare, ads, data, thrills, spin, quiz, search, native,
+  globe, layer, compare, ads, data, thrills, spin, quiz, search, native, sfx,
   setLens: k => { lensKey = LENSES[k] ? k : 'none'; applyLens(); },
   setView: k => { ui.setViewSilently(k); switchView(k); },
   compareKeys: (a, b) => { const A = layer.get(a), B = layer.get(b); if (!A || !B) return false; closePopup(); cancelPick(); mode = 'compare'; compare.start(A, B); return true; },

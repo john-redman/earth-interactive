@@ -5,6 +5,10 @@ All notable changes to EarthInteractive are documented here.
 ## [Unreleased]
 
 ### Changed
+- **Solid countries**: fills are fully opaque (colour toned towards deep ocean blue), so the sea no longer shows through.
+- **No border flicker at the horizon**: border segments on the far side of the globe are discarded in the shader, like the fills; depth testing against the faceted ocean let them poke out near the edge.
+- **Softer wind** at the start of a fast spin: gentle low-pass, slow swell, lower level.
+- **Click feedback**: soft synthesised UI sounds (wooden knock, sail-flap whoosh, low marimba/bell tones; follows the mute button), a ripple where you tap the globe and a gentle press animation on buttons.
 - **Fresher population and GDP**: figures now come from the World Bank (World Development Indicators, CC BY 4.0): population for 2025 and GDP mostly for 2024, replacing Natural Earth's 2019 estimates for 215 places. Ranks, density, GDP per person, the data lenses and compare stats all use them; places the World Bank doesn't cover (e.g. Taiwan, Somaliland) keep the older estimate, and every card shows the year.
 - **Terrifying ride audio**: the rollercoaster crowd now panics instead of cheering: shrieks, wails and distant groans in a dissonant cluster, a throbbing sub-bass dread drone that swells with spin speed, and blood-curdling fly-by screams that rush past via HRTF. Still fully synthesised (no recordings bundled).
 - **Steady borders**: every country gets a fixed draw order (overlays last), so shared borders and overlapping fills no longer swap places as the globe turns. Phone borders are simplified per shared stretch, so neighbours still meet on exactly the same line (98k → 32k segments).

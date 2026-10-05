@@ -418,4 +418,12 @@ body.quiz-on .legend, body.comparing .legend { display: none; }
   background: rgba(14, 16, 38, 0.78);
 }
 
+/* ───────────── Click feedback ───────────── */
+.btn, .dock-btn, .corner-btn, .tag-btn, .pill-main, .pill-x, .chip, .pop-x, .vs-opt, .lb-shuffle { transition-property: background, border-color, color, box-shadow, scale; transition-duration: 0.18s; }
+.btn:active, .dock-btn:active, .corner-btn:active, .tag-btn:active, .pill-main:active, .pill-x:active, .chip:active, .pop-x:active, .vs-opt:active { scale: 0.94; transition-duration: 0.06s; }
+.tap-ripple { position: absolute; z-index: 24; width: 56px; height: 56px; margin: -28px 0 0 -28px; border-radius: 50%; pointer-events: none;
+  border: 1.5px solid rgba(255, 255, 255, 0.55); animation: tapRipple 0.5s cubic-bezier(0.2, 0.7, 0.3, 1) forwards; }
+.tap-ripple.strong { border-color: color-mix(in srgb, var(--accent-2) 80%, #fff); box-shadow: 0 0 18px rgba(185, 138, 255, 0.35); }
+@keyframes tapRipple { from { scale: 0.2; opacity: 0.9; } to { scale: 1.25; opacity: 0; } }
+
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; } }

@@ -307,10 +307,10 @@ export class RideAudio {
       s.connect(f).connect(g).connect(this.dest); s.start(ctx.currentTime);
       this.dread = { f, g };
     }
-    // rushing air, stereo; a resonant band makes it howl
-    this.wind = [-0.7, 0.7].map(pan => {
+    // rushing air, stereo: soft and wide (a gentle low-pass, no resonance) so it sits under the screams
+    this.wind = [-0.6, 0.6].map(pan => {
       const s = ctx.createBufferSource(); s.buffer = noiseBuffer(ctx, 3); s.loop = true;
-      const f = ctx.createBiquadFilter(); f.type = 'bandpass'; f.Q.value = 1.6; f.frequency.value = 300;
+      const f = ctx.createBiquadFilter(); f.type = 'lowpass'; f.Q.value = 0.5; f.frequency.value = 250;
       const g = ctx.createGain(); g.gain.value = 0;
       const pn = ctx.createStereoPanner(); pn.pan.value = pan;
       s.connect(f).connect(g).connect(pn).connect(this.dest); s.start(ctx.currentTime, Math.random() * 2);
@@ -359,8 +359,12 @@ export class RideAudio {
     // single blood-curdling screams: one as the crowd erupts, then every few seconds
     if (x > 0.55 && t >= this.nextShriek) { this.flyBy(t + 0.02); this.nextShriek = t + rnd(...THRILLS.shriekEvery); }
     else if (x < 0.05 && this.nextShriek > t + 1.5) this.nextShriek = t + 1.5;
-    const w = THREE.MathUtils.clamp((speed - THRILLS.windFrom) / 14, 0, 0.3);
-    this.wind.forEach(({ f, g }, i) => { g.gain.setTargetAtTime(w * (0.85 + 0.15 * Math.sin(t * 1.3 + i * 2)), t, fade); f.frequency.setTargetAtTime(200 + speed * 45 + i * 70 + 60 * Math.sin(t * 0.9 + i), t, 0.2); });
+    // eases in over a wide speed range and swells slowly, so a fast flick starts with a breath, not a blast
+    const w = 0.12 * smooth(THRILLS.windFrom, THRILLS.windFrom + 16, speed);
+    this.wind.forEach(({ f, g }, i) => {
+      g.gain.setTargetAtTime(w * (0.88 + 0.12 * Math.sin(t * 0.7 + i * 2)), t, Math.max(fade, 0.9));
+      f.frequency.setTargetAtTime(260 + speed * 22 + i * 40 + 40 * Math.sin(t * 0.5 + i), t, 0.6);
+    });
     return x;
   }
 }
