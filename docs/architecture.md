@@ -20,6 +20,7 @@ Static site, no bundler. `index.html` loads `js/main.js` as an ES module; an imp
 | `quiz.js` | Daily Challenge (seeded by local date) and Find it | `createQuiz` |
 | `ui.js` | View switch pill, country card, compare bar, pick banner, tooltip, toast, first-run hint | `createUI`, `fmtArea` |
 | `ads.js` | Side banners (≥ 1100 px) or one bottom banner (narrower screens), sizing | `ADS`, `mountAds` |
+| `pin.js` | 3D map pin for the selected country (drop-in animation, constant on-screen size, leans to screen-up) | `Pin` |
 | `load.js` | Streams `data/world.js` with loader progress, then evaluates it via a blob `import()` | `loadWorld`, `setLoader` |
 | `flags.js` | Flag `<img>` markup from `vendor/flags/` with emoji fallback | `flagImg` |
 | `perf.js` | Device quality tier (`low` on touch/weak devices; `?quality=low\|high` overrides) and the resolution governor that lowers the pixel ratio when frames run long | `TIER`, `QUALITY`, `ResolutionGovernor` |

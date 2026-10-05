@@ -8,6 +8,7 @@ const CORE = [
   './', 'index.html', 'css/style.css', 'manifest.webmanifest', 'icons/icon.svg',
   'js/main.js', 'js/load.js', 'js/perf.js', 'js/globe.js', 'js/countries.js', 'js/compare.js', 'js/geo.js',
   'js/spin.js', 'js/thrills.js', 'js/sun.js', 'js/lens.js', 'js/search.js', 'js/quiz.js', 'js/ui.js', 'js/ads.js', 'js/flags.js',
+  'js/pin.js', 'js/leaderboard.js', 'js/net/api.js', 'js/net/profanity.js', 'css/leaderboard.css',
   'data/world.js',
   'vendor/three/three.module.min.js', 'vendor/three/controls/OrbitControls.js',
   'vendor/three/lines/LineMaterial.js', 'vendor/three/lines/LineSegments2.js', 'vendor/three/lines/LineSegmentsGeometry.js',

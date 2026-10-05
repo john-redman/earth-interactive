@@ -13,7 +13,7 @@ let failed = 0;
 const fail = msg => { failed++; console.error('✗ ' + msg); };
 
 // 1. syntax
-const files = [...fs.readdirSync(path.join(root, 'js')).map(f => path.join('js', f)), 'tools/build-data.mjs', 'tools/views.config.mjs']
+const files = [...fs.readdirSync(path.join(root, 'js'), { recursive: true }).map(f => path.join('js', f)), 'tools/build-data.mjs', 'tools/views.config.mjs']
   .filter(f => /\.(m?js)$/.test(f));
 for (const f of files) {
   try { execFileSync(process.execPath, ['--check', path.join(root, f)], { stdio: 'pipe' }); }

@@ -4,7 +4,12 @@ All notable changes to EarthInteractive are documented here.
 
 ## [Unreleased]
 
+### Changed
+- **Less covering the globe**: tapping a country now drops a 3D pin with a small tag (flag, name, *Compare*, *Info*). The full card opens only from *Info*; closing it returns to the tag. Comparisons show only a *Compare stats* pill (plus ✕ to end) at the bottom; the full stats panel opens from it.
+- **Livelier ocean**: faster, cross-warped swells, rolling swell bands, stronger glints and glittering crests.
+
 ### Added
+- **Leaderboard scaffold**: Cloudflare Worker + D1 API (`server/`), browser client (`js/net/`), name entry with a profanity filter and top-10 boards on the quiz end screen. Dormant until `API_BASE` is set — see `docs/backend.md`.
 - **Compare stats**: pull up the compare bar (handle, swipe up, or *Compare stats*) for a side-by-side table: population, area, density, GDP, GDP per person, neighbours, capital, region, languages and currency, with the larger value highlighted and the ratio shown.
 - **Phone country card** opens as a short peek (name, flag, key facts) so the globe stays visible; swipe up or tap the handle for everything, swipe down to close.
 - **Flag images** in the country card and search (Windows doesn't render flag emoji).

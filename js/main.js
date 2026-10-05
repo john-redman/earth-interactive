@@ -12,6 +12,7 @@ import { SKY, updateSun } from './sun.js';
 import { LENSES, LENS_ORDER, buildLens, renderLegend } from './lens.js';
 import { createSearch } from './search.js';
 import { createQuiz } from './quiz.js';
+import { Pin } from './pin.js';
 
 const data = await loadWorld();
 
@@ -30,6 +31,7 @@ const compare = new Compare(globe, layer);
 const spin = new Spin(globe);
 globe.controls.enableRotate = false; // rotation is ours (flywheel); OrbitControls keeps zoom + idle auto-rotate
 const thrills = new Thrills(globe, spin);
+const pin = new Pin(globe);
 
 // sound toggle (bottom-right)
 const soundBtn = document.getElementById('sound-toggle');
@@ -43,7 +45,8 @@ let viewKey = data.views[params.get('view')] ? params.get('view') : data.default
 // ---------- state ----------
 let mode = 'browse';          // 'browse' | 'pick' | 'compare' | 'quiz'
 let pickFrom = null;          // country chosen first for comparison
-let anchor = null;            // 3D point the popup is attached to
+let anchor = null;            // 3D point the pin (and popup) is attached to
+let selected = null;          // country marked by the pin
 
 const ui = createUI({
   data, initialView: viewKey,
@@ -52,8 +55,9 @@ const ui = createUI({
   onCompareCancelPick: () => cancelPick(),
   onCompareReset: () => compare.resetPositions(),
   onCompareEnd: () => endCompare(),
-  onClosePopup: () => closePopup(),
-  onNeighbour: key => { const o = layer.get(key); if (o) openCountry(o, { fly: true }); },
+  onClosePopup: () => closeCard(),
+  onInfo: o => openInfo(o),
+  onNeighbour: key => { const o = layer.get(key); if (o) { openCountry(o, { fly: true }); openInfo(o); } },
   onShare: o => copyLink(o),
 });
 
@@ -64,13 +68,13 @@ function switchView(k) {
   viewKey = k;
   if (mode === 'compare') endCompare(true);
   if (mode === 'pick') cancelPick();
-  const keep = ui.popFor?.key;
+  const keep = selected?.key, cardOpen = !!ui.popFor;
   layer.setView(k);
   const url = new URL(location.href); url.searchParams.set('view', k); history.replaceState(null, '', url);
   applyLens();
   if (keep) {
     const o = layer.get(keep);
-    if (o) { layer.setSelected(o); ui.showPopup(o, k, extras(o)); } else closePopup();
+    if (o) { selected = o; layer.setSelected(o); if (cardOpen) ui.showPopup(o, k, extras(o)); else ui.showTag(o); } else closePopup();
   }
 }
 
@@ -98,15 +102,29 @@ function flyToCountry(o, minDist = 1.6) {
   const dist = THREE.MathUtils.clamp(1 + r * 6, minDist, Math.max(minDist, globe.fitDistance));
   spin.stop(); globe.flyTo(o.g.centroid, dist, 1200);
 }
+/** Select a country: drop the pin and show the small tag. The full card only opens on request (openInfo). */
 function openCountry(o, { fly = false, point = null } = {}) {
   if (mode === 'pick') cancelPick();
+  selected = o;
   layer.setSelected(o);
   anchor = (point || o.g.centroid).clone().normalize();
-  ui.showPopup(o, viewKey, extras(o));
+  ui.hidePopup(); ui.showTag(o);
+  pin.show(anchor);
   if (fly) flyToCountry(o); else spin.brake();
   globe.hold('card', true); // the globe stays put while a country card is open
   globe.pauseAuto();
   setParam('c', o.key);
+}
+function openInfo(o) {
+  if (selected !== o) openCountry(o);
+  ui.hideTag();
+  ui.showPopup(o, viewKey, extras(o));
+}
+/** Close the card but keep the pin and its tag. */
+function closeCard() {
+  if (!ui.popFor) return;
+  ui.hidePopup();
+  if (selected && mode === 'browse') ui.showTag(selected);
 }
 function setParam(k, v) {
   const url = new URL(location.href);
@@ -177,7 +195,7 @@ function tickSun() {
 tickSun(); setInterval(tickSun, 30000);
 
 function closePopup() {
-  ui.hidePopup(); anchor = null; if (mode === 'browse') layer.setSelected(null); setParam('c', null);
+  ui.hidePopup(); ui.hideTag(); pin.hide(); anchor = null; selected = null; if (mode === 'browse') layer.setSelected(null); setParam('c', null);
   if (globe.hold('card', false)) globe.pauseAuto(); // card closed: idle auto-rotate resumes after the usual delay
 }
 
@@ -302,7 +320,7 @@ window.addEventListener('keydown', e => {
   if ((e.key === '/' || (e.key.toLowerCase() === 'k' && (e.metaKey || e.ctrlKey))) && mode !== 'quiz') { e.preventDefault(); closeMenus(); search.open(); return; }
   if (e.key === 'Escape') {
     if (!Object.values(menus).every(m => m.hidden)) closeMenus();
-    else if (mode === 'compare') endCompare(); else if (mode === 'pick') cancelPick(); else if (mode !== 'quiz') closePopup();
+    else if (mode === 'compare') endCompare(); else if (mode === 'pick') cancelPick(); else if (mode !== 'quiz') { if (ui.popFor) closeCard(); else closePopup(); }
     return;
   }
   if ((e.key === 'Home' || e.key.toLowerCase() === 'r') && !e.metaKey && !e.ctrlKey && !e.altKey && mode !== 'quiz') { e.preventDefault(); recenter(); return; }
@@ -336,11 +354,15 @@ function frame(now) {
   layer.tick(now);
   compare.tick(now);
   thrills.tick(now);
+  pin.tick(now);
   if (anchor) {
     camDir.copy(globe.camera.position).normalize();
     const vis = anchor.dot(camDir) > 0.2;
+    const { x: W, y: H } = globe.size;
+    pin.head(tmp).project(globe.camera);
+    ui.placeTag((tmp.x + 1) / 2 * W, (1 - tmp.y) / 2 * H, vis, W, H);
     tmp.copy(anchor).multiplyScalar(1.002).project(globe.camera);
-    ui.placePopup((tmp.x + 1) / 2 * globe.size.x, (1 - tmp.y) / 2 * globe.size.y, vis, globe.size.x, globe.size.y);
+    ui.placePopup((tmp.x + 1) / 2 * W, (1 - tmp.y) / 2 * H, vis, W, H);
   }
   globe.renderer.render(globe.scene, globe.camera);
   requestAnimationFrame(frame);
