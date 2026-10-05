@@ -1,0 +1,21 @@
+{
+  "name": "earth-interactive-api",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Leaderboard + player-name API for EarthInteractive (Cloudflare Worker + D1)",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "db:create": "wrangler d1 create earth-interactive",
+    "db:init:local": "wrangler d1 execute earth-interactive --local --file=schema.sql",
+    "db:init:remote": "wrangler d1 execute earth-interactive --remote --file=schema.sql",
+    "test": "node --test test/*.test.mjs"
+  },
+  "devDependencies": {
+    "wrangler": "^4.36.0"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

@@ -1,0 +1,36 @@
+# Cloudflare Worker for the EarthInteractive API. Setup steps: docs/backend.md.
+name = "earth-interactive-api"
+main = "src/index.js"
+# Pin the runtime behaviour; bump deliberately after reading the Workers changelog.
+compatibility_date = "2025-09-01"
+
+[vars]
+# Comma-separated list of sites allowed to call the API from a browser (CORS).
+# Add the custom domain here when it exists, e.g. ",https://earthinteractive.app".
+ALLOWED_ORIGINS = "https://john-redman.github.io,http://localhost:5173,http://127.0.0.1:5173"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "earth-interactive"
+# PLACEHOLDER: run `npx wrangler d1 create earth-interactive` and paste the database_id it prints.
+# Local development (`npm run dev`, `npm run db:init:local`) works with the placeholder.
+database_id = "00000000-0000-0000-0000-000000000000"
+
+# Per-IP rate limits (Workers Rate Limiting binding; needs wrangler >= 4.36). period must be 10 or 60 s.
+# namespace_id is any integer (as a string) unique within the Cloudflare account.
+[[ratelimits]]
+name = "RL_WRITE"          # POST /api/name, POST /api/scores
+namespace_id = "1001"
+  [ratelimits.simple]
+  limit = 10
+  period = 60
+
+[[ratelimits]]
+name = "RL_READ"           # GET /api/leaderboard, GET /api/health
+namespace_id = "1002"
+  [ratelimits.simple]
+  limit = 120
+  period = 60
+
+[observability]
+enabled = true

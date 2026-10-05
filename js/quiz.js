@@ -1,4 +1,5 @@
 // "Find it" geography game: a classic 10-question round and a Daily Challenge everyone shares.
+import { createLeaderboard } from './leaderboard.js';
 
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const KM = 6371.0088;
@@ -48,7 +49,7 @@ export function createQuiz({ data, layer, globe, flyTo, onExit, onMode }) {
       if (done) { S = { mode, day, results: done.results, i: done.results.length, qs: done.qs, finished: true }; onMode(true); renderEnd(); return; }
     }
     const rand = mode === 'daily' ? mulberry32(hash('ei-' + day)) : Math.random;
-    S = { mode, day, qs: pickQuestions(mode, rand), i: 0, results: [], hinted: false, answered: false };
+    S = { mode, day, qs: pickQuestions(mode, rand), i: 0, results: [], hinted: false, answered: false, t0: performance.now() };
     onMode(true);
     ask();
   }
@@ -126,6 +127,7 @@ export function createQuiz({ data, layer, globe, flyTo, onExit, onMode }) {
     S.finished = true; layer.clearMarks();
     if (S.mode === 'daily') store.set('ei-daily-' + S.day, { results: S.results, qs: S.qs });
     else { const best = store.get('ei-best') || 0; S.newBest = total() > best; if (S.newBest) store.set('ei-best', total()); }
+    S.ms = Math.round(performance.now() - S.t0); S.fresh = true; // a just-finished game posts its score once
     renderEnd();
   }
 
@@ -146,6 +148,7 @@ export function createQuiz({ data, layer, globe, flyTo, onExit, onMode }) {
       <p class="qz-verdict">${verdict} ${right} of ${S.qs.length} found exactly.${S.newBest ? ' <b>New personal best!</b>' : ''}${S.mode === 'daily' ? ' A new challenge arrives tomorrow.' : ''}</p>
       <div class="qz-dots big">${S.results.map(r => `<i class="${square(r.pts)}" title="${esc(layer.get(r.k)?.unit.n || r.k)}: ${r.pts} pts"></i>`).join('')}</div>
       <ul class="qz-review">${S.results.map(r => `<li><button type="button" data-k="${r.k}">${esc(layer.get(r.k)?.unit.n || r.k)}</button><span>${r.pts}</span></li>`).join('')}</ul>
+      <div class="qz-board" hidden></div>
       <div class="qz-act">
         <button class="btn small ghost" type="button" data-a="share">Copy result</button>
         ${S.mode === 'daily' ? '<button class="btn small primary" type="button" data-a="classic">Play a free round</button>' : '<button class="btn small primary" type="button" data-a="again">Play again</button>'}
@@ -161,6 +164,10 @@ export function createQuiz({ data, layer, globe, flyTo, onExit, onMode }) {
     const again = el.querySelector('[data-a="again"], [data-a="classic"]');
     again.onclick = () => start('classic');
     el.querySelectorAll('.qz-review button').forEach(b => (b.onclick = () => { const o = layer.get(b.dataset.k); if (o) { layer.clearMarks(); layer.setMark(o.key, 'target'); flyTo(o); } }));
+    // leaderboard (stays hidden until a backend is configured in js/net/api.js)
+    const board = createLeaderboard({ container: el.querySelector('.qz-board') });
+    if (S.fresh) { S.fresh = false; board.submit({ game: S.mode, period: S.day, score: total(), details: { rounds: S.results }, durationMs: S.ms }); }
+    else board.render(S.mode, S.day);
   }
 
   function exit() { S = null; el.hidden = true; layer.clearMarks(); onMode(false); onExit?.(); }
