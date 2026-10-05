@@ -12,6 +12,7 @@ import { SKY, updateSun } from './sun.js';
 import { LENSES, LENS_ORDER, buildLens, renderLegend } from './lens.js';
 import { createSearch } from './search.js';
 import { createQuiz } from './quiz.js';
+import { shareBase } from './site.js';
 import { Pin } from './pin.js';
 
 const data = await loadWorld();
@@ -26,6 +27,12 @@ const canvas = document.getElementById('globe');
 const stage = document.getElementById('stage');
 const globe = createGlobe(canvas);
 const ads = mountAds(globe);
+// Native app only (Capacitor): AdMob, consent, haptics, back button. The website never loads js/native.js.
+const native = window.Capacitor?.isNativePlatform?.()
+  ? import('./native.js').then(m => m.initNative({ ads, globe, isBusy: () => mode === 'quiz' })).catch(() => null)
+  : Promise.resolve(null);
+// "Get the app" links (render nothing until store links are set in js/app-links.js, or inside the app)
+import('./app-links.js').then(m => m.mountStoreBadges(document.getElementById('app-links'))).catch(() => {});
 const layer = new CountryLayer(globe, data);
 const compare = new Compare(globe, layer);
 const spin = new Spin(globe);
@@ -132,7 +139,7 @@ function setParam(k, v) {
   try { history.replaceState(null, '', url); } catch { /* sandboxed */ }
 }
 async function copyLink(o) {
-  const url = new URL(location.href); url.search = ''; url.searchParams.set('view', viewKey); url.searchParams.set('c', o.key);
+  const url = new URL(shareBase()); url.search = ''; url.searchParams.set('view', viewKey); url.searchParams.set('c', o.key);
   try { await navigator.clipboard.writeText(url.toString()); ui.showToast(`Link to ${o.unit.n} copied`); }
   catch { ui.showToast(url.toString()); }
 }
@@ -158,7 +165,7 @@ const quiz = createQuiz({
   onMode: on => {
     ui.showTip(null);
     if (on) { if (mode === 'compare') endCompare(true); if (mode === 'pick') cancelPick(); closePopup(); mode = 'quiz'; layer.setHover(null); }
-    else mode = 'browse';
+    else { mode = 'browse'; native.then(n => n?.showInterstitial()); } // an ad between games in the app, never mid-round
     document.body.classList.toggle('quiz-on', on);
     setParam('play', null);
   },
@@ -387,7 +394,7 @@ requestAnimationFrame(() => setTimeout(async () => {
 
 // Small public API for later integrations / debugging
 window.EarthInteractive = {
-  globe, layer, compare, ads, data, thrills, spin, quiz, search,
+  globe, layer, compare, ads, data, thrills, spin, quiz, search, native,
   setLens: k => { lensKey = LENSES[k] ? k : 'none'; applyLens(); },
   setView: k => { ui.setViewSilently(k); switchView(k); },
   compareKeys: (a, b) => { const A = layer.get(a), B = layer.get(b); if (!A || !B) return false; closePopup(); cancelPick(); mode = 'compare'; compare.start(A, B); return true; },

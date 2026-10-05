@@ -2,3 +2,8 @@
 .wrangler/
 .dev.vars
 node_modules/
+# self-hosted server: settings and the SQLite database (+ backups)
+.env
+data/
+deploy/.env
+deploy/data/

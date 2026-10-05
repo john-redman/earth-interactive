@@ -1,4 +1,5 @@
-// EarthInteractive API — a Cloudflare Worker in front of a D1 (SQLite) database.
+// EarthInteractive API — a Cloudflare Worker in front of a D1 (SQLite) database. The same handler also runs
+// self-hosted under Node (node/server.mjs + src/d1-sqlite.js); see docs/backend.md.
 //
 //   GET  /api/health                                         → { ok, db }
 //   POST /api/name         { player, name }                  → { ok, name }            claim or change a display name
@@ -35,10 +36,12 @@ export default {
 
 async function route(request, env, ctx) {
   const url = new URL(request.url);
-  const key = `${request.method} ${url.pathname.replace(/\/+$/, '')}`;
+  // HEAD is answered like GET (the runtime drops the body), so uptime monitors that use HEAD work.
+  const method = request.method === 'HEAD' ? 'GET' : request.method;
+  const key = `${method} ${url.pathname.replace(/\/+$/, '')}`;
   switch (key) {
-    case 'GET /api/health': return health(request, env);
-    case 'POST /api/name': return claimName(request, env);
+    case 'GET /api/health': return health(request, env, ctx);
+    case 'POST /api/name': return claimName(request, env, ctx);
     case 'POST /api/scores': return submitScore(request, env, ctx, url);
     case 'GET /api/leaderboard': return leaderboard(request, env, ctx, url);
     default:
@@ -71,14 +74,15 @@ function json(body, status = 200, headers = {}) {
 const bad = (v, status = 400) => json({ ok: false, error: v.error, message: v.message }, status);
 
 /**
- * Per-IP rate limit through Cloudflare's Rate Limiting binding (wrangler.toml [[ratelimits]]).
- * Counters are kept per Cloudflare location and are approximate — good against floods and scripts,
- * not an exact quota. No binding (e.g. a test) → no limit. The IP is never stored.
+ * Per-IP rate limit through a binding with Cloudflare's Rate Limiting API: `limit({ key }) → { success }`.
+ * On Cloudflare that is the [[ratelimits]] binding in wrangler.toml (approximate, per location); on the
+ * self-hosted Node server it is node/rate-limit.js. No binding (e.g. a test) → no limit. The IP is never
+ * stored. The Node server passes the client IP as ctx.clientIp; Cloudflare sets CF-Connecting-IP.
  */
-async function limited(request, env, binding) {
+async function limited(request, env, ctx, binding) {
   const rl = env[binding];
   if (!rl) return null;
-  const ip = request.headers.get('CF-Connecting-IP') || 'unknown';
+  const ip = ctx?.clientIp || request.headers.get('CF-Connecting-IP') || 'unknown';
   const { success } = await rl.limit({ key: `${binding}:${ip}` });
   return success ? null : json({ ok: false, error: 'rate-limit', message: 'Too many requests. Try again in a minute.' }, 429, { 'Retry-After': '60' });
 }
@@ -93,6 +97,7 @@ async function readJson(request) {
 const changes = res => res?.meta?.changes ?? res?.changes ?? 0;
 
 // Cache API key for a top list. caches.default is a no-op on *.workers.dev and works on a custom domain.
+// Node has no `caches` global, so the self-hosted server reads SQLite every time (cheap on a local file).
 const boardCacheKey = (url, game, period, limit) => new Request(`${url.origin}/__cache/leaderboard/${game}/${period}/${limit}`);
 const edgeCache = () => (typeof caches !== 'undefined' && caches.default) || null;
 
@@ -120,14 +125,14 @@ const rankOf = (env, player, game, period) => env.DB.prepare(RANK_SQL).bind(play
 
 // ---------- routes ----------
 
-async function health(request, env) {
-  const stop = await limited(request, env, 'RL_READ'); if (stop) return stop;
+async function health(request, env, ctx) {
+  const stop = await limited(request, env, ctx, 'RL_READ'); if (stop) return stop;
   const row = await env.DB.prepare('SELECT 1 AS up').first();
   return json({ ok: true, db: row?.up === 1 });
 }
 
-async function claimName(request, env) {
-  const stop = await limited(request, env, 'RL_WRITE'); if (stop) return stop;
+async function claimName(request, env, ctx) {
+  const stop = await limited(request, env, ctx, 'RL_WRITE'); if (stop) return stop;
   const { body, error } = await readJson(request); if (error) return error;
   const v = validateNameBody(body);
   if (!v.ok) return bad(v);
@@ -152,7 +157,7 @@ async function claimName(request, env) {
 }
 
 async function submitScore(request, env, ctx, url) {
-  const stop = await limited(request, env, 'RL_WRITE'); if (stop) return stop;
+  const stop = await limited(request, env, ctx, 'RL_WRITE'); if (stop) return stop;
   const { body, error } = await readJson(request); if (error) return error;
   const v = validateScoreBody(body);
   if (!v.ok) return bad(v);
@@ -182,7 +187,7 @@ async function submitScore(request, env, ctx, url) {
 }
 
 async function leaderboard(request, env, ctx, url) {
-  const stop = await limited(request, env, 'RL_READ'); if (stop) return stop;
+  const stop = await limited(request, env, ctx, 'RL_READ'); if (stop) return stop;
   const v = validateBoardQuery(url.searchParams);
   if (!v.ok) return bad(v);
   const { game, period, limit, player } = v.value;

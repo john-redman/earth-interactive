@@ -1,5 +1,6 @@
 // "Find it" geography game: a classic 10-question round and a Daily Challenge everyone shares.
 import { createLeaderboard } from './leaderboard.js';
+import { shareBase } from './site.js';
 
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const KM = 6371.0088;
@@ -134,7 +135,7 @@ export function createQuiz({ data, layer, globe, flyTo, onExit, onMode }) {
   function shareText() {
     const grid = S.results.map(r => ({ perfect: '🟩', close: '🟨', near: '🟧', miss: '⬛' }[square(r.pts)])).join('');
     const title = S.mode === 'daily' ? `EarthInteractive Daily ${S.day}` : 'EarthInteractive · Find it';
-    return `${title}\n${grid} ${int.format(total())}/${int.format(S.qs.length * 1000)}\n${location.origin}${location.pathname}?play=${S.mode}`;
+    return `${title}\n${grid} ${int.format(total())}/${int.format(S.qs.length * 1000)}\n${shareBase()}?play=${S.mode}`;
   }
 
   function renderEnd() {

@@ -1,0 +1,34 @@
+{
+  "name": "earth-interactive-app",
+  "version": "0.4.0",
+  "private": true,
+  "description": "Native Android and iOS shell (Capacitor) for EarthInteractive",
+  "type": "module",
+  "scripts": {
+    "sync:web": "node scripts/sync-web.mjs",
+    "assets": "capacitor-assets generate --android --ios --assetPath resources --iconBackgroundColor \"#03040b\" --iconBackgroundColorDark \"#03040b\" --splashBackgroundColor \"#03040b\" --splashBackgroundColorDark \"#03040b\" --logoSplashScale 0.3",
+    "sync": "npm run sync:web && cap sync",
+    "android": "npm run sync && cap open android",
+    "ios": "npm run sync && cap open ios",
+    "run:android": "npm run sync && cap run android",
+    "run:ios": "npm run sync && cap run ios"
+  },
+  "dependencies": {
+    "@capacitor-community/admob": "^8.2.0",
+    "@capacitor/android": "^8.5.2",
+    "@capacitor/app": "^8.1.2",
+    "@capacitor/browser": "^8.0.5",
+    "@capacitor/core": "^8.5.2",
+    "@capacitor/haptics": "^8.0.2",
+    "@capacitor/ios": "^8.5.2",
+    "@capacitor/splash-screen": "^8.0.2",
+    "@capacitor/status-bar": "^8.0.4"
+  },
+  "devDependencies": {
+    "@capacitor/assets": "^3.0.5",
+    "@capacitor/cli": "^8.5.2"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

@@ -1,0 +1,35 @@
+{
+  "appId": "app.earthinteractive",
+  "appName": "EarthInteractive",
+  "webDir": "www",
+  "backgroundColor": "#03040b",
+  "server": {
+    "androidScheme": "https"
+  },
+  "android": {
+    "backgroundColor": "#03040b",
+    "allowMixedContent": false
+  },
+  "ios": {
+    "backgroundColor": "#03040b",
+    "contentInset": "never",
+    "scrollEnabled": false
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 600,
+      "launchAutoHide": true,
+      "backgroundColor": "#03040b",
+      "showSpinner": false,
+      "androidScaleType": "CENTER_CROP"
+    },
+    "StatusBar": {
+      "style": "DARK"
+    },
+    "SystemBars": {
+      "insetsHandling": "css",
+      "initialViewportFitValueHint": "cover",
+      "style": "DARK"
+    }
+  }
+}

@@ -14,6 +14,8 @@ All notable changes to EarthInteractive are documented here.
 - **Livelier ocean**: faster, cross-warped swells, rolling swell bands, stronger glints and glittering crests.
 
 ### Added
+- **Self-hosted leaderboard server**: the same API now runs on plain Node 22 + SQLite (`server/node/`), with Docker + Caddy (HTTPS), systemd units, nightly backups and a $0 Oracle Cloud guide in `docs/backend.md`. Cloudflare remains an option.
+- **Mobile app shell**: Capacitor project in `app/` (iOS + Android), `js/native.js` (AdMob banner/interstitial/rewarded with consent + ATT, haptics, back button), store badges (`js/app-links.js`, hidden until links exist) and the publishing plan in `docs/mobile-app.md`.
 - **Leaderboard scaffold**: Cloudflare Worker + D1 API (`server/`), browser client (`js/net/`), name entry with a profanity filter and top-10 boards on the quiz end screen. Dormant until `API_BASE` is set — see `docs/backend.md`.
 - **Compare stats**: pull up the compare bar (handle, swipe up, or *Compare stats*) for a side-by-side table: population, area, density, GDP, GDP per person, neighbours, capital, region, languages and currency, with the larger value highlighted and the ratio shown.
 - **Phone country card** opens as a short peek (name, flag, key facts) so the globe stays visible; swipe up or tap the handle for everything, swipe down to close.
