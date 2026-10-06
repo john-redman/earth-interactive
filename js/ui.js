@@ -1,5 +1,6 @@
 // DOM UI: view switch pill, country popup, compare bar, pick banner, hint, hover tooltip.
 import { flagImg } from './flags.js';
+import { attachSheetDrag } from './sheet-drag.js';
 const $ = (sel, el = document) => el.querySelector(sel);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
@@ -111,24 +112,18 @@ export function createUI({ data, initialView, onView, onCompareRequest, onCompar
     if (grab) { grab.setAttribute('aria-expanded', String(!on)); grab.setAttribute('aria-label', on ? 'Show more' : 'Show less'); }
     if (on) pop.scrollTop = 0;
   }
-  let swipe = null;
   pop.addEventListener('click', e => {
     if (!pop.classList.contains('sheet')) return;
     if (e.target.closest('.pop-grab')) setPeek(!pop.classList.contains('peek'));
     else if (pop.classList.contains('peek') && e.target.closest('.pop-head')) setPeek(false);
   });
-  pop.addEventListener('touchstart', e => {
-    if (!pop.classList.contains('sheet') || e.touches.length !== 1) return;
-    swipe = { y: e.touches[0].clientY, t: performance.now(), top: pop.scrollTop };
-  }, { passive: true });
-  pop.addEventListener('touchend', e => {
-    if (!swipe) return;
-    const dy = e.changedTouches[0].clientY - swipe.y, quick = performance.now() - swipe.t < 600, s = swipe; swipe = null;
-    if (!quick || Math.abs(dy) < 40) return;
-    const peek = pop.classList.contains('peek');
-    if (dy < 0 && peek) setPeek(false);
-    else if (dy > 0 && s.top <= 0) { if (peek) onClosePopup(); else setPeek(true); }
-  }, { passive: true });
+  attachSheetDrag(pop, {
+    enabled: () => pop.classList.contains('sheet'),
+    states: () => ({ peek: 196, full: Math.min(pop.scrollHeight + 2, innerHeight * 0.7) }),
+    current: () => pop.classList.contains('peek') ? 'peek' : 'full',
+    settle: state => setPeek(state === 'peek'),
+    dismiss: () => onClosePopup(),
+  });
   // ---------- pin tag: flag + name + two choices, floating above the 3D pin ----------
   const tag = $('#pin-tag');
   let tagFor = null;
@@ -260,16 +255,17 @@ export function createUI({ data, initialView, onView, onCompareRequest, onCompar
     $('[data-act="done"]', bar).onclick = () => onCompareEnd();
   }
 
-  // swipe up on the compare bar for the stats, down to put them away
-  let cmpSwipe = null;
-  bar.addEventListener('touchstart', e => { if (e.touches.length === 1) cmpSwipe = { y: e.touches[0].clientY, t: performance.now(), top: bar.scrollTop }; }, { passive: true });
-  bar.addEventListener('touchend', e => {
-    if (!cmpSwipe) return;
-    const dy = e.changedTouches[0].clientY - cmpSwipe.y, s = cmpSwipe; cmpSwipe = null;
-    if (performance.now() - s.t > 600 || Math.abs(dy) < 40) return;
-    if (dy < 0 && !cmpOpen) setCmpOpen(true);
-    else if (dy > 0 && cmpOpen && s.top <= 0) setCmpOpen(false);
-  }, { passive: true });
+  // drag the stats panel down to put it away (it follows the finger); swipe up on the pill to open it
+  attachSheetDrag(bar, {
+    enabled: () => cmpOpen,
+    states: () => ({ peek: null, full: Math.min(bar.scrollHeight + 2, innerHeight * 0.72) }),
+    current: () => 'full',
+    settle: () => {},
+    dismiss: () => setCmpOpen(false),
+  });
+  let pillY = null;
+  pill.addEventListener('touchstart', e => { pillY = e.touches[0].clientY; }, { passive: true });
+  pill.addEventListener('touchmove', e => { if (pillY != null && pillY - e.touches[0].clientY > 24) { pillY = null; setCmpOpen(true); } }, { passive: true });
 
   // ---------- hover tooltip ----------
   const tip = $('#tooltip');

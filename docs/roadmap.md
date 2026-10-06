@@ -2,7 +2,7 @@
 
 ## Before launch
 - [ ] Editorial review of the three border views (`docs/border-views.md`)
-- [ ] Fresher population & GDP (World Bank API) — feeds ranks, density and data lenses
+- [x] Fresher population & GDP (World Bank WDI: population 2025, GDP mostly 2024) — feeds ranks, density and data lenses
 - [ ] Current line of control for eastern Ukraine in De Facto view
 - [ ] Real recorded crowd-scream loops (`sounds/`, CC0) to replace the synthesised crowd
 - [ ] Ad network integration (`js/ads.js`) and policy check for animated pages

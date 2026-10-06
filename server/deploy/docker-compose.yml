@@ -1,0 +1,52 @@
+# EarthInteractive API + Caddy (automatic HTTPS). Run from this folder:
+#   cp .env.example .env   # then edit API_DOMAIN and ALLOWED_ORIGINS
+#   mkdir -p data && sudo chown 1000:1000 data
+#   docker compose up -d --build
+# Setup guide: docs/backend.md → "Option A".
+name: earth-interactive
+
+services:
+  api:
+    build:
+      context: ../..
+      dockerfile: server/deploy/Dockerfile
+    image: earth-api
+    restart: unless-stopped
+    init: true                       # tiny init as PID 1: forwards signals, reaps zombies
+    environment:
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:?set ALLOWED_ORIGINS in .env}
+      TRUST_PROXY: '1'               # Caddy is the only way in; it sets X-Forwarded-For
+      DB_PATH: /data/earth.db
+      RATE_WRITE_PER_MIN: ${RATE_WRITE_PER_MIN:-10}
+      RATE_READ_PER_MIN: ${RATE_READ_PER_MIN:-120}
+    volumes:
+      - ./data:/data                 # earth.db (+ -wal/-shm) and backups/
+    expose:
+      - '8787'                       # reachable by Caddy only, never published on the host
+    stop_grace_period: 15s
+    logging:
+      driver: local
+      options: { max-size: 10m, max-file: '3' }
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on: [api]
+    ports:
+      - '80:80'
+      - '443:443'
+      - '443:443/udp'                # HTTP/3
+    environment:
+      API_DOMAIN: ${API_DOMAIN:?set API_DOMAIN in .env}
+      API_UPSTREAM: api:8787
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data             # TLS certificates; keep this volume
+      - caddy_config:/config
+    logging:
+      driver: local
+      options: { max-size: 10m, max-file: '3' }
+
+volumes:
+  caddy_data:
+  caddy_config:

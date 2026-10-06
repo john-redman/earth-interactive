@@ -1,0 +1,35 @@
+/* "Get the app" links (js/app-links.js). Loaded by the module itself.
+   Default: a small floating group above the brand mark, bottom-left.
+   Add the class "inline" to the container to place it inside a card or menu instead. */
+.app-links {
+  position: absolute; left: max(22px, env(safe-area-inset-left)); bottom: 46px; z-index: 10;
+  display: flex; gap: 8px;
+}
+.app-links.inline { position: static; flex-wrap: wrap; }
+.app-badge {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 6px 12px 6px 10px; border-radius: 10px;
+  color: var(--ink); text-decoration: none; line-height: 1.1;
+  background: var(--glass); border: 1px solid var(--glass-border);
+  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.app-badge:hover { border-color: rgba(255, 255, 255, 0.32); background: rgba(24, 26, 58, 0.8); }
+.app-badge:focus-visible { outline: 2px solid var(--accent-2); outline-offset: 2px; }
+.app-badge svg { width: 18px; height: 18px; flex: none; }
+.app-badge span { display: grid; }
+.app-badge small { font-size: 9.5px; color: var(--muted); letter-spacing: 0.01em; }
+.app-badge b { font-size: 13px; font-weight: 700; letter-spacing: -0.01em; }
+
+/* Out of the way while playing or comparing. */
+body.quiz-on .app-links:not(.inline), body.comparing .app-links:not(.inline) { display: none; }
+
+:root[data-quality="low"] .app-badge { backdrop-filter: none; -webkit-backdrop-filter: none; background: rgb(14, 16, 38); }
+
+@media (max-width: 720px) {
+  .app-links { left: max(14px, env(safe-area-inset-left)); bottom: 40px; gap: 6px; }
+  .app-badge { padding: 5px 10px 5px 8px; }
+  .app-badge small { display: none; }
+  .app-badge b { font-size: 12px; }
+  .app-badge svg { width: 15px; height: 15px; }
+}

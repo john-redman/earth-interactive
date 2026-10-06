@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { LineSegments2 } from 'three/addons/lines/LineSegments2.js';
 import { LineSegmentsGeometry } from 'three/addons/lines/LineSegmentsGeometry.js';
 import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
-import { decodeGeom, triangulate, borderSegments, borderRings, sphereCentroid, bboxOf, pointInMulti } from './geo.js';
+import { decodeGeom, triangulate, borderSegments, borderRings, buildTopology, sphereCentroid, bboxOf, pointInMulti } from './geo.js';
 import { QUALITY } from './perf.js';
 import { LIGHT_DIR_VIEW } from './globe.js';
 import { SKY } from './sun.js';
@@ -27,7 +27,7 @@ export function fillMaterial(hex, { hatch = false, opacity = 0.42, pieceId = nul
     transparent: true, depthWrite: false, depthTest: false, side: THREE.DoubleSide,
     // each pixel is blended at most once → no bright seams where triangles meet
     stencilWrite: true, stencilRef: 0, stencilFunc: THREE.EqualStencilFunc, stencilZPass: THREE.IncrementStencilOp,
-    uniforms: { uColor: { value: new THREE.Color(hex) }, uOpacity: { value: opacity }, uHatch: { value: hatch ? 1 : 0 }, uLight: { value: LIGHT_DIR_VIEW }, uBright: { value: 0 }, uSun: SKY.uSun, uNight: SKY.uNight },
+    uniforms: { uColor: { value: new THREE.Color(hex) }, uOpacity: { value: opacity }, uMix: { value: 1 }, uHatch: { value: hatch ? 1 : 0 }, uLight: { value: LIGHT_DIR_VIEW }, uBright: { value: 0 }, uSun: SKY.uSun, uNight: SKY.uNight },
     vertexShader: /* glsl */`
       varying vec3 vPos; varying vec3 vN; varying float vVis;
       void main(){
@@ -39,15 +39,17 @@ export function fillMaterial(hex, { hatch = false, opacity = 0.42, pieceId = nul
         gl_Position = projectionMatrix * mv;
       }`,
     fragmentShader: /* glsl */`
-      uniform vec3 uColor; uniform float uOpacity; uniform float uHatch; uniform vec3 uLight; uniform float uBright; uniform vec3 uSun; uniform float uNight;
+      uniform vec3 uColor; uniform float uOpacity; uniform float uMix; uniform float uHatch; uniform vec3 uLight; uniform float uBright; uniform vec3 uSun; uniform float uNight;
       varying vec3 vPos; varying vec3 vN; varying float vVis;
       void main(){
         if (vVis < 0.0) discard; // flat triangles may sag below the ocean, so we cull the far side ourselves instead of depth-testing
         float shade = 0.9 + 0.22 * clamp(dot(normalize(vN), uLight), 0.0, 1.0);
         float day = smoothstep(-0.10, 0.16, dot(vPos, uSun));
-        vec3 col = (uColor * shade + uBright * 0.18) * mix(1.0 - uNight, 1.0, day);
+        // solid fills: the palette colour toned towards deep ocean blue (uMix) instead of letting the sea show through
+        vec3 base = mix(vec3(0.030, 0.070, 0.160), uColor, uMix);
+        vec3 col = (base * shade + uBright * 0.18) * mix(1.0 - uNight, 1.0, day);
         float a = uOpacity;
-        if (uHatch > 0.5) { float s = fract((vPos.x * 0.8 + vPos.y + vPos.z * 0.6) * 140.0); a *= mix(0.35, 1.25, step(0.5, s)); }
+        if (uHatch > 0.5) { float s = fract((vPos.x * 0.8 + vPos.y + vPos.z * 0.6) * 140.0); col *= mix(0.7, 1.08, step(0.5, s)); }
         gl_FragColor = vec4(col, clamp(a, 0.0, 1.0));
         #include <colorspace_fragment>
       }`,
@@ -60,6 +62,18 @@ export function fillMaterial(hex, { hatch = false, opacity = 0.42, pieceId = nul
 
 export function lineMaterial(hex, { width = 1.1, dashed = false, opacity = 0.95 } = {}) {
   const m = new LineMaterial({ color: new THREE.Color(hex), linewidth: width, transparent: true, opacity, depthWrite: false, dashed, dashSize: 0.006, gapSize: 0.004, dashScale: 1 });
+  // Like the fills, drop the part of a border on the far side of the globe. Depth testing alone isn't enough:
+  // the ocean is a faceted sphere, so lines just behind the horizon poke out past its flat edges and flicker.
+  m.onBeforeCompile = shader => {
+    shader.vertexShader = shader.vertexShader
+      .replace('void main() {', 'varying float vFace;\nvoid main() {')
+      .replace('vec4 mvPosition = ( position.y < 0.5 ) ? start : end; // this is an approximation',
+        'vec4 mvPosition = ( position.y < 0.5 ) ? start : end; // this is an approximation\n'
+        + 'vFace = dot( normalize( normalMatrix * ( position.y < 0.5 ? instanceStart : instanceEnd ) ), normalize( -mvPosition.xyz ) );');
+    shader.fragmentShader = shader.fragmentShader
+      .replace('void main() {', 'varying float vFace;\nvoid main() {\n  if ( vFace < 0.0 ) discard;');
+  };
+  m.customProgramCacheKey = () => 'earth-line';
   return m;
 }
 
@@ -88,7 +102,8 @@ export class CountryLayer {
     fillGeom.setIndex(new THREE.BufferAttribute(tri.index, 1));
     fillGeom.computeBoundingSphere();
     // phones draw lighter borders (fills keep full detail, so coastlines still read the same)
-    const rings = QUALITY.borderTolerance > 0 ? borderRings(multi, QUALITY.borderTolerance) : tri.rings;
+    if (QUALITY.borderTolerance > 0) this.ownerOf ||= buildTopology(this.data); // once, ~100 ms
+    const rings = QUALITY.borderTolerance > 0 ? borderRings(multi, QUALITY.borderTolerance, this.ownerOf) : tri.rings;
     const lineGeom = new LineSegmentsGeometry().setPositions(borderSegments(rings, R_LINE));
     const centroid = sphereCentroid(tri.positions, tri.index);
     // angular radius around the centroid, so cull() can tell when the whole shape is behind the horizon
@@ -130,14 +145,18 @@ export class CountryLayer {
       const color = PALETTE[unit.c] ?? PALETTE[1];
       const hatch = unit.t === 'disputed';
       const fill = new THREE.Mesh(g.fillGeom, fillMaterial(color, { hatch }));
-      fill.renderOrder = 1;
+      // fixed draw order per country (overlays last): neighbours share border lines and overlapping fills, and
+      // three.js would otherwise re-sort them by camera distance every frame, so they flicker as the globe turns
+      const layerRank = { country: 0, limited: 0, territory: 1, breakaway: 2, disputed: 3 }[unit.t] ?? 0;
+      const order = (layerRank * v.units.length + n) / (4 * v.units.length) * 0.9;
+      fill.renderOrder = 1 + order;
       const lm = lineMaterial(borderColorFor(color), { dashed: hatch || unit.t === 'breakaway' });
       this.lineMaterials.add(lm);
       const border = new LineSegments2(g.lineGeom, lm);
       if (lm.dashed) border.computeLineDistances();
-      border.renderOrder = 2;
+      border.renderOrder = 2 + order;
       group.add(fill, border);
-      const o = { key: unit.k, unit, info: this.data.info[unit.k] || {}, g, fill, border, color, hatch };
+      const o = { key: unit.k, unit, info: this.data.info[unit.k] || {}, g, fill, border, color, hatch, lineOrder: 2 + order };
       objects.push(o); byKey.set(unit.k, o);
       // coarse 10° grid for fast picking
       const [x0, y0, x1, y1] = g.bbox;
@@ -195,27 +214,28 @@ export class CountryLayer {
 
   style(o) {
     const f = o.fill.material, l = o.border.material;
-    let fillHex = o.color, lineHex = borderColorFor(o.color), fo = 0.56, lo = 0.95, w = 1.1, bright = 0;
+    let fillHex = o.color, lineHex = borderColorFor(o.color), fo = 1, mx = 0.62, lo = 0.95, w = 1.1, bright = 0;
     let dashed = o.hatch || o.unit.t === 'breakaway';
-    if (this.dim && !this.dim.has(o.key)) { fillHex = GREY; lineHex = '#c3c8d6'; fo = 0.08; lo = 0.22; }
+    if (this.dim && !this.dim.has(o.key)) { fillHex = GREY; lineHex = '#c3c8d6'; mx = 0.16; lo = 0.22; }
     else if (this.lens) {
       const hx = this.lens(o);
-      if (hx) { fillHex = hx; fo = 0.88; lineHex = '#0a0f24'; lo = 0.6; } else { fillHex = GREY; fo = 0.1; lineHex = '#8d93a6'; lo = 0.35; }
+      if (hx) { fillHex = hx; mx = 0.92; lineHex = '#0a0f24'; lo = 0.6; } else { fillHex = GREY; mx = 0.22; lineHex = '#8d93a6'; lo = 0.35; }
     }
     const mark = this.marks?.get(o.key);
     if (mark) {
       const M = { good: ['#5ee6a0', '#d4ffe8'], bad: ['#ff6b6b', '#ffd0d0'], target: ['#ffd166', '#fff3cc'] }[mark];
-      fillHex = M[0]; lineHex = M[1]; fo = 0.88; lo = 1; w = 2.6; bright = 0.5;
+      fillHex = M[0]; lineHex = M[1]; mx = 0.92; lo = 1; w = 2.6; bright = 0.5;
     }
-    if (this.sockets.has(o.key)) { fillHex = '#02040c'; lineHex = '#ffffff'; fo = 0.55; lo = 0.6; w = 1.2; dashed = true; }
-    else if (o === this.selected) { if (this.lens && !this.dim) { lineHex = '#ffffff'; lo = 1; w = 2.6; } else { fo = 0.8; w = 2.4; bright = 1; } }
-    else if (o === this.hover) { if (this.lens && !this.dim) { lineHex = '#ffffff'; lo = 0.9; w = 2; } else { fo = 0.66; w = 1.8; bright = 0.6; } }
+    if (this.sockets.has(o.key)) { fillHex = '#02040c'; lineHex = '#ffffff'; mx = 0.85; lo = 0.6; w = 1.2; dashed = true; }
+    else if (o === this.selected) { if (this.lens && !this.dim) { lineHex = '#ffffff'; lo = 1; w = 2.6; } else { mx = 0.86; w = 2.4; bright = 1; } }
+    else if (o === this.hover) { if (this.lens && !this.dim) { lineHex = '#ffffff'; lo = 0.9; w = 2; } else { mx = 0.72; w = 1.8; bright = 0.6; } }
     f.uniforms.uColor.value.set(fillHex);
     f.uniforms.uOpacity.value = fo * this.fade;
+    f.uniforms.uMix.value = mx;
     f.uniforms.uBright.value = bright;
     l.color.set(lineHex); l.opacity = lo * this.fade; l.linewidth = w;
     if (l.dashed !== dashed) { l.dashed = dashed; if (dashed) o.border.computeLineDistances(); l.needsUpdate = true; }
-    o.border.renderOrder = o === this.selected || o === this.hover || mark ? 3 : 2;
+    o.border.renderOrder = o === this.selected || o === this.hover || mark ? 3 : o.lineOrder;
   }
 
   resizeLines() {

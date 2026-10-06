@@ -1,0 +1,14 @@
+# Caddy in front of the API: gets and renews the HTTPS certificate for API_DOMAIN automatically
+# (Let's Encrypt / ZeroSSL), redirects HTTP to HTTPS and forwards to the Node server.
+# Env: API_DOMAIN (e.g. api.earthinteractive.app), API_UPSTREAM (api:8787 in Docker, 127.0.0.1:8787 with systemd).
+# No access log on purpose: leaderboard URLs contain player ids (docs/backend.md → Privacy).
+{$API_DOMAIN} {
+	request_body {
+		max_size 16KB
+	}
+	encode zstd gzip
+	header -Server
+	# Caddy replaces any X-Forwarded-For sent by the client with the real client IP, which the API uses
+	# for rate limits (TRUST_PROXY=1).
+	reverse_proxy {$API_UPSTREAM:127.0.0.1:8787}
+}

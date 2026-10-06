@@ -1,0 +1,17 @@
+# One backup run (VACUUM INTO + gzip + keep 14). Started nightly by earth-api-backup.timer.
+[Unit]
+Description=EarthInteractive API database backup
+
+[Service]
+Type=oneshot
+User=earth
+Group=earth
+StateDirectory=earth-api
+WorkingDirectory=/opt/earth-interactive/server
+EnvironmentFile=/etc/earth-api.env
+Environment=NODE_OPTIONS=--disable-warning=ExperimentalWarning DB_PATH=/var/lib/earth-api/earth.db
+ExecStart=/usr/bin/node node/backup.mjs
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes

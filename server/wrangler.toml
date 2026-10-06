@@ -7,7 +7,7 @@ compatibility_date = "2025-09-01"
 [vars]
 # Comma-separated list of sites allowed to call the API from a browser (CORS).
 # Add the custom domain here when it exists, e.g. ",https://earthinteractive.app".
-ALLOWED_ORIGINS = "https://john-redman.github.io,http://localhost:5173,http://127.0.0.1:5173"
+ALLOWED_ORIGINS = "https://john-redman.github.io,capacitor://localhost,https://localhost,http://localhost:5173,http://127.0.0.1:5173"
 
 [[d1_databases]]
 binding = "DB"

@@ -12,7 +12,10 @@ import { SKY, updateSun } from './sun.js';
 import { LENSES, LENS_ORDER, buildLens, renderLegend } from './lens.js';
 import { createSearch } from './search.js';
 import { createQuiz } from './quiz.js';
+import { shareBase } from './site.js';
 import { Pin } from './pin.js';
+import { createSfx } from './sfx.js';
+import { track } from './analytics.js';
 
 const data = await loadWorld();
 
@@ -26,12 +29,27 @@ const canvas = document.getElementById('globe');
 const stage = document.getElementById('stage');
 const globe = createGlobe(canvas);
 const ads = mountAds(globe);
+// Native app only (Capacitor): AdMob, consent, haptics, back button. The website never loads js/native.js.
+const native = window.Capacitor?.isNativePlatform?.()
+  ? import('./native.js').then(m => m.initNative({ ads, globe, isBusy: () => mode === 'quiz' })).catch(() => null)
+  : Promise.resolve(null);
+// "Get the app" links (render nothing until store links are set in js/app-links.js, or inside the app)
+import('./app-links.js').then(m => m.mountStoreBadges(document.getElementById('app-links'))).catch(() => {});
 const layer = new CountryLayer(globe, data);
 const compare = new Compare(globe, layer);
 const spin = new Spin(globe);
 globe.controls.enableRotate = false; // rotation is ours (flywheel); OrbitControls keeps zoom + idle auto-rotate
 const thrills = new Thrills(globe, spin);
-const pin = new Pin(globe);
+const pin = new Pin(document.getElementById('stage'));
+const sfx = createSfx({ muted: () => thrills.muted });
+
+/** Soft ring that spreads from where the globe was tapped. */
+function ripple(x, y, strong) {
+  const r = stage.getBoundingClientRect(), el = document.createElement('span');
+  el.className = 'tap-ripple' + (strong ? ' strong' : '');
+  el.style.left = x - r.left + 'px'; el.style.top = y - r.top + 'px';
+  stage.append(el); setTimeout(() => el.remove(), 650); // a timer, not animationend: reduced motion skips the animation
+}
 
 // sound toggle (bottom-right)
 const soundBtn = document.getElementById('sound-toggle');
@@ -61,7 +79,12 @@ const ui = createUI({
   onShare: o => copyLink(o),
 });
 
-compare.onChange = state => { ui.showCompare(state); document.body.classList.toggle('comparing', !!state); setParam('compare', state ? `${state.a.o.key},${state.b.o.key}` : null); };
+let trackedPair = '';
+compare.onChange = state => {
+  const pair = state ? `${state.a.o.key},${state.b.o.key}` : '';
+  if (pair && pair !== trackedPair) track('compare', pair); // counted once per pair, not on every drag
+  trackedPair = pair;
+  ui.showCompare(state); document.body.classList.toggle('comparing', !!state); setParam('compare', state ? `${state.a.o.key},${state.b.o.key}` : null); };
 thrills.onFirstScream = () => setTimeout(() => ui.showToast('Hold on tight! Sound can be muted bottom-right.'), 900);
 
 function switchView(k) {
@@ -109,11 +132,12 @@ function openCountry(o, { fly = false, point = null } = {}) {
   layer.setSelected(o);
   anchor = (point || o.g.centroid).clone().normalize();
   ui.hidePopup(); ui.showTag(o);
-  pin.show(anchor);
+  pin.show();
   if (fly) flyToCountry(o); else spin.brake();
   globe.hold('card', true); // the globe stays put while a country card is open
   globe.pauseAuto();
   setParam('c', o.key);
+  track(`country/${o.key}`, o.unit.n);
 }
 function openInfo(o) {
   if (selected !== o) openCountry(o);
@@ -132,7 +156,7 @@ function setParam(k, v) {
   try { history.replaceState(null, '', url); } catch { /* sandboxed */ }
 }
 async function copyLink(o) {
-  const url = new URL(location.href); url.search = ''; url.searchParams.set('view', viewKey); url.searchParams.set('c', o.key);
+  const url = new URL(shareBase()); url.search = ''; url.searchParams.set('view', viewKey); url.searchParams.set('c', o.key);
   try { await navigator.clipboard.writeText(url.toString()); ui.showToast(`Link to ${o.unit.n} copied`); }
   catch { ui.showToast(url.toString()); }
 }
@@ -151,6 +175,7 @@ function applyLens() {
 }
 
 // ---------- dock: search, play, data ----------
+function startGame(m) { track(`play/${m}`); quiz.start(m); }
 const search = createSearch({ getObjects: () => layer.view?.objects || [], onPick: o => { if (mode === 'quiz') return; if (mode === 'compare') endCompare(true); openCountry(o, { fly: true }); } });
 const quiz = createQuiz({
   data, layer, globe,
@@ -158,7 +183,7 @@ const quiz = createQuiz({
   onMode: on => {
     ui.showTip(null);
     if (on) { if (mode === 'compare') endCompare(true); if (mode === 'pick') cancelPick(); closePopup(); mode = 'quiz'; layer.setHover(null); }
-    else mode = 'browse';
+    else { mode = 'browse'; native.then(n => n?.showInterstitial()); } // an ad between games in the app, never mid-round
     document.body.classList.toggle('quiz-on', on);
     setParam('play', null);
   },
@@ -172,7 +197,7 @@ function openMenu(k) {
     m.innerHTML = `
       <button type="button" role="menuitem" data-play="daily"><span class="m-ico">5</span><span><b>Daily Challenge</b><small>Same 5 countries for everyone today</small></span>${done ? '<span class="m-done">Done ✓</span>' : ''}</button>
       <button type="button" role="menuitem" data-play="classic"><span class="m-ico">10</span><span><b>Find it</b><small>${best ? 'Your best: ' + best.toLocaleString('en-US') + ' pts' : 'Ten countries, getting smaller'}</small></span></button>`;
-    m.querySelectorAll('[data-play]').forEach(b => (b.onclick = () => { closeMenus(); quiz.start(b.dataset.play); }));
+    m.querySelectorAll('[data-play]').forEach(b => (b.onclick = () => { closeMenus(); startGame(b.dataset.play); }));
   } else {
     m.innerHTML = LENS_ORDER.map(k2 => `<button type="button" role="menuitemradio" aria-checked="${k2 === lensKey}" data-lens="${k2}"><span class="m-ramp ${k2 === 'none' ? 'none' : ''}"></span><span><b>${LENSES[k2].short}</b><small>${k2 === 'none' ? 'Political colours, live day & night' : LENSES[k2].label}</small></span></button>`).join('');
     m.querySelectorAll('[data-lens]').forEach(b => (b.onclick = () => { lensKey = b.dataset.lens; closeMenus(); applyLens(); }));
@@ -303,15 +328,16 @@ function onClick(x, y) {
   ui.showTip(null);
   if (mode === 'compare') return;
   const r = countryAt(x, y);
+  if (r) ripple(x, y, !!r.o);
   if (mode === 'quiz') { if (r && quiz.waiting) quiz.answer(r.o, r.point); return; }
   if (mode === 'pick') {
     if (r?.o && r.o !== pickFrom) {
       const a = pickFrom; ui.hidePick(); pickFrom = null; mode = 'compare';
-      layer.setHover(null); compare.start(a, r.o);
+      layer.setHover(null); compare.start(a, r.o); sfx.play('confirm');
     } else if (r?.o === pickFrom) ui.showToast('Pick a different country');
     return;
   }
-  if (r?.o) openCountry(r.o, { point: r.point });
+  if (r?.o) { openCountry(r.o, { point: r.point }); sfx.play('tap'); }
   else closePopup();
 }
 
@@ -354,15 +380,15 @@ function frame(now) {
   layer.tick(now);
   compare.tick(now);
   thrills.tick(now);
-  pin.tick(now);
   if (anchor) {
     camDir.copy(globe.camera.position).normalize();
     const vis = anchor.dot(camDir) > 0.2;
     const { x: W, y: H } = globe.size;
-    pin.head(tmp).project(globe.camera);
-    ui.placeTag((tmp.x + 1) / 2 * W, (1 - tmp.y) / 2 * H, vis, W, H);
     tmp.copy(anchor).multiplyScalar(1.002).project(globe.camera);
-    ui.placePopup((tmp.x + 1) / 2 * W, (1 - tmp.y) / 2 * H, vis, W, H);
+    const ax = (tmp.x + 1) / 2 * W, ay = (1 - tmp.y) / 2 * H;
+    pin.place(ax, ay, vis);
+    ui.placeTag(ax, ay - pin.height, vis, W, H);
+    ui.placePopup(ax, ay, vis, W, H);
   }
   globe.renderer.render(globe.scene, globe.camera);
   requestAnimationFrame(frame);
@@ -378,7 +404,7 @@ requestAnimationFrame(() => setTimeout(async () => {
   // deep links: ?c=FRA · ?compare=FRA,DEU · ?play=daily
   const c = params.get('c'), cmp = params.get('compare')?.split(','), play = params.get('play');
   if (cmp?.length === 2 && layer.get(cmp[0]) && layer.get(cmp[1])) { mode = 'compare'; compare.start(layer.get(cmp[0]), layer.get(cmp[1])); }
-  else if (play === 'daily' || play === 'classic') quiz.start(play);
+  else if (play === 'daily' || play === 'classic') startGame(play);
   else if (c && layer.get(c)) openCountry(layer.get(c), { fly: true });
   requestAnimationFrame(frame);
   const idle = window.requestIdleCallback || (fn => setTimeout(fn, 400));
@@ -387,7 +413,7 @@ requestAnimationFrame(() => setTimeout(async () => {
 
 // Small public API for later integrations / debugging
 window.EarthInteractive = {
-  globe, layer, compare, ads, data, thrills, spin, quiz, search,
+  globe, layer, compare, ads, data, thrills, spin, quiz, search, native, sfx,
   setLens: k => { lensKey = LENSES[k] ? k : 'none'; applyLens(); },
   setView: k => { ui.setViewSilently(k); switchView(k); },
   compareKeys: (a, b) => { const A = layer.get(a), B = layer.get(b); if (!A || !B) return false; closePopup(); cancelPick(); mode = 'compare'; compare.start(A, B); return true; },

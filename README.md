@@ -62,6 +62,10 @@ vendor/three/            three.js r170 (vendored, no CDN dependency)
 tools/views.config.mjs   editorial rules for the three border views
 tools/build-data.mjs     builds data/world.js from tools/sources/
 tools/check.mjs          syntax + data consistency checks (CI)
+tools/build-pages.mjs    country + comparison pages, sitemap, robots, 404 (deploy time, not committed)
+tools/site.config.mjs    site URL, contact, Ko-fi, analytics settings
+*.html (about, privacy…) text pages; css/pages.css styles them
+js/analytics.js          GoatCounter page/event counts (off until a code is set)
 tools/sources/           pinned upstream data (Natural Earth, mledoze/countries)
 sounds/                  optional recorded audio (see sounds/README.md)
 docs/                    architecture, border-view policy, roadmap
@@ -76,6 +80,7 @@ docs/                    architecture, border-view policy, roadmap
 | `npm install` | Installs the two build-time tools (`d3-geo`, `polygon-clipping`) — only needed for `build:data` |
 | `npm run build:data` | Regenerates `data/world.js` from `tools/sources/` + `tools/views.config.mjs` |
 | `npm run check` | Parses every module and validates the generated data (also runs in CI) |
+| `npm run build:pages` | Builds the site with the country/comparison pages, sitemap and 404 into `dist-pages/` (preview; the deploy does this into `_site`) |
 
 ## Configuration
 
@@ -87,6 +92,7 @@ docs/                    architecture, border-view policy, roadmap
 | Rollercoaster thresholds & samples | `js/thrills.js` (`THRILLS`) |
 | Day/night strength | `js/sun.js` (`SKY.uNight`) |
 | Colours & type | `:root` tokens in `css/style.css`; country palette in `js/countries.js` |
+| Site URL, contact email, Ko-fi, GoatCounter | `tools/site.config.mjs` (+ `js/site.js`, `js/analytics.js`; see [docs/seo.md](docs/seo.md)) |
 | Rendering quality | `js/perf.js` (`QUALITY` per tier); force a tier with `?quality=low` or `?quality=high` |
 
 ## Deploying

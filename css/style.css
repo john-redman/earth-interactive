@@ -112,7 +112,7 @@ img.pop-flag { width: 40px; height: 30px; flex: none; object-fit: cover; border-
 .pop-note { margin: 10px 0 0; padding: 8px 10px; border-radius: 10px; font-size: 11.5px; line-height: 1.45; color: rgba(235,236,255,0.86); background: rgba(157,77,255,0.12); border-left: 2px solid var(--accent); }
 .pop-note span { display: block; font-size: 10px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent-2); margin-bottom: 2px; }
 .pop-actions { display: flex; gap: 8px; margin-top: 12px; }
-.popup.sheet { top: auto; left: 8px; right: 8px; bottom: max(8px, env(safe-area-inset-bottom)); width: auto; max-height: 70vh; overflow: auto; overscroll-behavior: contain; transform: none !important; padding-top: 22px; transition: max-height 0.28s ease; }
+.popup.sheet { top: auto; left: 8px; right: 8px; bottom: max(8px, env(safe-area-inset-bottom)); width: auto; max-height: 70vh; overflow: auto; overscroll-behavior: contain; transform: none !important; padding-top: 22px; transition: max-height 0.3s cubic-bezier(0.2, 0.9, 0.3, 1), translate 0.3s cubic-bezier(0.2, 0.9, 0.3, 1); touch-action: pan-y; }
 .popup.sheet { background: rgb(14, 16, 38); } /* solid: nothing from underneath reads through on small screens */
 .popup.sheet.peek { max-height: 196px; overflow: hidden; }
 body.card-open .hint { opacity: 0; }
@@ -123,7 +123,17 @@ body.card-open .hint { opacity: 0; }
 .popup.sheet .pop-grab:focus-visible { outline: 2px solid var(--accent-2); outline-offset: -2px; border-radius: 8px; }
 .popup.sheet .pop-x { top: 14px; }
 
-/* ───────────── Pin tag (small label above the 3D pin) ───────────── */
+/* ───────────── Map pin (SVG overlay, crisp at any resolution) ───────────── */
+.map-pin { position: absolute; top: 0; left: 0; z-index: 26; width: 40px; height: 58px; pointer-events: none; transition: opacity 0.2s ease; will-change: transform;
+  filter: drop-shadow(0 3px 4px rgba(0, 0, 0, 0.35)); }
+.map-pin svg { display: block; overflow: visible; }
+.map-pin.away { opacity: 0; }
+.map-pin.drop .pin-body { animation: pinDrop 0.55s cubic-bezier(0.3, 0.9, 0.4, 1.25) both; }
+.map-pin.drop .pin-shadow { animation: pinShadow 0.55s ease-out both; transform-origin: 20px 55.5px; }
+@keyframes pinDrop { from { transform: translateY(-46px); opacity: 0; } 35% { opacity: 1; } to { transform: none; } }
+@keyframes pinShadow { from { transform: scale(0.3); opacity: 0; } to { transform: none; opacity: 1; } }
+
+/* ───────────── Pin tag (small label above the pin) ───────────── */
 .pin-tag { position: absolute; top: 0; left: 0; z-index: 28; padding: 8px; border-radius: 14px; background: rgb(14, 16, 38); border: 1px solid var(--glass-border);
   box-shadow: 0 12px 30px rgba(0, 0, 0, 0.45); transition: opacity 0.2s ease; will-change: transform; }
 .pin-tag::after { content: ''; position: absolute; left: 50%; bottom: -6px; width: 10px; height: 10px; transform: translateX(-50%) rotate(45deg); background: rgb(14, 16, 38); border-right: 1px solid var(--glass-border); border-bottom: 1px solid var(--glass-border); }
@@ -193,7 +203,8 @@ img.tag-flag { width: 24px; height: 18px; flex: none; object-fit: cover; border-
 .cmp-ratio b { color: var(--accent-2); font-size: 15px; }
 .cmp-actions { display: flex; gap: 8px; align-items: center; }
 .cmp-tip { flex: 1; font-size: 11.5px; color: var(--muted); }
-.compare-bar { max-height: 72vh; overflow: auto; overscroll-behavior: contain; padding-top: 20px; }
+.compare-bar { max-height: 72vh; overflow: auto; overscroll-behavior: contain; padding-top: 20px; transition: translate 0.3s cubic-bezier(0.2, 0.9, 0.3, 1), max-height 0.3s cubic-bezier(0.2, 0.9, 0.3, 1); }
+.popup.dragging, .compare-bar.dragging { transition: none !important; user-select: none; }
 .cmp-grab { position: absolute; top: 0; left: 50%; transform: translateX(-50%); width: 72px; height: 20px; padding: 0; border: 0; background: none; cursor: pointer; }
 .cmp-grab::before { content: ''; position: absolute; left: 22px; right: 22px; top: 8px; height: 4px; border-radius: 2px; background: rgba(255,255,255,0.32); }
 .cmp-grab:focus-visible { outline: 2px solid var(--accent-2); outline-offset: -2px; border-radius: 8px; }
@@ -212,11 +223,20 @@ img.tag-flag { width: 24px; height: 18px; flex: none; object-fit: cover; border-
 .toast.in { animation: riseIn 0.3s ease; }
 
 /* ───────────── Hint, brand, credit, loader ───────────── */
-.hint { position: absolute; bottom: 28px; left: 50%; transform: translateX(-50%); z-index: 10; display: flex; gap: 18px; font-size: 12.5px; color: rgba(255,255,255,0.72); white-space: nowrap; transition: opacity 0.8s ease, translate 0.8s ease; pointer-events: none; }
+.hint { position: absolute; bottom: 42px; left: 50%; transform: translateX(-50%); z-index: 10; display: flex; gap: 18px; font-size: 12.5px; color: rgba(255,255,255,0.72); white-space: nowrap; transition: opacity 0.8s ease, translate 0.8s ease; pointer-events: none; }
 .hint kbd { font: inherit; font-weight: 700; color: #fff; padding: 2px 8px; margin-right: 4px; border-radius: 6px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.15); }
 .hint.gone { opacity: 0; translate: 0 8px; }
 body:not(.ready) .hint { opacity: 0; }
-.brand { position: absolute; left: 22px; bottom: 18px; z-index: 10; display: flex; align-items: center; gap: 8px; font-weight: 800; font-size: 14px; letter-spacing: -0.01em; color: rgba(255,255,255,0.88); pointer-events: none; }
+.brand { position: absolute; left: 22px; bottom: 36px; z-index: 10; margin: 0; display: flex; align-items: center; gap: 8px; font-weight: 800; font-size: 14px; line-height: 1.2; letter-spacing: -0.01em; color: rgba(255,255,255,0.88); pointer-events: none; }
+/* Small text links under the brand (about, legal, country pages). Crawlable, out of the globe's way. */
+.site-links { position: absolute; left: 22px; bottom: 14px; z-index: 10; display: flex; flex-wrap: wrap; gap: 0 12px; font-size: 11.5px; line-height: 1.5; }
+.site-links a { color: rgba(255,255,255,0.56); text-decoration: none; transition: color 0.15s; }
+.site-links a:hover { color: #fff; text-decoration: underline; text-underline-offset: 2px; }
+.site-links a:focus-visible { outline: 2px solid var(--accent-2); outline-offset: 2px; border-radius: 3px; }
+body.quiz-on .site-links, body.comparing .site-links, :root[data-platform="native"] .site-links { display: none; }
+body .app-links:not(.inline) { bottom: 62px; }
+.noscript { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 60; width: min(560px, calc(100% - 32px)); padding: 20px 22px; border-radius: var(--radius); background: rgb(14, 16, 38); border: 1px solid var(--glass-border); font-size: 15px; line-height: 1.6; }
+.noscript a { color: var(--accent-2); }
 .brand-mark { width: 16px; height: 16px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #c8e6ff, #4f8dff 45%, #6a2bd8 100%); box-shadow: 0 0 12px rgba(120,140,255,0.6); }
 .credit { position: absolute; right: 110px; bottom: 18px; z-index: 10; font-size: 10.5px; color: rgba(255,255,255,0.36); pointer-events: none; }
 .loader { position: absolute; inset: 0; display: grid; place-content: center; justify-items: center; gap: 16px; z-index: 50; color: var(--muted); font-size: 13px; transition: opacity 0.6s ease; pointer-events: none; }
@@ -335,7 +355,7 @@ body.quiz-on .hint, body.quiz-on .top-left .view-caption span { display: none; }
 .lg-foot { display: flex; align-items: center; gap: 6px; font-size: 10.5px; color: var(--muted); margin-top: 4px; }
 .lg-nodata { width: 12px; height: 8px; border-radius: 2px; background: rgba(141,147,166,0.35); }
 body.quiz-on .legend, body.comparing .legend { display: none; }
-.clock { position: absolute; left: 186px; bottom: 20px; z-index: 10; font-size: 11px; color: rgba(255,255,255,0.42); pointer-events: none; font-variant-numeric: tabular-nums; }
+.clock { position: absolute; left: 186px; bottom: 39px; /* beside the brand, above .site-links */ z-index: 10; font-size: 11px; color: rgba(255,255,255,0.42); pointer-events: none; font-variant-numeric: tabular-nums; }
 
 /* ───────────── Popup additions ───────────── */
 .pop-stats em.rank { color: var(--accent-2); font-weight: 700; }
@@ -373,7 +393,11 @@ body.quiz-on .legend, body.comparing .legend { display: none; }
   .legend { bottom: 12px; width: calc(100% - 90px); left: 16px; transform: none; }
   .clock { display: none; }
   .qz-ask b { font-size: 22px; }
-  .brand { left: 14px; bottom: 14px; font-size: 13px; }
+  .brand { left: 14px; bottom: 32px; font-size: 13px; }
+  .site-links { left: 14px; bottom: 12px; gap: 0 10px; font-size: 11px; max-width: calc(100% - 120px); }
+  .site-links .sl-wide { display: none; }
+  body.card-open .site-links { display: none; }
+  body .app-links:not(.inline) { bottom: 54px; }
   .compare-pill { bottom: 58px; }
   body.comparing .hint { display: none; }
   .compare-bar { bottom: 8px; width: calc(100% - 16px); background: rgb(14, 16, 38); } /* solid: nothing reads through */
@@ -393,5 +417,13 @@ body.quiz-on .legend, body.comparing .legend { display: none; }
 :root[data-quality="low"] .view-switch, :root[data-quality="low"] .corner-btn, :root[data-quality="low"] .dock-btn:not(:hover):not(.on):not([aria-expanded="true"]) {
   background: rgba(14, 16, 38, 0.78);
 }
+
+/* ───────────── Click feedback ───────────── */
+.btn, .dock-btn, .corner-btn, .tag-btn, .pill-main, .pill-x, .chip, .pop-x, .vs-opt, .lb-shuffle { transition-property: background, border-color, color, box-shadow, scale; transition-duration: 0.18s; }
+.btn:active, .dock-btn:active, .corner-btn:active, .tag-btn:active, .pill-main:active, .pill-x:active, .chip:active, .pop-x:active, .vs-opt:active { scale: 0.94; transition-duration: 0.06s; }
+.tap-ripple { position: absolute; z-index: 24; width: 56px; height: 56px; margin: -28px 0 0 -28px; border-radius: 50%; pointer-events: none;
+  border: 1.5px solid rgba(255, 255, 255, 0.55); animation: tapRipple 0.5s cubic-bezier(0.2, 0.7, 0.3, 1) forwards; }
+.tap-ripple.strong { border-color: color-mix(in srgb, var(--accent-2) 80%, #fff); box-shadow: 0 0 18px rgba(185, 138, 255, 0.35); }
+@keyframes tapRipple { from { scale: 0.2; opacity: 0.9; } to { scale: 1.25; opacity: 0; } }
 
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; } }
