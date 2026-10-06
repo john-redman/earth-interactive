@@ -5,6 +5,8 @@ All notable changes to EarthInteractive are documented here.
 ## [Unreleased]
 
 ### Changed
+- **Same on phone and desktop**: phones now show all footer links (plus a *Data credits* link where desktop shows the credit line); the data legend and the game panel sit above the footer and corner buttons on both, so nothing overlaps.
+- Shared compare links read `?compare=FRA,BRA` instead of `FRA%2CBRA`.
 - **Solid countries**: fills are fully opaque (colour toned towards deep ocean blue), so the sea no longer shows through.
 - **No border flicker at the horizon**: border segments on the far side of the globe are discarded in the shader, like the fills; depth testing against the faceted ocean let them poke out near the edge.
 - **Softer wind** at the start of a fast spin: gentle low-pass, slow swell, lower level.
@@ -22,6 +24,7 @@ All notable changes to EarthInteractive are documented here.
 - The service worker no longer answers every navigation with the globe; text pages load from the network with an offline copy.
 
 ### Added
+- `tools/smoke.mjs` (`npm run smoke`): browser smoke test of the main flows on desktop and phone sizes.
 - **Findable on the web**: About, How to play, Why maps lie, Privacy, Terms and Contact pages; one generated page per country (~217) and 150 true-size comparison pages, each with its own facts, Mercator stretch and a link that opens the globe; A–Z and comparison indexes, sitemap, robots.txt and a helpful 404. Built at deploy time by `tools/build-pages.mjs` (`docs/seo.md`).
 - **Globe page SEO**: keyword title and description, `WebSite` + `WebApplication` structured data, a small link row under the brand, and a `<noscript>` summary.
 - **Analytics and tips, off until configured**: cookieless GoatCounter page and event counts (`js/analytics.js`), and a Ko-fi "Support" link; both are set in `tools/site.config.mjs`.

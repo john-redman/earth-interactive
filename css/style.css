@@ -231,6 +231,7 @@ body:not(.ready) .hint { opacity: 0; }
 /* Small text links under the brand (about, legal, country pages). Crawlable, out of the globe's way. */
 .site-links { position: absolute; left: 22px; bottom: 14px; z-index: 10; display: flex; flex-wrap: wrap; gap: 0 12px; font-size: 11.5px; line-height: 1.5; }
 .site-links a { color: rgba(255,255,255,0.56); text-decoration: none; transition: color 0.15s; }
+.site-links .sl-narrow { display: none; } /* phones: stands in for the credit line, which has no room there */
 .site-links a:hover { color: #fff; text-decoration: underline; text-underline-offset: 2px; }
 .site-links a:focus-visible { outline: 2px solid var(--accent-2); outline-offset: 2px; border-radius: 3px; }
 body.quiz-on .site-links, body.comparing .site-links, :root[data-platform="native"] .site-links { display: none; }
@@ -345,7 +346,7 @@ body.quiz-on .recenter { display: none; }
 body.quiz-on .hint, body.quiz-on .top-left .view-caption span { display: none; }
 
 /* ───────────── Data legend & live clock ───────────── */
-.legend { position: absolute; left: 50%; bottom: 22px; transform: translateX(-50%); z-index: 15; width: min(420px, calc(100% - 32px)); padding: 10px 14px 9px; border-radius: 16px;
+.legend { position: absolute; left: 50%; bottom: 64px; /* above the footer row, never over it */ transform: translateX(-50%); z-index: 15; width: min(420px, calc(100% - 32px)); padding: 10px 14px 9px; border-radius: 16px;
   background: var(--glass); border: 1px solid var(--glass-border); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); }
 .lg-title { font-size: 12.5px; font-weight: 800; margin-bottom: 6px; }
 .lg-ramp { display: flex; gap: 2px; }
@@ -378,7 +379,7 @@ body.quiz-on .legend, body.comparing .legend { display: none; }
   .vs-ico { width: 22px; height: 22px; }
   .view-caption span { display: none; }
   .pick-banner { top: auto; bottom: 20px; font-size: 12.5px; }
-  .hint { gap: 6px 10px; font-size: 11.5px; bottom: 60px; flex-wrap: wrap; justify-content: center; width: calc(100% - 110px); left: 16px; transform: none; white-space: nowrap; }
+  .hint { gap: 6px 10px; font-size: 11.5px; bottom: 88px; flex-wrap: wrap; justify-content: center; width: calc(100% - 110px); left: 16px; transform: none; white-space: nowrap; }
   .hint .hint-key { display: none; }
   body.quiz-on .dock, body.comparing .dock { display: none; }
   .credit { display: none; }
@@ -389,13 +390,13 @@ body.quiz-on .legend, body.comparing .legend { display: none; }
   .dock-btn { width: 44px; height: 44px; padding: 0; justify-content: center; }
   .dock-btn span, .dock-btn kbd { display: none; }
   .menu { top: auto; bottom: 0; right: calc(100% + 8px); }
-  .quiz { top: auto; bottom: 12px; }
-  .legend { bottom: 12px; width: calc(100% - 90px); left: 16px; transform: none; }
+  .quiz { top: auto; bottom: 76px; } /* above the brand and the corner buttons */
+  .legend { bottom: 76px; width: calc(100% - 90px); left: 16px; transform: none; }
   .clock { display: none; }
   .qz-ask b { font-size: 22px; }
-  .brand { left: 14px; bottom: 32px; font-size: 13px; }
-  .site-links { left: 14px; bottom: 12px; gap: 0 10px; font-size: 11px; max-width: calc(100% - 120px); }
-  .site-links .sl-wide { display: none; }
+  .brand { left: 14px; bottom: 50px; font-size: 13px; }
+  .site-links { left: 14px; bottom: 10px; gap: 0 10px; font-size: 11px; max-width: calc(100% - 112px); } /* same links as desktop, wrapped */
+  .site-links .sl-narrow { display: inline; }
   body.card-open .site-links { display: none; }
   body .app-links:not(.inline) { bottom: 54px; }
   .compare-pill { bottom: 58px; }

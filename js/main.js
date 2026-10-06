@@ -153,6 +153,7 @@ function closeCard() {
 function setParam(k, v) {
   const url = new URL(location.href);
   if (v == null) url.searchParams.delete(k); else url.searchParams.set(k, v);
+  url.search = url.searchParams.toString().replace(/%2C/gi, ','); // ?compare=FRA,BRA reads better when shared
   try { history.replaceState(null, '', url); } catch { /* sandboxed */ }
 }
 async function copyLink(o) {
@@ -170,6 +171,7 @@ function applyLens() {
   layer.setLens(lens ? o => lens.color(o) : null);
   SKY.uNight.value = lens ? 0 : 0.42;      // no night shading over data colours
   renderLegend(legendEl, lens);
+  document.body.classList.toggle('lens-on', !!lens);
   document.querySelector('[data-dock="lens"]').classList.toggle('on', !!lens);
   if (ui.popFor) ui.showPopup(ui.popFor, viewKey, extras(ui.popFor));
 }
@@ -415,6 +417,6 @@ requestAnimationFrame(() => setTimeout(async () => {
 window.EarthInteractive = {
   globe, layer, compare, ads, data, thrills, spin, quiz, search, native, sfx,
   setLens: k => { lensKey = LENSES[k] ? k : 'none'; applyLens(); },
-  setView: k => { ui.setViewSilently(k); switchView(k); },
+  setView: k => { if (!data.views[k]) return false; ui.setViewSilently(k); switchView(k); return true; },
   compareKeys: (a, b) => { const A = layer.get(a), B = layer.get(b); if (!A || !B) return false; closePopup(); cancelPick(); mode = 'compare'; compare.start(A, B); return true; },
 };
