@@ -5,6 +5,9 @@ All notable changes to EarthInteractive are documented here.
 ## [Unreleased]
 
 ### Changed
+- **Compare**: the first country lifts out (with its click) as soon as you press Compare, and you can drag it around while choosing the second; cancelling sinks it back.
+- **Pin drop**: just the plop, landing exactly when the pin hits the globe (shorter drop with a small settle bounce); the extra tones are gone.
+- **Rollercoaster**: only the recorded crowd now (no synthesised voices or fly-by screams), played without 3D panning or pitch drift.
 - **Game answers stand out**: the correct country lifts off the globe with a thick white border and bright light running round its outline. Guesses are two-step: a tap drops the pin with *Confirm* / *Not here*.
 - **Selected country lifts** with a soft white glow.
 - **Disputed areas** get a light dashed border and stripes in different directions per piece; white countries get a softer edge.

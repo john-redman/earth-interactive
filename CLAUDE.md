@@ -53,12 +53,18 @@ Unit keys are Natural Earth `ADM0_A3` codes (e.g. `FRA`), or `X_<SLUG>` for disp
 - **LineMaterial resolution** is in CSS pixels (`layer.resizeLines()` on resize); extra line materials must be registered.
 - **Rotation is owned by `js/spin.js`**, not OrbitControls (`enableRotate = false`). OrbitControls still does zoom and idle auto-rotate. Pointer-down stops the spin immediately; release velocity becomes momentum. Idle auto-rotate restarts 12 s after the last interaction unless something holds it (`globe.hold('card', true)` while a country card is open; `globe.lockAuto` during compare). `globe.flyHome()` + `globe.resumeAuto()` power the recenter button.
 - **Click vs drag**: a click is < 6 px movement and < 650 ms; anything else is a spin. Keep this — it's a core UX promise.
-- **Audio** must be unlocked from a pointer gesture (`thrills.unlock()`); the crowd, dread bed and fly-by screams are rendered once in an `OfflineAudioContext` on first unlock (~2–4 s, async; fewer voices on the low tier). Recorded CC0 loops can be blended in via `THRILLS.samples` (add `sounds` to the Pages workflow copy line and `sw.js` CORE if you do). The context suspends after 3 s of silence.
+- **Audio** must be unlocked from a pointer gesture (`thrills.unlock()`). The screams are only the owner's recording (`THRILLS.samples`), played straight — no HRTF orbit or playback-rate changes (they made it wobble), no synthesised voices. The dread bed is rendered once in an `OfflineAudioContext`; soft wind is live noise. The context suspends after 3 s of silence.
+- **Pin drop sound**: `tap` is just the plop, scheduled at `PIN_LANDS` (0.16 s, the landing frame of `@keyframes pinDrop`) minus its 22 ms peak. Change both together.
+- **Compare pick**: pressing Compare calls `compare.preview(a)` — the first piece lifts out at once and can be dragged while choosing; `start(a, b)` reuses it. `end()` sinks it back; `flushEnd()` finishes a pending sink before anything new starts.
 - **Border views are editorial and politically sensitive.** Change `tools/views.config.mjs` only on explicit request, explain the change in the PR, and update `docs/border-views.md`.
 - `data/world.js` is ~1.1 MB and generated; CI fails if it is stale relative to the sources.
 - Quiz questions only use keys that are a `country` in **all three** views, so a game survives view switches.
 - **Text/SEO pages** (`docs/seo.md`): `about.html` … `contact.html` are hand-written; `countries/` (incl. `countries/region/`, `countries/ranking/`), `compare/`, `404.html`, `sitemap.xml`, `robots.txt`, `llms.txt` and the IndexNow key file are generated at deploy by `tools/build-pages.mjs _site` and never committed (`npm run build:pages` → `dist-pages/` to preview). Shared head/header/footer live in the script; after changing them run `node tools/build-pages.mjs --sync`. Config is `tools/site.config.mjs`; its `url` must equal `SITE_URL` in `js/site.js` and `goatcounter` must equal `GOATCOUNTER_CODE` in `js/analytics.js` (the build fails otherwise). Slugs are public URLs — don't rename them.
 - **Service worker navigation**: only the scope root / `index.html` is mapped to the cached globe; every other navigation is network-first with a cached fallback. Never map all navigations to `./` again — it would serve the globe for `/countries/...`.
+
+## Workflow
+
+Owner's standing instruction: after finishing a change, open a PR, wait for CI, **merge it to `main` and confirm the Pages deploy** — unless told otherwise in that request.
 
 ## Testing
 

@@ -105,11 +105,35 @@ export class Compare {
     return { M, a: at(thA), b: at(thB), half };
   }
 
+  /** Finish a sink-back animation now (before starting something new on top of it). */
+  flushEnd() { if (this.pendingCleanup) { const c = this.pendingCleanup; this.pendingCleanup = null; this.anim = null; c(); } }
+
+  /** Colour of the first piece (the second avoids it). */
+  hexFor(a) { return a.unit.c === 0 ? PALETTE[1] : PALETTE[a.unit.c] || PALETTE[1]; }
+
+  /**
+   * The first country of a comparison lifts out as soon as Compare is pressed, and can be dragged around
+   * while the second is chosen. start() then reuses this piece.
+   */
+  preview(a) {
+    this.flushEnd();
+    if (this.active || this.previewPiece) this.end(true);
+    const ext = this.extent(this.shapeFor(a));
+    const lift = THREE.MathUtils.clamp((ext.xmax - ext.xmin) * 2 * 0.022, 0.0025, 0.028);
+    const p = this.makePiece(a, this.hexFor(a), lift);
+    this.pieces = [p]; this.previewPiece = p;
+    this.layer.setSelected(null); this.layer.setHover(null); this.layer.setSockets([a.key]);
+    this.globe.lockAuto = true; this.globe.controls.autoRotate = false;
+    const t0 = performance.now();
+    this.anim = now => { const k = Math.min(1, (now - t0) / 420); this.place(p, p.center, p.lift * ease(k)); if (k >= 1) this.anim = null; };
+  }
+
   start(a, b) {
-    if (this.active) this.end(true);
+    this.flushEnd();
+    const kept = this.previewPiece?.o === a ? this.previewPiece : null;
+    if (kept) { this.previewPiece = null; this.pieces = []; } else if (this.active || this.previewPiece) this.end(true);
     this.active = true;
-    let hexA = PALETTE[a.unit.c] || PALETTE[1], hexB = PALETTE[b.unit.c] || PALETTE[3];
-    if (a.unit.c === 0) hexA = PALETTE[1];
+    let hexA = kept ? kept.hex : this.hexFor(a), hexB = PALETTE[b.unit.c] || PALETTE[3];
     if (hexB === hexA || b.unit.c === 0) hexB = hexA === PALETTE[4] ? PALETTE[3] : PALETTE[4];
     this.layer.setSelected(null); this.layer.setHover(null);
     this.layer.setDim([]); this.layer.setSockets([a.key, b.key]);
@@ -117,7 +141,7 @@ export class Compare {
     const tmp = [this.extent(this.shapeFor(a)), this.extent(this.shapeFor(b))];
     const span = Math.max(tmp[0].xmax - tmp[0].xmin + tmp[1].xmax - tmp[1].xmin, 0.02);
     const lift = THREE.MathUtils.clamp(span * 0.022, 0.0025, 0.028);
-    this.pieces = [this.makePiece(a, hexA, lift), this.makePiece(b, hexB, lift)];
+    this.pieces = [kept ? Object.assign(kept, { lift }) : this.makePiece(a, hexA, lift), this.makePiece(b, hexB, lift)];
     this.globe.lockAuto = true; this.globe.controls.autoRotate = false;
     this.animateTo(this.layout(), true);
     this.emit();
@@ -148,8 +172,9 @@ export class Compare {
   resetPositions() { if (this.active) this.animateTo(this.layout(), true); }
 
   end(immediate = false) {
-    if (!this.active) return;
-    const pieces = this.pieces; this.pieces = []; this.active = false; this.drag = null;
+    if (!this.active && !this.previewPiece) return;
+    this.flushEnd();
+    const pieces = this.pieces; this.pieces = []; this.active = false; this.drag = null; this.previewPiece = null;
     const cleanup = () => {
       for (const p of pieces) {
         this.globe.world.remove(p.group, p.shadowGroup);
@@ -161,6 +186,7 @@ export class Compare {
       this.globe.controls.minDistance = 1.25; this.globe.lockAuto = false;
     };
     if (immediate) { this.anim = null; cleanup(); this.emit(); return; }
+    this.pendingCleanup = cleanup;
     // fly home: pieces glide back into their sockets, then sink
     const t0 = performance.now(), from = pieces.map(p => p.center.clone()), l0 = pieces.map(p => p.liftNow);
     this.anim = now => {
@@ -170,7 +196,7 @@ export class Compare {
         const q = new THREE.Quaternion().setFromUnitVectors(from[i], p.shape.centroid);
         this.place(p, from[i].clone().applyQuaternion(new THREE.Quaternion().slerp(q, move)), l0[i] * (1 - sink));
       });
-      if (k >= 1) { this.anim = null; cleanup(); }
+      if (k >= 1) { this.anim = null; this.pendingCleanup = null; cleanup(); }
     };
     this.emit();
   }

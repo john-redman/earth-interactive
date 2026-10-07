@@ -1,11 +1,9 @@
-// Rollercoaster audio: flick the globe hard and a terrified crowd shrieks around you, circling in
-// the direction of the spin, over a dread bed (sub-bass throb, dissonant drone, distant groans)
-// that swells as the globe speeds up. Now and then one piercing scream flies past your head.
+// Rollercoaster audio: flick the globe hard and a recorded crowd screams in panic, over a dread bed
+// (sub-bass throb, dissonant drone, distant groans) and soft rushing air that swell as the globe speeds up.
 // Grab the globe (or let it slow down) and it all fades away.
 //
-// Everything is rendered once with the Web Audio API when sound first unlocks (OfflineAudioContext),
-// then looped and steered in 3D (HRTF panning) while the globe spins — so the live graph stays tiny.
-// Recorded loops listed in THRILLS.samples are blended in on top of the synthesised crowd.
+// The screams are only the recording(s) in THRILLS.samples, played straight (no 3D panning or pitch
+// changes). The dread bed is rendered once when sound first unlocks (OfflineAudioContext).
 import * as THREE from 'three';
 
 export const THRILLS = {
@@ -13,18 +11,14 @@ export const THRILLS = {
   screamFrom: 7,        // rad/s where it starts to rise
   windFrom: 2.5,        // rad/s where the rushing air and the dread start
   volume: 0.7,
-  orbit: 0.3,           // how fast the crowd circles your head relative to the globe's spin
   dread: 0.55,          // level of the low drone / groan bed at full speed
-  shriek: 0.8,          // level of the single fly-by screams
-  shriekEvery: [2.4, 5.5], // seconds between fly-by screams while the crowd is screaming
-  samples: ['sounds/crowd-panic.mp3'], // recorded crowd (seamless loop) leads; the synthesised crowd sits underneath
-  sampleMix: 1,         // level of each recorded loop (the synthesised groups drop to 0.6 alongside them)
+  samples: ['sounds/crowd-panic.mp3'], // the screams: recorded crowd, seamless loop
+  sampleMix: 1,         // level of each recorded loop
 };
 
 const rnd = (a, b) => a + Math.random() * (b - a);
 const pick = a => a[Math.floor(Math.random() * a.length)];
 const smooth = (a, b, x) => { const t = THREE.MathUtils.clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
-const lowTier = () => typeof document !== 'undefined' && document.documentElement.dataset.quality === 'low';
 
 function noiseBuffer(ctx, secs = 2) {
   const b = ctx.createBuffer(1, Math.floor(ctx.sampleRate * secs), ctx.sampleRate);
@@ -140,30 +134,6 @@ function voice(ctx, out, S, p) {
 
 const pitch = (base, semis) => base * Math.pow(2, (semis + rnd(-0.15, 0.15)) / 12);
 
-/** A shriek of fear: high, strained, cracking, then sagging away. */
-function shriekParams(t0, base = 880) {
-  const near = Math.random() < 0.2;
-  return {
-    t0, dur: rnd(1.2, 2.6), f0: pitch(base, pick(CLUSTER)) * pick([1, 1, 0.75]),
-    vowel: 'ah', tract: rnd(0.95, 1.12),
-    contour: [[0, 0.78], [rnd(0.06, 0.14), rnd(1.04, 1.12)], [0.55, rnd(0.94, 1.02)], [1, rnd(0.55, 0.7)]],
-    jitter: rnd(1.6, 2.6), sub: rnd(0.12, 0.35), breath: rnd(0.45, 0.9),
-    rough: rnd(70, 140), roughDepth: rnd(0.3, 0.5), trem: rnd(0.15, 0.4), tremRate: rnd(5.5, 9),
-    attack: rnd(0.03, 0.09), level: near ? rnd(0.75, 0.95) : rnd(0.3, 0.6),
-    pan: rnd(-0.85, 0.85), cutoff: near ? rnd(5000, 7500) : rnd(2400, 4200),
-  };
-}
-/** A wail: lower, longer, shaking and sliding down — despair rather than surprise. */
-function wailParams(t0, base = 440) {
-  return {
-    t0, dur: rnd(2.2, 3.8), f0: pitch(base, pick(CLUSTER)),
-    vowel: 'aw', tract: rnd(0.9, 1.05),
-    contour: [[0, 0.88], [0.22, rnd(1.0, 1.06)], [0.7, rnd(0.86, 0.93)], [1, rnd(0.6, 0.72)]],
-    jitter: rnd(1, 1.6), sub: rnd(0, 0.15), breath: rnd(0.35, 0.6), vib: rnd(4.5, 6.5), vibDepth: rnd(0.02, 0.04),
-    rough: rnd(55, 90), roughDepth: rnd(0.15, 0.3), trem: rnd(0.3, 0.55), tremRate: rnd(4, 6.5),
-    attack: rnd(0.25, 0.6), level: rnd(0.3, 0.55), pan: rnd(-0.9, 0.9), cutoff: rnd(1800, 3200),
-  };
-}
 /** A distant groan: low, muffled, far off in the dark. */
 function groanParams(t0, base = 110) {
   return {
@@ -186,26 +156,6 @@ function withReverb(ctx, bus, wetLevel, secs) {
   const rev = ctx.createConvolver(); rev.buffer = reverbIR(ctx, secs);
   const wet = ctx.createGain(); wet.gain.value = wetLevel;
   bus.connect(rev).connect(wet).connect(ctx.destination);
-}
-
-/** Render a seamless loop of a terrified crowd. */
-export async function renderCrowdLoop(sampleRate, { secs = 7, shrieks = 13, wails = 9, groans = 3 } = {}) {
-  const tail = 4 + 3.2; // longest voice + reverb tail, folded back onto the start
-  const { ctx, S, bus } = offline(secs + tail, sampleRate);
-  withReverb(ctx, bus, 0.5, 3.2);
-  const root = rnd(0.94, 1.06);           // each loop sits on a slightly different root
-  for (let i = 0; i < shrieks; i++) voice(ctx, bus, S, shriekParams(rnd(0, secs), 880 * root));
-  for (let i = 0; i < wails; i++) voice(ctx, bus, S, wailParams(rnd(0, secs), 440 * root));
-  for (let i = 0; i < groans; i++) { const p = groanParams(rnd(0, secs), 110 * root); p.level *= 0.6; voice(ctx, bus, S, p); }
-  const buf = await ctx.startRendering();
-  // fold everything past the loop end back to the start (seamless loop), then normalise
-  const L = Math.floor(sampleRate * secs);
-  const out = new AudioBuffer({ numberOfChannels: 2, length: L, sampleRate });
-  for (let c = 0; c < 2; c++) {
-    const src = buf.getChannelData(c), dst = out.getChannelData(c);
-    for (let i = 0; i < src.length; i++) dst[i % L] += src[i];
-  }
-  return peakNormalise(out, 0.9);
 }
 
 /** The dread bed: a throbbing sub, a grinding low drone, an eerie high cluster and far-off groans. */
@@ -249,55 +199,25 @@ export async function renderDreadLoop(sampleRate = 22050, { secs = 9, groans = 4
   return peakNormalise(crossfadeLoop(await ctx.startRendering(), secs, xf), 0.85);
 }
 
-/** One close, blood-curdling scream (with its own room), for the fly-bys. */
-export async function renderShriek(sampleRate) {
-  const dur = rnd(1.9, 2.7);
-  const { ctx, S, bus } = offline(dur + 2.4, sampleRate);
-  withReverb(ctx, bus, 0.28, 2.4);
-  const p = shriekParams(0.02, 880);
-  Object.assign(p, {
-    dur, f0: pitch(1100, pick([0, 1, 6])), level: 1, pan: 0, cutoff: 8500, attack: 0.03, tract: rnd(1.02, 1.12),
-    contour: [[0, 0.72], [0.07, 1.1], [0.35, 1.02], [0.75, 0.94], [1, 0.58]],
-    sub: rnd(0.25, 0.4), roughDepth: rnd(0.4, 0.55), trem: rnd(0.15, 0.25), tremRate: rnd(6.5, 8.5),
-  });
-  voice(ctx, bus, S, p);
-  voice(ctx, bus, S, { ...p, f0: p.f0 * 1.006, level: 0.45, sub: 0, breath: 0.3, cutoff: 6000 });  // doubled throat
-  return peakNormalise(await ctx.startRendering(), 0.9);
-}
-
-// ─────────────────────────────────────────────────────────────── the ride
-function setPos(P, t, x, y, z, tc = 0.03) {
-  if (P.positionX) { P.positionX.setTargetAtTime(x, t, tc); P.positionY.setTargetAtTime(y, t, tc); P.positionZ.setTargetAtTime(z, t, tc); }
-  else P.setPosition(x, y, z);
-}
 
 /** Works on a live AudioContext or an OfflineAudioContext (used for previews). */
 export class RideAudio {
   constructor(ctx, dest) {
     this.ctx = ctx; this.dest = dest; this.ready = false; this.sources = []; this.shrieks = [];
-    this.nextShriek = 0; this.si = 0;
   }
 
   async init(recorded = []) {
-    const ctx = this.ctx, low = lowTier();
-    const rate = Math.min(ctx.sampleRate, low ? 24000 : 32000);   // nothing above 8 kHz is needed
-    const synthCount = Math.max(1, 3 - recorded.length);
-    const crowd = low ? { shrieks: 9, wails: 6, groans: 2 } : {};
-    const [dread, shrieks, ...synth] = await Promise.all([
-      renderDreadLoop(22050),
-      Promise.all(Array.from({ length: low ? 2 : 3 }, () => renderShriek(rate))),
-      ...Array.from({ length: synthCount }, () => renderCrowdLoop(rate, crowd)),
-    ]);
-    this.shrieks = shrieks;
-    const loops = [...recorded.map(b => [b, THRILLS.sampleMix]), ...synth.map(b => [b, recorded.length ? 0.35 : 1])].slice(0, 4);
-    // groups of riders spread around you; they orbit as the globe spins
-    this.sources = loops.map(([buf, mix], i) => {
+    const ctx = this.ctx;
+    const dread = await renderDreadLoop(22050);
+    // the screams are the recorded crowd only, played straight (no synthesised voices, no 3D orbit or
+    // pitch drift: those made the recording wobble)
+    this.shrieks = [];
+    this.sources = recorded.map((buf, i) => {
       const s = ctx.createBufferSource(); s.buffer = buf; s.loop = true;
       const g = ctx.createGain(); g.gain.value = 0;
-      const p = ctx.createPanner(); p.panningModel = 'HRTF'; p.distanceModel = 'linear'; p.rolloffFactor = 0;
-      s.connect(g).connect(p).connect(this.dest);
-      s.start(ctx.currentTime, (i * buf.duration) / loops.length);
-      return { s, g, p, mix, offset: (i * 2 * Math.PI) / loops.length, phase: rnd(0, 10) };
+      s.connect(g).connect(this.dest);
+      s.start(ctx.currentTime, (i * buf.duration) / Math.max(1, recorded.length));
+      return { s, g, mix: THRILLS.sampleMix };
     });
     // dread bed: straight to the output (no panner), low-passed until the ride gets going
     {
@@ -319,46 +239,16 @@ export class RideAudio {
     this.ready = true;
   }
 
-  /** One scream that starts far off on one side, rushes past your head and away. */
-  flyBy(t) {
-    if (!this.shrieks.length) return;
-    const ctx = this.ctx, buf = this.shrieks[this.si++ % this.shrieks.length];
-    const s = ctx.createBufferSource(); s.buffer = buf;
-    const r = rnd(0.9, 1.06), dur = buf.duration / r;
-    s.playbackRate.setValueAtTime(r * 1.04, t); s.playbackRate.linearRampToValueAtTime(r * 0.95, t + dur * 0.55);  // doppler-ish
-    const g = ctx.createGain(); g.gain.value = THRILLS.shriek;
-    const P = ctx.createPanner(); P.panningModel = 'HRTF'; P.distanceModel = 'inverse'; P.refDistance = 1; P.rolloffFactor = 1.1;
-    const a = rnd(0, 2 * Math.PI), miss = rnd(0.5, 0.9), y = rnd(0, 0.8);
-    const x0 = Math.cos(a) * 5, z0 = Math.sin(a) * 5, x1 = -x0 - Math.sin(a) * miss * 2, z1 = -z0 + Math.cos(a) * miss * 2;
-    if (P.positionX) {
-      P.positionX.setValueAtTime(x0, t); P.positionX.linearRampToValueAtTime(x1, t + dur);
-      P.positionY.setValueAtTime(y, t); P.positionY.linearRampToValueAtTime(y * 0.3, t + dur);
-      P.positionZ.setValueAtTime(z0, t); P.positionZ.linearRampToValueAtTime(z1, t + dur);
-    } else P.setPosition(Math.sign(x0) * 1.2, y, -1);
-    s.connect(g).connect(P).connect(this.dest);
-    s.onended = () => { s.disconnect(); P.disconnect(); };
-    s.start(t);
-  }
-
   /** speed: momentum in rad/s · angle: total spin angle · t: AudioContext time */
   drive(t, speed, angle) {
     if (!this.ready) return;
     const x = smooth(THRILLS.screamFrom, THRILLS.screamSpeed, speed);   // 0…1 how much screaming
     const fade = 0.22;                                                // ~0.7 s fade in/out
-    this.sources.forEach((src, i) => {
-      const swell = 0.7 + 0.3 * Math.sin(t * 0.37 + src.phase) * Math.sin(t * 0.13 + src.phase * 2);
-      src.g.gain.setTargetAtTime(x * swell * src.mix * (i === 0 ? 1 : 0.85), t, fade);
-      src.s.playbackRate.setTargetAtTime(0.92 + 0.06 * x, t, 0.3);
-      const a = -angle * THRILLS.orbit + src.offset;
-      setPos(src.p, t, Math.sin(a) * 1.5, 0.4, -Math.cos(a) * 1.5);
-    });
+    for (const src of this.sources) src.g.gain.setTargetAtTime(x * src.mix, t, fade);
     // dread rises before the screams do, and opens up (brighter, louder) with speed
     const d = smooth(THRILLS.windFrom, THRILLS.screamSpeed, speed);
-    this.dread.g.gain.setTargetAtTime(THRILLS.dread * d * (0.85 + 0.15 * Math.sin(t * 0.5)), t, 0.35);
+    this.dread.g.gain.setTargetAtTime(THRILLS.dread * d, t, 0.35);
     this.dread.f.frequency.setTargetAtTime(150 + 2200 * d * d, t, 0.4);
-    // single blood-curdling screams: one as the crowd erupts, then every few seconds
-    if (x > 0.55 && t >= this.nextShriek) { this.flyBy(t + 0.02); this.nextShriek = t + rnd(...THRILLS.shriekEvery); }
-    else if (x < 0.05 && this.nextShriek > t + 1.5) this.nextShriek = t + 1.5;
     // eases in over a wide speed range and swells slowly, so a fast flick starts with a breath, not a blast
     const w = 0.12 * smooth(THRILLS.windFrom, THRILLS.windFrom + 16, speed);
     this.wind.forEach(({ f, g }, i) => {
