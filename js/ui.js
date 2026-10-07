@@ -29,7 +29,7 @@ const ICONS = {
 const SHORT = { un: 'UN', defacto: 'De facto', neutral: 'Neutral' };
 const KIND_LABEL = { country: 'Country', territory: 'Territory', limited: 'Limited recognition', breakaway: 'Breakaway region', disputed: 'Disputed area' };
 
-export function createUI({ data, initialView, onView, onCompareRequest, onCompareCancelPick, onCompareReset, onCompareEnd, onClosePopup, onNeighbour, onShare, onInfo, onSound }) {
+export function createUI({ data, initialView, onView, onCompareRequest, onCompareCancelPick, onCompareReset, onCompareEnd, onClosePopup, onNeighbour, onShare, onInfo, onSound, onCompareImage }) {
   // ---------- view switch ----------
   const vs = $('#view-switch');
   const order = ['un', 'defacto', 'neutral'];
@@ -91,6 +91,7 @@ export function createUI({ data, initialView, onView, onCompareRequest, onCompar
       </div>
       <div class="badges">${badges.join('')}</div>
       <dl class="pop-stats">${rows.map(([k, val]) => `<div><dt>${k}</dt><dd>${val}</dd></div>`).join('')}</dl>
+      ${extra.daily ? `<p class="pop-note pop-daily"><span>Country of the day</span>${extra.daily.map(esc).join(' ')}</p>` : ''}
       ${extra.lens ? `<p class="pop-lens"><span>${esc(extra.lens.label)}</span>${esc(extra.lens.text)}</p>` : ''}
       ${neighbours(extra.neighbours, i, u)}
       ${u.note ? `<p class="pop-note"><span>${esc(v.label)}</span>${esc(u.note)}</p>` : ''}
@@ -278,6 +279,7 @@ export function createUI({ data, initialView, onView, onCompareRequest, onCompar
         <span class="cmp-tip">Drag a piece to move it · drag the ocean to spin</span>
         <button class="btn small ghost" type="button" data-act="stats" aria-expanded="false" aria-controls="cmp-stats">Compare stats</button>
         <button class="btn small ghost" type="button" data-act="reset">Side by side</button>
+        <button class="btn small ghost" type="button" data-act="image" aria-label="Share image" title="A square image for social posts">${ICON_IMAGE}<span>Share image</span></button>
         <button class="btn small primary" type="button" data-act="done">Done</button>
       </div>`;
     if (!samePair) { pill.classList.remove('in'); void pill.offsetWidth; pill.classList.add('in'); }
@@ -285,6 +287,11 @@ export function createUI({ data, initialView, onView, onCompareRequest, onCompar
     $('.cmp-grab', bar).onclick = () => setCmpOpen(!cmpOpen);
     $('[data-act="stats"]', bar).onclick = () => setCmpOpen(!cmpOpen);
     $('[data-act="reset"]', bar).onclick = () => onCompareReset();
+    $('[data-act="image"]', bar).onclick = async e => {
+      const btn = e.currentTarget; if (btn.disabled) return;
+      btn.disabled = true; btn.querySelector('span').textContent = 'Making image…';
+      try { await onCompareImage?.(); } finally { btn.disabled = false; btn.querySelector('span').textContent = 'Share image'; }
+    };
     $('[data-act="done"]', bar).onclick = () => onCompareEnd();
   }
 
@@ -324,3 +331,4 @@ export function createUI({ data, initialView, onView, onCompareRequest, onCompar
 const ICON_LINK = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 14a4 4 0 005.7 0l3-3a4 4 0 00-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 00-5.7 0l-3 3a4 4 0 005.7 5.7l1-1"/></svg>';
 const ICON_INFO = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 11v5.5M12 7.6v.4"/></svg>';
 const ICON_COMPARE = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="7" width="8" height="10" rx="2"/><rect x="13" y="4" width="8" height="16" rx="2"/></svg>';
+const ICON_IMAGE = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="4.5" width="17" height="15" rx="2.5"/><circle cx="9" cy="10" r="1.8"/><path d="M20.5 16l-5-5-8 8.5"/></svg>';

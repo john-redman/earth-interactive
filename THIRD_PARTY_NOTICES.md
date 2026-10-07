@@ -36,9 +36,7 @@ retrieved October 2026. Source: [data.worldbank.org](https://data.worldbank.org)
 does not report separately (e.g. Taiwan, Somaliland, Northern Cyprus, Western Sahara, small territories)
 or where its figure is older. The year shown next to each value says which applies.
 
-**Audio**: All rollercoaster sounds (crowd, dread bed, fly-by screams, wind) are synthesised in the
-browser by `js/thrills.js`; no third-party recordings are bundled. Any recorded loop added under
-`sounds/` must be CC0 / public domain and listed here with title, author, URL and licence.
+**Audio**: the recorded files under `sounds/` are listed in the Audio section below.
 
 ---
 
@@ -61,6 +59,8 @@ Supplied by the owner as licence-free files (Pixabay Content License: free for c
 | `sounds/crowd-panic.mp3` | "Time traveling city crowd panic scream 1" (Pixabay #390796), trimmed into a seamless loop | Rollercoaster screams |
 | `sounds/swipe.mp3` | "Swipe" (u_nharq4usid, Pixabay #255512) | Cards opening (reversed when closing) |
 | `sounds/click.mp3` | "Click sound" (justsomesounds, Pixabay #432501) | Compare pieces snapping out (reversed when snapping back) |
+| `sounds/game-correct.mp3` | "Correct choice" (freesound_community, Pixabay #43861) | Right answer in the games |
+| `sounds/game-wrong.mp3` | "Error notification 08" (Universfield, Pixabay #206492) | Wrong answer in the games |
 | `sounds/celestial-drift.mp3` | "Celestial Drift" (lilliben, Pixabay #365162) | Optional background music |
 
-All other interface tones and the underlying ride atmosphere are synthesised in the browser.
+All other interface tones are synthesised in the browser.

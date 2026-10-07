@@ -23,7 +23,7 @@ const MODES = {
 const pointsFor = (km, hinted) => Math.round((hinted ? 500 : 1000) * Math.exp(-km / 1500));
 const square = pts => (pts >= 1000 ? 'perfect' : pts >= 500 ? 'close' : pts >= 100 ? 'near' : 'miss');
 
-export function createQuiz({ data, layer, globe, flyTo, onExit, onMode }) {
+export function createQuiz({ data, layer, globe, flyTo, onExit, onMode, onMiss, onResult }) {
   const el = document.getElementById('quiz');
   // countries that exist as a country in all three border views → questions work whatever view you're in
   const viewKeys = Object.values(data.views).map(v => new Map(v.units.map(u => [u.k, u])));
@@ -59,7 +59,7 @@ export function createQuiz({ data, layer, globe, flyTo, onExit, onMode }) {
   function total() { return S.results.reduce((s, r) => s + r.pts, 0); }
 
   function ask() {
-    S.hinted = false; S.answered = false; layer.clearMarks();
+    S.hinted = false; S.answered = false; layer.clearMarks(); onMiss?.(null);
     const t = target();
     const M = MODES[S.mode];
     el.innerHTML = `
@@ -103,10 +103,12 @@ export function createQuiz({ data, layer, globe, flyTo, onExit, onMode }) {
       if (o) layer.setMark(o.key, 'bad');
       layer.setMark(t.key, 'target');
       msg = km == null
-        ? `Here it is: <b>${esc(t.unit.n)}</b>, highlighted in yellow.`
-        : `<span class="qz-no">Not quite.</span> ${o ? `That's ${esc(o.unit.n)}. ` : ''}${esc(t.unit.n)} is about <b>${int.format(km)} km</b> away, in yellow. <b>+${pts}</b>`;
-      flyTo(t);
+        ? `Here it is: <b>${esc(t.unit.n)}</b>, outlined in white.`
+        : `<span class="qz-no">Not quite.</span> ${o ? `That's ${esc(o.unit.n)}. ` : ''}${esc(t.unit.n)} is about <b>${int.format(km)} km</b> away, where the line leads. <b>+${pts}</b>`;
+      if (point) onMiss?.(point, t.g.centroid, km); // a line from your guess to the answer
+      flyTo(t, point);
     }
+    if (o || point) onResult?.(pts >= 1000 || o?.key === t.key); // only for real guesses, not "Show me"
     S.results.push({ k: t.key, pts });
     el.querySelector('.qz-msg').innerHTML = msg;
     el.querySelector('.qz-score').textContent = int.format(total()) + ' pts';
@@ -125,7 +127,7 @@ export function createQuiz({ data, layer, globe, flyTo, onExit, onMode }) {
   }
 
   function finish() {
-    S.finished = true; layer.clearMarks();
+    S.finished = true; layer.clearMarks(); onMiss?.(null);
     if (S.mode === 'daily') store.set('ei-daily-' + S.day, { results: S.results, qs: S.qs });
     else { const best = store.get('ei-best') || 0; S.newBest = total() > best; if (S.newBest) store.set('ei-best', total()); }
     S.ms = Math.round(performance.now() - S.t0); S.fresh = true; // a just-finished game posts its score once
@@ -164,14 +166,14 @@ export function createQuiz({ data, layer, globe, flyTo, onExit, onMode }) {
     };
     const again = el.querySelector('[data-a="again"], [data-a="classic"]');
     again.onclick = () => start('classic');
-    el.querySelectorAll('.qz-review button').forEach(b => (b.onclick = () => { const o = layer.get(b.dataset.k); if (o) { layer.clearMarks(); layer.setMark(o.key, 'target'); flyTo(o); } }));
+    el.querySelectorAll('.qz-review button').forEach(b => (b.onclick = () => { const o = layer.get(b.dataset.k); if (o) { layer.clearMarks(); onMiss?.(null); layer.setMark(o.key, 'target'); flyTo(o); } }));
     // leaderboard (stays hidden until a backend is configured in js/net/api.js)
     const board = createLeaderboard({ container: el.querySelector('.qz-board') });
     if (S.fresh) { S.fresh = false; board.submit({ game: S.mode, period: S.day, score: total(), details: { rounds: S.results }, durationMs: S.ms }); }
     else board.render(S.mode, S.day);
   }
 
-  function exit() { S = null; el.hidden = true; layer.clearMarks(); onMode(false); onExit?.(); }
+  function exit() { S = null; el.hidden = true; layer.clearMarks(); onMiss?.(null); onMode(false); onExit?.(); }
 
   return {
     start, answer, exit, next,

@@ -8,11 +8,11 @@ Static site, no bundler. `index.html` loads `js/main.js` as an ES module; an imp
 | Module | Responsibility | Key exports |
 |---|---|---|
 | `main.js` | App state machine (`browse`, `pick`, `compare`, `quiz`), pointer & keyboard routing, deep links, render loop | `window.EarthInteractive` (debug API) |
-| `globe.js` | Renderer, camera, OrbitControls (zoom + idle auto-rotate), ocean shader, atmosphere, stars, `fit()` sizing, `flyTo()` | `createGlobe`, `tickGlobe`, `LIGHT_DIR_VIEW` |
+| `globe.js` | Renderer, camera, OrbitControls (pinch zoom only), eased `zoomBy()`, idle auto-rotate flag, ocean shader, atmosphere, twinkling stars, `fit()` sizing, `flyTo()` | `createGlobe`, `tickGlobe`, `LIGHT_DIR_VIEW`, `PINCH_MS` |
 | `geo.js` | lon/lat ⇄ unit sphere, triangulation on the sphere, border segments, walls, centroids, ray–sphere, point-in-polygon | many helpers |
 | `countries.js` | Builds per-view fill meshes + border lines, palette, style states (hover, selected, dim, sockets, lens, quiz marks), picking grid | `CountryLayer`, `PALETTE`, `fillMaterial`, `lineMaterial` |
 | `compare.js` | True-size compare: main-landmass extraction, pop-out pieces (top, walls, rim, shadow), side-by-side layout, dragging | `Compare` |
-| `spin.js` | Flywheel rotation of the camera around the globe | `Spin`, `SPIN` |
+| `spin.js` | Flywheel rotation of the camera around the globe, plus the eased idle auto-rotate | `Spin`, `SPIN` |
 | `thrills.js` | Rollercoaster audio: the recorded crowd loop, faded by spin speed | `Thrills`, `RideAudio`, `THRILLS` |
 | `sun.js` | Sub-solar point → shared `uSun` / `uNight` uniforms | `SKY`, `updateSun`, `subsolarPoint` |
 | `lens.js` | Quantile choropleths + legend | `LENSES`, `buildLens`, `renderLegend` |
@@ -22,6 +22,10 @@ Static site, no bundler. `index.html` loads `js/main.js` as an ES module; an imp
 | `ads.js` | Side banners (≥ 1100 px) or one bottom banner (narrower screens), sizing | `ADS`, `mountAds` |
 | `pin.js` | 3D map pin for the selected country (drop-in animation, constant on-screen size, leans to screen-up) | `Pin` |
 | `load.js` | Streams `data/world.js` with loader progress, then evaluates it via a blob `import()` | `loadWorld`, `setLoader` |
+| `miss-line.js` | Games: arc from a wrong guess to the answer, drawn in, with a distance label | `MissLine` |
+| `daily-country.js` | Country of the day (seeded by local date), its facts, the top chip | `countryOfTheDay`, `factsFor`, `mountDailyChip` |
+| `share-image.js` | Compare → 1080² share image (equal-area silhouettes on a 2D canvas), share sheet or download | `renderCompareImage`, `shareCompareImage` |
+| `sfx.js` | UI sounds: synthesised tones + recorded samples (`sounds/`), delegated button sounds | `createSfx` |
 | `flags.js` | Flag `<img>` markup from `vendor/flags/` with emoji fallback | `flagImg` |
 | `perf.js` | Device quality tier (`low` on touch/weak devices; `?quality=low\|high` overrides) and the resolution governor that lowers the pixel ratio when frames run long | `TIER`, `QUALITY`, `ResolutionGovernor` |
 

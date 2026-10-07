@@ -1,11 +1,11 @@
 // Soft interface sounds: muted wooden knocks and low marimba/bell tones (synthesised), plus short recorded
 // effects for the airy parts: a swipe when a panel opens (played backwards when it closes), a plop when the pin
-// drops and a click when compare pieces snap out (backwards when they snap back). Quiet, and silenced by the
+// drops, a click when compare pieces snap out (backwards when they snap back) and right/wrong chimes in games. Quiet, and silenced by the
 // same mute button as the ride audio.
 const VOLUME = 0.22;
 // the pin falls for 0.16 s (css/style.css @keyframes pinDrop); the plop's peak is 22 ms into the file
 const PIN_LANDS = matchMedia('(prefers-reduced-motion: reduce)').matches ? 0.02 : 0.16, PLOP_PEAK = 0.022;
-const FILES = { swipe: 'sounds/swipe.mp3', plop: 'sounds/pin-drop.mp3', click: 'sounds/click.mp3' };
+const FILES = { swipe: 'sounds/swipe.mp3', plop: 'sounds/pin-drop.mp3', click: 'sounds/click.mp3', correct: 'sounds/game-correct.mp3', wrong: 'sounds/game-wrong.mp3' };
 
 let ctx = null, out = null, noise = null;
 const buf = {}; // decoded samples, plus reversed copies (swipeRev, clickRev)
@@ -78,6 +78,9 @@ const SOUNDS = {
   // compare pieces snap out of the globe / settle back into their sockets
   snapOut(t) { sample(t, 'click', 1); },
   snapIn(t) { sample(t, 'clickRev', 1); },
+  // games: a confirmed answer was right / wrong
+  correct(t) { sample(t, 'correct', 1); },
+  wrong(t) { sample(t, 'wrong', 1); },
   // any other button: a quiet tick
   tick(t) { tone(t, 420, { dur: 0.07, gain: 0.22, type: 'triangle', glide: 0.8 }); whoosh(t, { from: 1800, to: 3000, dur: 0.05, gain: 0.05, q: 2 }); },
 };
@@ -105,6 +108,7 @@ export function createSfx({ muted }) {
     ['.pop-x:not(.pop-link), .pill-x, [data-act="done"], .qz-x', 'close'],
     ['[data-act="compare"]', null],         // the piece's snap-out click is its sound (a dedicated one comes later)
     ['#sound-toggle', null],                // the mute button speaks for itself
+    ['[data-act="guess-yes"]', null],       // the right/wrong chime answers it
   ];
   document.addEventListener('click', e => {
     const el = e.target.closest?.('button, a.btn, .chip');

@@ -57,6 +57,12 @@ Unit keys are Natural Earth `ADM0_A3` codes (e.g. `FRA`), or `X_<SLUG>` for disp
 - **Compare has no sound of its own** on pressing Compare (the owner disliked the bell; a recorded one will come) — only the piece's snap-out click.
 - **Pin drop sound**: `tap` is just the plop, scheduled at `PIN_LANDS` (0.16 s, the landing frame of `@keyframes pinDrop`) minus its 22 ms peak. Change both together.
 - **Compare pick**: pressing Compare calls `compare.preview(a)` — the first piece lifts out at once and can be dragged while choosing; `start(a, b)` reuses it. `end()` sinks it back; `flushEnd()` finishes a pending sink before anything new starts.
+- **Stars** (`stars()` in `globe.js`) are spread over the whole sky, but the 35° camera sees only ~5% of it: the counts in `perf.js` (2600 / 3800) give roughly 150 on screen. Normal blending with alpha falloff, never additive (the canvas is transparent and additive paints dark squares).
+- **Day & night switch** (`#daynight-toggle`, `ei-daynight` in localStorage, on by default): `tickNight()` eases `SKY.uNight` to 0.42 or 0 (always 0 under a data lens). Don't set `uNight` directly elsewhere.
+- **Games**: a wrong guess draws `MissLine` (guess → answer centroid, the same points the km figure uses) and `flyToBoth()` frames both; `onMiss(null)` clears it on next/finish/exit. Right/wrong chimes (`sounds/game-correct.mp3`, `game-wrong.mp3`) play only for real guesses, not "Show me".
+- **Country of the day** (`js/daily-country.js`): same seed scheme as the Daily Challenge (local date) with its own salt; only countries in all three views. Chip shows once a day until opened or dismissed (`ei-cotd-seen`); also in the Play menu. Its facts appear as a note in that country's card.
+- **Compare share image** (`js/share-image.js`): drawn on a 2D canvas with a Lambert equal-area projection per country at one shared km scale, so sizes stay true. Flags are fetched as SVG text and given a width/height before `drawImage`.
+- **Phone footer**: `--links-h` (a ResizeObserver on `.site-links`) lifts the brand, quiz and legend above however many lines the links wrap to.
 - **Border views are editorial and politically sensitive.** Change `tools/views.config.mjs` only on explicit request, explain the change in the PR, and update `docs/border-views.md`.
 - `data/world.js` is ~1.1 MB and generated; CI fails if it is stale relative to the sources.
 - Quiz questions only use keys that are a `country` in **all three** views, so a game survives view switches.
