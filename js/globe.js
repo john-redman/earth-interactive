@@ -34,10 +34,26 @@ float snoise(vec3 v){
   return 42.0*dot(m*m,vec4(dot(p0,x0),dot(p1,x1),dot(p2,x2),dot(p3,x3)));
 }`;
 
+/**
+ * The baked ocean map (tools/build-ocean.mjs): R closeness to the coast, G storminess, B land. Until it arrives
+ * the shader sees a calm open sea.
+ */
+function oceanMap() {
+  const empty = new THREE.DataTexture(new Uint8Array([0, 0, 0, 255]), 1, 1);
+  empty.needsUpdate = true;
+  const uniform = { value: empty };
+  new THREE.TextureLoader().load(new URL('../data/ocean.png', import.meta.url).href, t => {
+    t.colorSpace = THREE.NoColorSpace; t.wrapS = THREE.RepeatWrapping;
+    t.minFilter = t.magFilter = THREE.LinearFilter; t.generateMipmaps = false;
+    uniform.value = t;
+  });
+  return uniform;
+}
+
 function oceanMaterial() {
   return new THREE.ShaderMaterial({
     defines: { OCTAVES: QUALITY.oceanOctaves },
-    uniforms: { uTime: { value: 0 }, uLight: { value: LIGHT_DIR_VIEW }, uSun: SKY.uSun, uNight: SKY.uNight },
+    uniforms: { uTime: { value: 0 }, uLight: { value: LIGHT_DIR_VIEW }, uSun: SKY.uSun, uNight: SKY.uNight, uMap: oceanMap() },
     vertexShader: /* glsl */`
       varying vec3 vPos; varying vec3 vN; varying vec3 vView;
       void main(){
@@ -48,44 +64,76 @@ function oceanMaterial() {
         gl_Position = projectionMatrix * mv;
       }`,
     fragmentShader: /* glsl */`
-      uniform float uTime; uniform vec3 uLight; uniform vec3 uSun; uniform float uNight;
+      uniform float uTime; uniform vec3 uLight; uniform vec3 uSun; uniform float uNight; uniform sampler2D uMap;
       varying vec3 vPos; varying vec3 vN; varying vec3 vView;
       ${NOISE}
       void main(){
-        vec3 N = normalize(vN);
+        vec3 N = normalize(vN), P = normalize(vPos);
         float t = uTime;
-        // drifting swell layers + a fine ripple layer; the swells also warp each other so the sea churns
-        float n1 = snoise(vPos * 5.0 + vec3(t*0.060, t*0.036, -t*0.048));
-        float n2 = snoise(vPos * 13.0 + vec3(n1 * 0.35) + vec3(-t*0.13, t*0.09, t*0.11));
+        float lon = atan(P.x, P.z), lat = asin(clamp(P.y, -1.0, 1.0));
+        vec3 m = texture2D(uMap, vec2(lon / 6.2831853 + 0.5, lat / 3.1415927 + 0.5)).rgb;
+        float shelf = m.r, storm = m.g;
+        // slow, swirling water: large domain-warped noise (no repeating bands), finer ripples on top
+        float n1 = snoise(P * 3.2 + vec3(t * 0.010, -t * 0.007, t * 0.009));
+        float n2 = snoise(P * 10.0 + n1 * 0.7 + vec3(-t * 0.030, t * 0.022, t * 0.026));
         #if OCTAVES > 2
-        float n3 = snoise(vPos * 34.0 + vec3(n2 * 0.25) + vec3(t*0.26, -t*0.20, t*0.15));
+        float n3 = snoise(P * 46.0 + n2 * 0.5 + vec3(t * 0.11, -t * 0.08, t * 0.06));
         #else
-        float n3 = sin(dot(vPos, vec3(41.0, 23.0, 37.0)) + n2 * 4.0 + t * 1.3) * 0.5; // cheap ripple instead of a third noise lookup
+        float n3 = n2 * 0.6;
         #endif
-        // long rolling swell bands that travel across the ocean
-        float band = sin(dot(vPos, vec3(17.0, 6.0, 11.0)) * 1.6 + n1 * 3.0 - t * 0.9);
-        float waves = n1*0.45 + n2*0.30 + n3*0.15 + band*0.10;
-        vec3 Np = normalize(N + vec3(n2 + band * 0.3, n3, n1) * 0.11);
         float facing = clamp(dot(N, vView), 0.0, 1.0);
-        vec3 deep = vec3(0.020, 0.062, 0.150);
-        vec3 mid  = vec3(0.035, 0.150, 0.330);
-        vec3 col = mix(deep, mid, pow(facing, 1.6));
-        col += vec3(0.03, 0.08, 0.14) * waves;                 // swell tint
+        // realistic, muted palette: deep navy offshore, lighter teal over the coastal shallows
+        vec3 deep = vec3(0.016, 0.055, 0.135), mid = vec3(0.032, 0.130, 0.290);
+        vec3 col = mix(deep, mid, pow(facing, 1.5));
+        col *= 0.92 + 0.16 * (n1 * 0.6 + n2 * 0.4);
+        col = mix(col, vec3(0.045, 0.215, 0.27), pow(shelf, 1.7) * 0.6);
+        col = mix(col, col * vec3(0.86, 0.94, 1.0) + vec3(0.010, 0.016, 0.022), storm * 0.55); // rough water: greyer, choppier
+        vec3 Np = normalize(N + vec3(n2, n3, n1) * (0.05 + 0.06 * storm));
         float diff = clamp(dot(Np, uLight), 0.0, 1.0);
-        col *= 0.55 + 0.6 * diff;
-        vec3 H = normalize(uLight + vView);
-        float spec = pow(max(dot(Np, H), 0.0), 90.0);
-        col += vec3(0.55, 0.75, 1.0) * spec * 0.32;             // moving sun glint
-        float sparkle = smoothstep(0.5, 0.72, n3 * 0.6 + n2 * 0.4) * (0.06 + 0.04 * sin(t * 2.3 + n1 * 9.0)) * diff; // glittering crests
-        col += vec3(0.6, 0.85, 1.0) * sparkle;
-        // real-time day & night, with a faint warm band along the terminator
-        float sd = dot(normalize(vPos), uSun);
-        float day = smoothstep(-0.05, 0.10, sd);
-        vec3 lit = mix(col * vec3(0.22, 0.27, 0.45), col * 1.08, day);           // night sea: dark, moonlit
+        col *= 0.62 + 0.5 * diff;
+
+        // white crests where the sea is rough: wave fronts lying across the wind, travelling downwind, bent by the
+        // swell and broken into short segments that form and fade on their own. A finer set joins in when zoomed
+        // in close; each set fades out once it is too fine to draw. Only computed inside the storm areas.
+        float foam = 0.0;
+        if (storm > 0.03) {
+          vec3 E = vec3(cos(lon), 0.0, -sin(lon));                            // east, along the surface
+          float alat = abs(lat), dir = alat > 0.56 && alat < 1.15 ? 1.0 : -1.0; // westerlies blow east, trades west
+          float along = dot(P, E) * dir;
+          float broken = snoise(P * vec3(55.0, 70.0, 55.0) + vec3(t * 0.05, -t * 0.04, t * 0.12));
+          float amount = smoothstep(0.08, 0.7, storm);
+          // coarse fronts
+          float ph = along * 230.0 + n2 * 2.6 + n1 * 4.0 - t * 0.9;
+          float f = fract(ph / 6.2831853), fw = fwidth(ph) / 6.2831853 + 0.002;
+          float crest = smoothstep(0.80 - fw, 0.95, f) * (1.0 - smoothstep(0.96, 0.96 + fw * 2.0 + 0.02, f)); // sharp front, foam trailing behind
+          foam = crest * smoothstep(0.05, 0.5, broken) * smoothstep(0.28, 0.08, fw);
+          #if OCTAVES > 2
+          // fine fronts, only up close (not on the low tier)
+          float fade2 = smoothstep(0.12, 0.03, fw * 3.2);
+          if (fade2 > 0.01) {
+            float ph2 = along * 740.0 + n3 * 3.0 + n2 * 5.0 - t * 1.7;
+            float f2 = fract(ph2 / 6.2831853), fw2 = fwidth(ph2) / 6.2831853 + 0.002;
+            float crest2 = smoothstep(0.84 - fw2, 0.96, f2) * (1.0 - smoothstep(0.97, 0.99 + fw2, f2));
+            foam = max(foam, crest2 * smoothstep(0.25, 0.7, broken + n3 * 0.5) * fade2 * 0.75);
+          }
+          #endif
+          foam *= amount;
+        }
+        col = mix(col, vec3(0.78, 0.86, 0.94), foam * 0.6);
+
+        // day & night; the glint follows the real Sun while it is on
+        float sd = dot(P, uSun), day = smoothstep(-0.05, 0.10, sd);
+        vec3 sunV = normalize((viewMatrix * vec4(uSun, 0.0)).xyz);
+        vec3 L = normalize(mix(uLight, sunV, uNight * 0.85));
+        vec3 H = normalize(L + vView);
+        vec3 Ns = normalize(N + vec3(n1, n2 * 0.5, -n1) * 0.03);           // a calmer surface for the glint, so it isn't blotchy
+        float spec = pow(max(dot(Ns, H), 0.0), 140.0) * mix(1.0, day, uNight);
+        col += vec3(0.62, 0.78, 1.0) * spec * (0.2 + 0.16 * (1.0 - storm));
+        vec3 lit = mix(col * vec3(0.17, 0.21, 0.38), col * 1.1, day);            // night sea: dark, moonlit
         lit += vec3(1.0, 0.55, 0.25) * 0.06 * (1.0 - smoothstep(0.0, 0.09, abs(sd - 0.01))); // dusk glow
         col = mix(col, lit, uNight);
-        float rim = pow(1.0 - facing, 3.0);
-        col += vec3(0.20, 0.45, 1.0) * rim * 0.55;              // limb glow
+        float rim = pow(1.0 - facing, 3.0) * mix(1.0, 0.3 + 0.7 * day, uNight); // limb glow, dimmer on the night side
+        col += vec3(0.20, 0.45, 1.0) * rim * 0.5;
         gl_FragColor = vec4(col, 1.0);
       }`,
   });

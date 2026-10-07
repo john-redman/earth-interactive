@@ -12,7 +12,7 @@ Design brief: modern, minimal, globe fills the screen, no menus/tabs beyond the 
 ```bash
 npm run dev          # static server :5173 (no bundler, plain ES modules + importmap)
 npm install          # only for the data build (d3-geo, polygon-clipping)
-npm run build:data   # regenerate data/world.js — never hand-edit that file
+npm run build:data   # regenerate data/world.js and data/ocean.png — never hand-edit them
 npm run check        # module syntax + data consistency (same as CI)
 ```
 
@@ -21,7 +21,7 @@ npm run check        # module syntax + data consistency (same as CI)
 `index.html` holds every UI container and an importmap (`three` → `vendor/three/three.module.min.js`).
 `js/main.js` owns app state (`mode`: browse | pick | compare | quiz), pointer & keyboard routing, deep links and the render loop, and wires the modules together. See `docs/architecture.md` for the per-module map.
 
-Data flow: `tools/sources/*` + `tools/views.config.mjs` → `tools/build-data.mjs` → `data/world.js`
+Data flow: `tools/sources/*` + `tools/views.config.mjs` → `tools/build-data.mjs` → `data/world.js` (→ `tools/build-ocean.mjs` → `data/ocean.png`)
 (`{ views: { un|defacto|neutral: { units: [{k,g,n,t,c,note,area,mod}] } }, geoms: [delta-encoded multipolygons], info: {key: facts} }`).
 Unit keys are Natural Earth `ADM0_A3` codes (e.g. `FRA`), or `X_<SLUG>` for disputed overlays.
 
@@ -59,6 +59,7 @@ Unit keys are Natural Earth `ADM0_A3` codes (e.g. `FRA`), or `X_<SLUG>` for disp
 - **Compare has no sound of its own** on pressing Compare (the owner disliked the bell; a recorded one will come) — only the piece's snap-out click.
 - **Pin drop sound**: `tap` is just the plop, scheduled at `PIN_LANDS` (0.16 s, the landing frame of `@keyframes pinDrop`) minus its 22 ms peak. Change both together.
 - **Compare pick**: pressing Compare calls `compare.preview(a)` — the first piece lifts out at once and can be dragged while choosing; `start(a, b)` reuses it. `end()` sinks it back; `flushEnd()` finishes a pending sink before anything new starts.
+- **Ocean** (`oceanMaterial()` in `globe.js`): reads `data/ocean.png` (512×256, baked by `tools/build-ocean.mjs`, part of `npm run build:data`; R = closeness to coast → teal shallows, G = storminess → white crests, B = land). Storminess = a JONSWAP/Pierson–Moskowitz wave model on the climatological wind belts with fetch from the real coastline, shaped by published storm tracks and hotspots (hand-placed, cosmetic). Crests are wave fronts across the prevailing wind (westerlies 32–66°, else easterlies), travelling downwind, broken by noise, faded by `fwidth` when too fine; the finer close-up set and the third noise octave are high tier only. No stripes, no clouds (owner's choice). Glint follows the real Sun while day & night is on.
 - **Stars** (`stars()` in `globe.js`) are spread over the whole sky, but the 35° camera sees only ~5% of it: the counts in `perf.js` (2600 / 3800) give roughly 150 on screen. Normal blending with alpha falloff, never additive (the canvas is transparent and additive paints dark squares).
 - **Day & night switch** (`#daynight-toggle`, `ei-daynight` in localStorage, on by default): `tickNight()` eases `SKY.uNight` (a 0–1 strength) to 1 or 0 (always 0 under a data lens); the look of night (dark moonlit blue, sharp terminator, warm dusk line) lives in the ocean and fill shaders. Don't set `uNight` directly elsewhere.
 - **Games**: a wrong guess draws `MissLine` (guess → answer centroid, the same points the km figure uses) and `flyToBoth()` frames both; `onMiss(null)` clears it on next/finish/exit. Right/wrong chimes (`sounds/game-correct.mp3`, `game-wrong.mp3`) play only for real guesses, not "Show me".
