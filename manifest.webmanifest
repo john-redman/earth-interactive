@@ -9,6 +9,12 @@
   "background_color": "#03040b",
   "theme_color": "#03040b",
   "categories": ["education", "games", "reference"],
+  "shortcuts": [
+    { "name": "Daily Challenge", "short_name": "Daily", "description": "Today's five countries, the same for everyone", "url": "./?play=daily", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" }] },
+    { "name": "Find it game", "short_name": "Find it", "description": "Ten rounds, from big countries to small ones", "url": "./?play=classic", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" }] },
+    { "name": "Size comparisons", "short_name": "Compare", "description": "True size of countries side by side", "url": "./compare/", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" }] },
+    { "name": "All countries", "short_name": "Countries", "description": "Facts for every country, A to Z", "url": "./countries/", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" }] }
+  ],
   "icons": [
     { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
     { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" },

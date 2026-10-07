@@ -5,6 +5,13 @@ All notable changes to EarthInteractive are documented here.
 ## [Unreleased]
 
 ### Changed
+- **Game answers stand out**: the correct country lifts off the globe with a thick white border and bright light running round its outline. Guesses are two-step: a tap drops the pin with *Confirm* / *Not here*.
+- **Selected country lifts** with a soft white glow.
+- **Disputed areas** get a light dashed border and stripes in different directions per piece; white countries get a softer edge.
+- **Sound**: recorded swipe (cards open, reversed on close), pin-drop plop, compare click (reversed when pieces return) and a recorded panicking crowd for the rollercoaster, layered with the existing synthesised tones.
+- **Cards glide** in and out (sheet slides on phones, fade-rise on desktop) instead of popping.
+- **Spin** loses momentum a little faster while staying fluid.
+- **SEO**: region and ranking pages, question-style headings, regional breadcrumbs, official areas for small places, share links on compare pages, llms.txt, IndexNow, self-hosted font.
 - **Same on phone and desktop**: phones now show all footer links (plus a *Data credits* link where desktop shows the credit line); the data legend and the game panel sit above the footer and corner buttons on both, so nothing overlaps.
 - Shared compare links read `?compare=FRA,BRA` instead of `FRA%2CBRA`.
 - **Solid countries**: fills are fully opaque (colour toned towards deep ocean blue), so the sea no longer shows through.
@@ -24,6 +31,7 @@ All notable changes to EarthInteractive are documented here.
 - The service worker no longer answers every navigation with the globe; text pages load from the network with an offline copy.
 
 ### Added
+- **Background music** (*Celestial Drift*), off by default, with its own button.
 - `tools/smoke.mjs` (`npm run smoke`): browser smoke test of the main flows on desktop and phone sizes.
 - **Findable on the web**: About, How to play, Why maps lie, Privacy, Terms and Contact pages; one generated page per country (~217) and 150 true-size comparison pages, each with its own facts, Mercator stretch and a link that opens the globe; A–Z and comparison indexes, sitemap, robots.txt and a helpful 404. Built at deploy time by `tools/build-pages.mjs` (`docs/seo.md`).
 - **Globe page SEO**: keyword title and description, `WebSite` + `WebApplication` structured data, a small link row under the brand, and a `<noscript>` summary.

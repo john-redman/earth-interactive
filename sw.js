@@ -13,6 +13,8 @@ const CORE = [
   'js/spin.js', 'js/thrills.js', 'js/sun.js', 'js/lens.js', 'js/search.js', 'js/quiz.js', 'js/ui.js', 'js/ads.js', 'js/flags.js',
   'js/pin.js', 'js/leaderboard.js', 'js/net/api.js', 'js/net/profanity.js', 'js/net/names.js', 'js/sheet-drag.js', 'js/app-links.js', 'js/site.js', 'js/analytics.js',
   'css/leaderboard.css', 'css/app-links.css',
+  'vendor/fonts/plus-jakarta-sans/plus-jakarta-sans-latin.woff2', 'vendor/fonts/plus-jakarta-sans/plus-jakarta-sans-latin-ext.woff2',
+  'js/music.js',
   'data/world.js',
   'vendor/three/three.module.min.js', 'vendor/three/controls/OrbitControls.js',
   'vendor/three/lines/LineMaterial.js', 'vendor/three/lines/LineSegments2.js', 'vendor/three/lines/LineSegmentsGeometry.js',
@@ -36,6 +38,8 @@ self.addEventListener('fetch', e => {
   const url = new URL(req.url);
   const sameOrigin = url.origin === location.origin;
   if (!sameOrigin && !FONTS.test(req.url)) return; // ad networks, analytics etc. go straight to the network
+  // audio: media elements send Range requests, which the cache can't answer; sounds are fetched live
+  if (req.headers.has('range') || url.pathname.includes('/sounds/')) return;
   const scope = new URL(self.registration.scope).pathname;
   const isApp = url.pathname === scope || url.pathname === scope + 'index.html';
   if (req.mode === 'navigate' && !isApp) { e.respondWith(networkFirst(req)); return; }

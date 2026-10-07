@@ -6,9 +6,9 @@
 import * as THREE from 'three';
 
 export const SPIN = {
-  friction: 0.12,        // per second while spinning fast (lower = keeps momentum longer)
-  slowFriction: 1.1,     // per second below `slowBelow`, so a slow drift settles instead of crawling forever
-  slowBelow: 0.35,       // rad/s
+  friction: 0.26,        // per second while spinning fast (lower = keeps momentum longer); ~2.7 s half-life
+  slowFriction: 1.6,     // per second below `slowBelow`, so a slow drift settles instead of crawling forever
+  slowBelow: 0.5,        // rad/s
   maxSpeed: 24,          // rad/s
   tiltDamping: 6,        // up/down momentum fades quickly (the globe spins around its axis, like a real one)
 };

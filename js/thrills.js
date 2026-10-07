@@ -17,7 +17,7 @@ export const THRILLS = {
   dread: 0.55,          // level of the low drone / groan bed at full speed
   shriek: 0.8,          // level of the single fly-by screams
   shriekEvery: [2.4, 5.5], // seconds between fly-by screams while the crowd is screaming
-  samples: [],          // e.g. ['sounds/crowd-1.m4a'] — recorded loops, blended with the synthesised crowd
+  samples: ['sounds/crowd-panic.mp3'], // recorded crowd (seamless loop) leads; the synthesised crowd sits underneath
   sampleMix: 1,         // level of each recorded loop (the synthesised groups drop to 0.6 alongside them)
 };
 
@@ -289,7 +289,7 @@ export class RideAudio {
       ...Array.from({ length: synthCount }, () => renderCrowdLoop(rate, crowd)),
     ]);
     this.shrieks = shrieks;
-    const loops = [...recorded.map(b => [b, THRILLS.sampleMix]), ...synth.map(b => [b, recorded.length ? 0.6 : 1])].slice(0, 4);
+    const loops = [...recorded.map(b => [b, THRILLS.sampleMix]), ...synth.map(b => [b, recorded.length ? 0.35 : 1])].slice(0, 4);
     // groups of riders spread around you; they orbit as the globe spins
     this.sources = loops.map(([buf, mix], i) => {
       const s = ctx.createBufferSource(); s.buffer = buf; s.loop = true;

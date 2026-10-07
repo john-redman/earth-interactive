@@ -7,23 +7,26 @@
   <meta name="description" content="Why Greenland looks as big as Africa on most maps, how much the Mercator projection stretches each latitude, and how to see the true size of countries on a 3D globe.">
   <!--site:head-->
   <link rel="canonical" href="https://john-redman.github.io/earth-interactive/why-maps-lie.html">
+  <meta name="robots" content="max-image-preview:large">
   <meta name="theme-color" content="#03040b">
   <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
   <link rel="stylesheet" href="css/pages.css">
   <meta property="og:type" content="article">
   <meta property="og:site_name" content="EarthInteractive">
+  <meta property="og:locale" content="en_GB">
   <meta property="og:title" content="Why maps lie: the Mercator projection and the true size of countries | EarthInteractive">
   <meta property="og:description" content="Why Greenland looks as big as Africa on most maps, how much the Mercator projection stretches each latitude, and how to see the true size of countries on a 3D globe.">
   <meta property="og:url" content="https://john-redman.github.io/earth-interactive/why-maps-lie.html">
   <meta property="og:image" content="https://john-redman.github.io/earth-interactive/og-image.png">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="A 3D globe with colourful country borders over Africa and Europe">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="Why maps lie: the Mercator projection and the true size of countries | EarthInteractive">
   <meta name="twitter:description" content="Why Greenland looks as big as Africa on most maps, how much the Mercator projection stretches each latitude, and how to see the true size of countries on a 3D globe.">
   <meta name="twitter:image" content="https://john-redman.github.io/earth-interactive/og-image.png">
-  <script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"WebSite","@id":"https://john-redman.github.io/earth-interactive/#website","name":"EarthInteractive","url":"https://john-redman.github.io/earth-interactive/"},{"@type":"Article","@id":"https://john-redman.github.io/earth-interactive/why-maps-lie.html","url":"https://john-redman.github.io/earth-interactive/why-maps-lie.html","name":"Why maps lie: the Mercator projection and the true size of countries | EarthInteractive","description":"Why Greenland looks as big as Africa on most maps, how much the Mercator projection stretches each latitude, and how to see the true size of countries on a 3D globe.","isPartOf":{"@id":"https://john-redman.github.io/earth-interactive/#website"},"headline":"Why maps lie: the Mercator projection and the true size of countries","author":{"@type":"Person","name":"John Redman"},"dateModified":"2026-10-05","image":"https://john-redman.github.io/earth-interactive/og-image.png"}]}</script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"WebSite","@id":"https://john-redman.github.io/earth-interactive/#website","name":"EarthInteractive","url":"https://john-redman.github.io/earth-interactive/","inLanguage":"en","publisher":{"@type":"Person","name":"John Redman"}},{"@type":"Article","@id":"https://john-redman.github.io/earth-interactive/why-maps-lie.html","url":"https://john-redman.github.io/earth-interactive/why-maps-lie.html","name":"Why maps lie: the Mercator projection and the true size of countries | EarthInteractive","description":"Why Greenland looks as big as Africa on most maps, how much the Mercator projection stretches each latitude, and how to see the true size of countries on a 3D globe.","isPartOf":{"@id":"https://john-redman.github.io/earth-interactive/#website"},"headline":"Why maps lie: the Mercator projection and the true size of countries","author":{"@type":"Person","name":"John Redman"},"datePublished":"2026-10-05","dateModified":"2026-10-05","image":"https://john-redman.github.io/earth-interactive/og-image.png","inLanguage":"en"}]}</script>
   <!--/site:head-->
 </head>
 <body>
@@ -41,6 +44,7 @@
   <!--/site:header-->
   <main id="main" class="page prose">
     <h1>Why maps lie about the size of countries</h1>
+    <p class="updated">By John Redman · Updated <time data-site="modified" datetime="2026-10-05">5 October 2026</time></p>
     <p class="lede">On the map you grew up with, Greenland looks about as big as Africa. Africa is really about fourteen times larger. Here is why, and how to see the world at its true size.</p>
 
     <h2>You can't flatten an orange peel</h2>
@@ -71,11 +75,11 @@
 
     <h2>Famous illusions</h2>
     <ul>
-      <li><b>Greenland and Africa.</b> Greenland covers about 2.17 million km². Africa covers about 30.4 million km², fourteen times as much. On Mercator they look similar. <a href="./?compare=GRL,COD">Even DR Congo alone</a> (2.34 million km²) is bigger than Greenland, and so is <a href="./?compare=GRL,DZA">Algeria</a>.</li>
-      <li><b>Greenland and India.</b> India is about 1.5 times the size of Greenland, yet on most maps Greenland looks several times bigger. <a href="./?compare=GRL,IND">Compare them on the globe</a>.</li>
+      <li><b>Greenland and Africa.</b> Greenland covers about 2.17 million km². Africa covers about 30.4 million km², fourteen times as much. On Mercator they look similar. Even <a href="compare/greenland-vs-dr-congo/">DR Congo alone</a> (2.34 million km²) is bigger than Greenland, and so is <a href="compare/greenland-vs-algeria/">Algeria</a>.</li>
+      <li><b>Greenland and India.</b> India is about 1.5 times the size of Greenland, yet on most maps Greenland looks several times bigger. <a href="compare/greenland-vs-india/">Greenland vs India in numbers</a>, or <a href="./?compare=GRL,IND">compare them on the globe</a>.</li>
       <li><b>Russia and Africa.</b> Russia is the largest country on Earth at 17.1 million km², but Africa is still almost twice its size. On Mercator, Russia looks larger.</li>
-      <li><b>Australia.</b> Close to the equator, Australia looks modest on flat maps. At 7.7 million km² it is almost as big as the contiguous United States. <a href="./?compare=AUS,USA">See them side by side</a>.</li>
-      <li><b>The United Kingdom.</b> At around 54° north the UK is drawn about three times too big. Put it next to <a href="./?compare=GBR,USA">the United States</a> or <a href="./?compare=GBR,NGA">Nigeria</a> and it shrinks.</li>
+      <li><b>Australia.</b> Close to the equator, Australia looks modest on flat maps. At 7.7 million km² it is almost as big as the contiguous United States. <a href="compare/australia-vs-united-states/">Australia vs the United States</a>.</li>
+      <li><b>The United Kingdom.</b> At around 54° north the UK is drawn about three times too big. Put it next to <a href="compare/united-kingdom-vs-united-states/">the United States</a> or <a href="compare/united-kingdom-vs-nigeria/">Nigeria</a> and it shrinks.</li>
       <li><b>Scandinavia.</b> Norway, Sweden and Finland look huge on wall maps. Together they are smaller than <a href="./?compare=NOR,COD">DR Congo</a>.</li>
     </ul>
 
@@ -88,7 +92,7 @@
     <h2>The only honest map is a globe</h2>
     <p>A globe keeps areas, shapes, distances and directions right all at once. That is why EarthInteractive is a 3D globe. When you compare two countries, both are lifted off the surface at their true size and can be dragged anywhere, so you can lay the United Kingdom over the United States, or slide Greenland down to the equator and watch it stay the same size.</p>
     <p class="cta"><a class="btn" href="./?compare=GRL,COD">Compare Greenland and DR Congo on the globe</a></p>
-    <p>Or browse more: <a href="compare/greenland-vs-dr-congo/">Greenland vs DR Congo</a>, <a href="compare/russia-vs-canada/">Russia vs Canada</a>, <a href="compare/united-kingdom-vs-united-states/">United Kingdom vs United States</a>, and every <a href="compare/">size comparison</a>. Each country page also lists how much a Mercator map stretches that country.</p>
+    <p>Or browse more: <a href="compare/greenland-vs-dr-congo/">Greenland vs DR Congo</a>, <a href="compare/russia-vs-canada/">Russia vs Canada</a>, <a href="compare/united-kingdom-vs-united-states/">United Kingdom vs United States</a>, and every <a href="compare/">size comparison</a>. Each country page also lists how much a Mercator map stretches that country, and the <a href="countries/ranking/largest-countries/">list of the largest countries</a> shows the stretch for all of them side by side.</p>
 
     <h2>Try it yourself</h2>
     <ol>
