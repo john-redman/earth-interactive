@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>EarthInteractive: 3D globe, true size of countries compared</title>
   <meta name="description" content="Spin a true-to-scale 3D globe, compare the true size of countries side by side, explore facts about every country and play a daily geography game. Free, no sign-up.">
+  <meta name="robots" content="max-image-preview:large">
   <meta name="theme-color" content="#03040b">
   <link rel="canonical" href="https://john-redman.github.io/earth-interactive/">
   <link rel="manifest" href="manifest.webmanifest">
@@ -17,6 +18,7 @@
   <!-- link previews (Open Graph / X) -->
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="EarthInteractive">
+  <meta property="og:locale" content="en_GB">
   <meta property="og:title" content="EarthInteractive: spin the world, compare real country sizes">
   <meta property="og:description" content="A true-to-scale 3D globe. Tap any country for facts, see how big countries really are side by side, and play a daily geography challenge.">
   <meta property="og:url" content="https://john-redman.github.io/earth-interactive/">
@@ -29,14 +31,24 @@
   <meta name="twitter:description" content="A true-to-scale 3D globe. Tap any country for facts, compare real sizes, play a daily geography challenge.">
   <meta name="twitter:image" content="https://john-redman.github.io/earth-interactive/og-image.png">
   <script type="application/ld+json">{"@context":"https://schema.org","@graph":[
-    {"@type":"WebSite","@id":"https://john-redman.github.io/earth-interactive/#website","name":"EarthInteractive","url":"https://john-redman.github.io/earth-interactive/","description":"A true-to-scale 3D globe for comparing the real size of countries."},
-    {"@type":"WebApplication","@id":"https://john-redman.github.io/earth-interactive/#app","name":"EarthInteractive","url":"https://john-redman.github.io/earth-interactive/","applicationCategory":"EducationalApplication","applicationSubCategory":"Geography","operatingSystem":"Any (web browser)","browserRequirements":"Requires JavaScript and WebGL","isAccessibleForFree":true,"offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"image":"https://john-redman.github.io/earth-interactive/og-image.png","description":"Spin a true-to-scale 3D globe, compare the true size of countries side by side, explore country facts and play a daily geography game.","featureList":["True size country comparison","3D globe","Country facts","Three border views","Population, density and GDP maps","Daily geography challenge"],"isPartOf":{"@id":"https://john-redman.github.io/earth-interactive/#website"}}
+    {"@type":"WebSite","@id":"https://john-redman.github.io/earth-interactive/#website","name":"EarthInteractive","url":"https://john-redman.github.io/earth-interactive/","description":"A true-to-scale 3D globe for comparing the real size of countries.","inLanguage":"en","publisher":{"@type":"Person","name":"John Redman"}},
+    {"@type":"WebApplication","@id":"https://john-redman.github.io/earth-interactive/#app","name":"EarthInteractive","url":"https://john-redman.github.io/earth-interactive/","applicationCategory":"EducationalApplication","applicationSubCategory":"Geography","operatingSystem":"Any (web browser)","browserRequirements":"Requires JavaScript and WebGL","isAccessibleForFree":true,"offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"image":"https://john-redman.github.io/earth-interactive/og-image.png","description":"Spin a true-to-scale 3D globe, compare the true size of countries side by side, explore country facts and play a daily geography game.","featureList":["True size country comparison","3D globe","Country facts","Three border views","Population, density and GDP maps","Daily geography challenge","Find-the-country game"],"inLanguage":"en","author":{"@type":"Person","name":"John Redman"},"isPartOf":{"@id":"https://john-redman.github.io/earth-interactive/#website"}}
   ]}</script>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <!-- Plus Jakarta Sans, self-hosted variable font (OFL 1.1, vendor/fonts/plus-jakarta-sans/OFL.txt): no third-party request -->
+  <link rel="preload" href="vendor/fonts/plus-jakarta-sans/plus-jakarta-sans-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <style>
+    @font-face { font-family: 'Plus Jakarta Sans'; font-style: normal; font-weight: 400 800; font-display: swap;
+      src: url(vendor/fonts/plus-jakarta-sans/plus-jakarta-sans-latin-ext.woff2) format('woff2');
+      unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF; }
+    @font-face { font-family: 'Plus Jakarta Sans'; font-style: normal; font-weight: 400 800; font-display: swap;
+      src: url(vendor/fonts/plus-jakarta-sans/plus-jakarta-sans-latin.woff2) format('woff2');
+      unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+  </style>
   <link rel="stylesheet" href="css/style.css">
   <script type="importmap">{ "imports": { "three": "./vendor/three/three.module.min.js", "three/addons/": "./vendor/three/" } }</script>
+  <!-- start the big downloads in parallel with the module graph (js/load.js fetches data/world.js after every import) -->
+  <link rel="modulepreload" href="vendor/three/three.module.min.js">
+  <link rel="preload" href="data/world.js" as="fetch" crossorigin>
 </head>
 <body>
   <!--APP-->
@@ -84,7 +96,7 @@
 
     <h1 class="brand"><span class="brand-mark" aria-hidden="true"></span>EarthInteractive</h1>
     <nav class="site-links" aria-label="Site">
-      <a href="about.html">About</a><a href="how-to-play.html">How to play</a><a href="countries/">Countries</a><a class="sl-wide" href="compare/">Comparisons</a><a class="sl-wide" href="why-maps-lie.html">Why maps lie</a><a href="privacy.html">Privacy</a><a data-site="kofi" href="https://ko-fi.com/" hidden>Support</a>
+      <a href="about.html">About</a><a href="how-to-play.html">How to play</a><a href="countries/">Countries</a><a class="sl-wide" href="compare/"><span class="sl-long">Comparisons</span><span class="sl-short">Compare</span></a><a class="sl-wide" href="why-maps-lie.html">Why maps lie</a><a href="privacy.html">Privacy</a><a class="sl-narrow" href="about.html#credits">Credits</a><a data-site="kofi" href="https://ko-fi.com/" hidden>Support</a>
     </nav>
     <div id="app-links" hidden></div>
     <button id="recenter" class="corner-btn recenter" type="button" aria-label="Recenter globe" title="Recenter (R)">
@@ -92,6 +104,9 @@
     </button>
     <button id="sound-toggle" class="corner-btn sound-toggle" type="button" aria-pressed="true" aria-label="Sound">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path class="spk" d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path class="wave" d="M15.5 9a4 4 0 010 6M18 6.5a7.5 7.5 0 010 11"/><path class="cross" d="M16 9.5l5 5M21 9.5l-5 5"/></svg>
+    </button>
+    <button id="music-toggle" class="corner-btn music-toggle" type="button" aria-pressed="false" aria-label="Music">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 17.5V6.5l10-2v11"/><circle cx="6.5" cy="17.5" r="2.5"/><circle cx="16.5" cy="15.5" r="2.5"/><path class="cross" d="M3.5 3.5l17 17"/></svg>
     </button>
     <div class="credit">Borders: Natural Earth · Data: Natural Earth, mledoze/countries, World Bank</div>
 

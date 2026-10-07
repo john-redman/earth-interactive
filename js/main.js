@@ -15,6 +15,7 @@ import { createQuiz } from './quiz.js';
 import { shareBase } from './site.js';
 import { Pin } from './pin.js';
 import { createSfx } from './sfx.js';
+import { createMusic } from './music.js';
 import { track } from './analytics.js';
 
 const data = await loadWorld();
@@ -42,6 +43,7 @@ globe.controls.enableRotate = false; // rotation is ours (flywheel); OrbitContro
 const thrills = new Thrills(globe, spin);
 const pin = new Pin(document.getElementById('stage'));
 const sfx = createSfx({ muted: () => thrills.muted });
+const music = createMusic(document.getElementById('music-toggle'));
 
 /** Soft ring that spreads from where the globe was tapped. */
 function ripple(x, y, strong) {
@@ -74,6 +76,7 @@ const ui = createUI({
   onCompareReset: () => compare.resetPositions(),
   onCompareEnd: () => endCompare(),
   onClosePopup: () => closeCard(),
+  onSound: name => sfx.play(name),
   onInfo: o => openInfo(o),
   onNeighbour: key => { const o = layer.get(key); if (o) { openCountry(o, { fly: true }); openInfo(o); } },
   onShare: o => copyLink(o),
@@ -125,6 +128,24 @@ function flyToCountry(o, minDist = 1.6) {
   const dist = THREE.MathUtils.clamp(1 + r * 6, minDist, Math.max(minDist, globe.fitDistance));
   spin.stop(); globe.flyTo(o.g.centroid, dist, 1200);
 }
+// Games: a tap drops the pin on your guess and asks to confirm it, so a stray tap never costs a round
+let guess = null;
+function proposeGuess(r) {
+  guess = r;
+  anchor = r.point.clone().normalize();
+  layer.setSelected(r.o || null); // outline the country you're about to answer with
+  pin.show(); sfx.play('tap');
+  ui.showConfirm({ onYes: confirmGuess, onNo: cancelGuess });
+}
+function confirmGuess() {
+  if (!guess || !quiz.waiting) return cancelGuess();
+  const g = guess; cancelGuess();
+  quiz.answer(g.o, g.point);
+}
+function cancelGuess() {
+  guess = null; anchor = null; pin.hide(); ui.hideTag(); layer.setSelected(null);
+}
+
 /** Select a country: drop the pin and show the small tag. The full card only opens on request (openInfo). */
 function openCountry(o, { fly = false, point = null } = {}) {
   if (mode === 'pick') cancelPick();
@@ -147,12 +168,14 @@ function openInfo(o) {
 /** Close the card but keep the pin and its tag. */
 function closeCard() {
   if (!ui.popFor) return;
+  sfx.play('close');
   ui.hidePopup();
   if (selected && mode === 'browse') ui.showTag(selected);
 }
 function setParam(k, v) {
   const url = new URL(location.href);
   if (v == null) url.searchParams.delete(k); else url.searchParams.set(k, v);
+  url.search = url.searchParams.toString().replace(/%2C/gi, ','); // ?compare=FRA,BRA reads better when shared
   try { history.replaceState(null, '', url); } catch { /* sandboxed */ }
 }
 async function copyLink(o) {
@@ -170,6 +193,7 @@ function applyLens() {
   layer.setLens(lens ? o => lens.color(o) : null);
   SKY.uNight.value = lens ? 0 : 0.42;      // no night shading over data colours
   renderLegend(legendEl, lens);
+  document.body.classList.toggle('lens-on', !!lens);
   document.querySelector('[data-dock="lens"]').classList.toggle('on', !!lens);
   if (ui.popFor) ui.showPopup(ui.popFor, viewKey, extras(ui.popFor));
 }
@@ -183,7 +207,7 @@ const quiz = createQuiz({
   onMode: on => {
     ui.showTip(null);
     if (on) { if (mode === 'compare') endCompare(true); if (mode === 'pick') cancelPick(); closePopup(); mode = 'quiz'; layer.setHover(null); }
-    else { mode = 'browse'; native.then(n => n?.showInterstitial()); } // an ad between games in the app, never mid-round
+    else { if (guess) cancelGuess(); mode = 'browse'; native.then(n => n?.showInterstitial()); } // an ad between games in the app, never mid-round
     document.body.classList.toggle('quiz-on', on);
     setParam('play', null);
   },
@@ -235,7 +259,10 @@ function recenter() {
 }
 document.getElementById('recenter').addEventListener('click', recenter);
 function cancelPick() { mode = 'browse'; pickFrom = null; ui.hidePick(); layer.setSelected(null); }
-function endCompare(immediate) { compare.end(immediate); mode = 'browse'; ui.showCompare(null); }
+function endCompare(immediate) {
+  if (!immediate && mode === 'compare') sfx.play('snapIn'); // pieces settle back into their sockets
+  compare.end(immediate); mode = 'browse'; ui.showCompare(null);
+}
 
 // ---------- pointer handling: click vs drag ----------
 const raycaster = new THREE.Raycaster();
@@ -329,11 +356,11 @@ function onClick(x, y) {
   if (mode === 'compare') return;
   const r = countryAt(x, y);
   if (r) ripple(x, y, !!r.o);
-  if (mode === 'quiz') { if (r && quiz.waiting) quiz.answer(r.o, r.point); return; }
+  if (mode === 'quiz') { if (r && quiz.waiting) proposeGuess(r); return; }
   if (mode === 'pick') {
     if (r?.o && r.o !== pickFrom) {
       const a = pickFrom; ui.hidePick(); pickFrom = null; mode = 'compare';
-      layer.setHover(null); compare.start(a, r.o); sfx.play('confirm');
+      layer.setHover(null); compare.start(a, r.o); sfx.play('confirm'); sfx.play('snapOut');
     } else if (r?.o === pickFrom) ui.showToast('Pick a different country');
     return;
   }
@@ -346,10 +373,11 @@ window.addEventListener('keydown', e => {
   if ((e.key === '/' || (e.key.toLowerCase() === 'k' && (e.metaKey || e.ctrlKey))) && mode !== 'quiz') { e.preventDefault(); closeMenus(); search.open(); return; }
   if (e.key === 'Escape') {
     if (!Object.values(menus).every(m => m.hidden)) closeMenus();
-    else if (mode === 'compare') endCompare(); else if (mode === 'pick') cancelPick(); else if (mode !== 'quiz') { if (ui.popFor) closeCard(); else closePopup(); }
+    else if (mode === 'compare') endCompare(); else if (mode === 'pick') cancelPick(); else if (mode === 'quiz') { if (guess) cancelGuess(); } else { if (ui.popFor) closeCard(); else closePopup(); }
     return;
   }
   if ((e.key === 'Home' || e.key.toLowerCase() === 'r') && !e.metaKey && !e.ctrlKey && !e.altKey && mode !== 'quiz') { e.preventDefault(); recenter(); return; }
+  if (e.key === 'Enter' && guess && !e.target.closest?.('button')) { confirmGuess(); return; }
   if (e.key === 'Enter' && quiz.canAdvance && !e.target.closest?.('button')) { quiz.next(); return; }
   // keyboard spinning & zoom
   const step = 0.12;
@@ -379,6 +407,7 @@ function frame(now) {
   tickGlobe(globe, t);
   layer.tick(now);
   compare.tick(now);
+  if (guess && !quiz.waiting) cancelGuess(); // the round moved on (hint, Show me, next)
   thrills.tick(now);
   if (anchor) {
     camDir.copy(globe.camera.position).normalize();
@@ -413,8 +442,8 @@ requestAnimationFrame(() => setTimeout(async () => {
 
 // Small public API for later integrations / debugging
 window.EarthInteractive = {
-  globe, layer, compare, ads, data, thrills, spin, quiz, search, native, sfx,
+  globe, layer, compare, ads, data, thrills, spin, quiz, search, native, sfx, music,
   setLens: k => { lensKey = LENSES[k] ? k : 'none'; applyLens(); },
-  setView: k => { ui.setViewSilently(k); switchView(k); },
+  setView: k => { if (!data.views[k]) return false; ui.setViewSilently(k); switchView(k); return true; },
   compareKeys: (a, b) => { const A = layer.get(a), B = layer.get(b); if (!A || !B) return false; closePopup(); cancelPick(); mode = 'compare'; compare.start(A, B); return true; },
 };

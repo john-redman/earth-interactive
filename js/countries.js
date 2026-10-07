@@ -16,18 +16,20 @@ const GREY = '#8d93a6';
 export function borderColorFor(hex) {
   const c = new THREE.Color(hex);
   const hsl = {}; c.getHSL(hsl);
-  if (hsl.l > 0.92 && hsl.s < 0.1) return '#5f6a85'; // white fills: soft slate instead of hard black
+  if (hsl.l > 0.92 && hsl.s < 0.1) return '#9aa2b8'; // white fills: a light slate that defines the edge without shouting
   return '#' + new THREE.Color().setHSL(hsl.h, Math.min(1, hsl.s * 0.85), hsl.l * 0.62).getHexString();
 }
 
 export const R_FILL = 1.0015, R_LINE = 1.0028;
+const HATCH_DIRS = [new THREE.Vector3(0.8, 1, 0.6), new THREE.Vector3(-1, 0.7, 0.45), new THREE.Vector3(0.35, -0.6, 1)];
+const LIFT = { pulse: 1.012, steady: 1.008 };   // how far a highlighted country rises off the globe
 
 export function fillMaterial(hex, { hatch = false, opacity = 0.42, pieceId = null } = {}) {
   const m = new THREE.ShaderMaterial({
     transparent: true, depthWrite: false, depthTest: false, side: THREE.DoubleSide,
     // each pixel is blended at most once → no bright seams where triangles meet
     stencilWrite: true, stencilRef: 0, stencilFunc: THREE.EqualStencilFunc, stencilZPass: THREE.IncrementStencilOp,
-    uniforms: { uColor: { value: new THREE.Color(hex) }, uOpacity: { value: opacity }, uMix: { value: 1 }, uHatch: { value: hatch ? 1 : 0 }, uLight: { value: LIGHT_DIR_VIEW }, uBright: { value: 0 }, uSun: SKY.uSun, uNight: SKY.uNight },
+    uniforms: { uColor: { value: new THREE.Color(hex) }, uOpacity: { value: opacity }, uMix: { value: 1 }, uHatch: { value: hatch ? 1 : 0 }, uHatchDir: { value: new THREE.Vector3(0.8, 1, 0.6) }, uLight: { value: LIGHT_DIR_VIEW }, uBright: { value: 0 }, uSun: SKY.uSun, uNight: SKY.uNight },
     vertexShader: /* glsl */`
       varying vec3 vPos; varying vec3 vN; varying float vVis;
       void main(){
@@ -39,7 +41,7 @@ export function fillMaterial(hex, { hatch = false, opacity = 0.42, pieceId = nul
         gl_Position = projectionMatrix * mv;
       }`,
     fragmentShader: /* glsl */`
-      uniform vec3 uColor; uniform float uOpacity; uniform float uMix; uniform float uHatch; uniform vec3 uLight; uniform float uBright; uniform vec3 uSun; uniform float uNight;
+      uniform vec3 uColor; uniform float uOpacity; uniform float uMix; uniform float uHatch; uniform vec3 uHatchDir; uniform vec3 uLight; uniform float uBright; uniform vec3 uSun; uniform float uNight;
       varying vec3 vPos; varying vec3 vN; varying float vVis;
       void main(){
         if (vVis < 0.0) discard; // flat triangles may sag below the ocean, so we cull the far side ourselves instead of depth-testing
@@ -49,7 +51,7 @@ export function fillMaterial(hex, { hatch = false, opacity = 0.42, pieceId = nul
         vec3 base = mix(vec3(0.030, 0.070, 0.160), uColor, uMix);
         vec3 col = (base * shade + uBright * 0.18) * mix(1.0 - uNight, 1.0, day);
         float a = uOpacity;
-        if (uHatch > 0.5) { float s = fract((vPos.x * 0.8 + vPos.y + vPos.z * 0.6) * 140.0); col *= mix(0.7, 1.08, step(0.5, s)); }
+        if (uHatch > 0.5) { float s = fract(dot(vPos, uHatchDir) * 140.0); col *= mix(0.7, 1.08, step(0.5, s)); }
         gl_FragColor = vec4(col, clamp(a, 0.0, 1.0));
         #include <colorspace_fragment>
       }`,
@@ -145,6 +147,8 @@ export class CountryLayer {
       const color = PALETTE[unit.c] ?? PALETTE[1];
       const hatch = unit.t === 'disputed';
       const fill = new THREE.Mesh(g.fillGeom, fillMaterial(color, { hatch }));
+      // neighbouring disputed areas stripe in different directions, so each reads as its own piece
+      if (hatch) fill.material.uniforms.uHatchDir.value.copy(HATCH_DIRS[n % HATCH_DIRS.length]);
       // fixed draw order per country (overlays last): neighbours share border lines and overlapping fills, and
       // three.js would otherwise re-sort them by camera distance every frame, so they flicker as the globe turns
       const layerRank = { country: 0, limited: 0, territory: 1, breakaway: 2, disputed: 3 }[unit.t] ?? 0;
@@ -156,7 +160,7 @@ export class CountryLayer {
       if (lm.dashed) border.computeLineDistances();
       border.renderOrder = 2 + order;
       group.add(fill, border);
-      const o = { key: unit.k, unit, info: this.data.info[unit.k] || {}, g, fill, border, color, hatch, lineOrder: 2 + order };
+      const o = { key: unit.k, unit, info: this.data.info[unit.k] || {}, g, fill, border, color, hatch, fillOrder: 1 + order, lineOrder: 2 + order };
       objects.push(o); byKey.set(unit.k, o);
       // coarse 10° grid for fast picking
       const [x0, y0, x1, y1] = g.bbox;
@@ -175,6 +179,7 @@ export class CountryLayer {
   setView(viewKey) {
     const next = this.build(viewKey);
     if (this.view === next) return;
+    this.clearRaised();
     if (this.view) this.globe.world.remove(this.view.group);
     this.view = next; this.globe.world.add(next.group);
     this.hover = null; this.selected = null;
@@ -216,6 +221,7 @@ export class CountryLayer {
     const f = o.fill.material, l = o.border.material;
     let fillHex = o.color, lineHex = borderColorFor(o.color), fo = 1, mx = 0.62, lo = 0.95, w = 1.1, bright = 0;
     let dashed = o.hatch || o.unit.t === 'breakaway';
+    if (o.hatch) { lineHex = '#e8ecf6'; lo = 0.85; w = 1.35; } // light dashed edge: grey-on-grey disappeared
     if (this.dim && !this.dim.has(o.key)) { fillHex = GREY; lineHex = '#c3c8d6'; mx = 0.16; lo = 0.22; }
     else if (this.lens) {
       const hx = this.lens(o);
@@ -236,6 +242,71 @@ export class CountryLayer {
     l.color.set(lineHex); l.opacity = lo * this.fade; l.linewidth = w;
     if (l.dashed !== dashed) { l.dashed = dashed; if (dashed) o.border.computeLineDistances(); l.needsUpdate = true; }
     o.border.renderOrder = o === this.selected || o === this.hover || mark ? 3 : o.lineOrder;
+    // the answer in a game flashes; the selected country (or the first pick of a compare) glows steadily
+    const hl = mark === 'target' || mark === 'good' ? 'pulse' : o === this.selected && !this.sockets.has(o.key) ? 'steady' : null;
+    this.raise(o, hl, w, lo);
+  }
+
+  /** Lift a country off the globe with a soft white glow around its edge (kind null = settle back). */
+  raise(o, kind, w, lo) {
+    this.raised ||= new Map();
+    let r = this.raised.get(o);
+    if (!kind) { if (r) r.kind = null; return; }
+    if (!r) {
+      const mat = lineMaterial('#ffffff', { width: 9, opacity: 0 });
+      this.registerLineMaterial(mat);
+      // the glow follows a smoothed outline: wide lines on every coastal wiggle look like fuzz
+      const geom = new LineSegmentsGeometry().setPositions(borderSegments(borderRings(o.g.multi, 0.12, () => ''), R_LINE));
+      const glow = new LineSegments2(geom, mat); glow.renderOrder = 2.99;
+      this.view.group.add(glow);
+      r = { s: 1, glow, mat }; this.raised.set(o, r);
+    }
+    if ((kind === 'pulse') !== r.mat.dashed) {
+      // the game's answer: a few bright dashes run around the outline (dash lengths scale with the perimeter)
+      r.mat.dashed = kind === 'pulse'; r.mat.needsUpdate = true;
+      if (r.mat.dashed) {
+        r.glow.computeLineDistances();
+        const d = r.glow.geometry.attributes.instanceDistanceEnd.data.array;
+        r.perimeter = d[d.length - 1] || 1;
+        r.mat.dashScale = 1; r.mat.dashSize = r.perimeter * 0.07; r.mat.gapSize = r.perimeter * 0.18;
+      }
+    }
+    Object.assign(r, { kind, w, lo });
+    o.fill.renderOrder = 1.95; // drawn after its neighbours, over them: fills are opaque, so drawing a pixel twice is harmless
+    o.fill.material.stencilFunc = THREE.AlwaysStencilFunc;
+  }
+
+  tickRaised(now) {
+    if (!this.raised?.size) return;
+    const pulse = 0.5 + 0.5 * Math.sin(now * 0.0055);
+    for (const [o, r] of this.raised) {
+      const target = r.kind ? LIFT[r.kind] : 1;
+      r.s += (target - r.s) * 0.16;
+      const glowOn = r.kind ? (r.kind === 'pulse' ? 0.95 : 0.2) : 0;
+      r.mat.opacity += (glowOn * this.fade - r.mat.opacity) * 0.2;
+      if (r.kind === 'pulse') {
+        // thick white outline with bright light travelling around it
+        const b = o.border.material; b.color.set('#d5ddf3'); b.linewidth = 3.6; b.opacity = 0.95;
+        r.mat.color.set('#ffffff'); r.mat.linewidth = 11; r.mat.dashOffset = -(now * 0.00007) * r.perimeter;
+      } else r.mat.linewidth = 9;
+      for (const m of [o.fill, o.border, r.glow]) m.scale.setScalar(r.s);
+      r.glow.visible = o.border.visible;
+      if (!r.kind && Math.abs(r.s - 1) < 1e-4) { // fully settled: tidy up
+        for (const m of [o.fill, o.border]) m.scale.setScalar(1);
+        o.fill.renderOrder = o.fillOrder; o.fill.material.stencilFunc = THREE.EqualStencilFunc;
+        r.glow.removeFromParent(); r.glow.geometry.dispose(); r.mat.dispose(); this.unregisterLineMaterial(r.mat);
+        this.raised.delete(o);
+      }
+    }
+  }
+
+  clearRaised() {
+    for (const [o, r] of this.raised || []) {
+      for (const m of [o.fill, o.border]) m.scale.setScalar(1);
+      o.fill.renderOrder = o.fillOrder; o.fill.material.stencilFunc = THREE.EqualStencilFunc;
+      r.glow.removeFromParent(); r.glow.geometry.dispose(); r.mat.dispose(); this.unregisterLineMaterial(r.mat);
+    }
+    this.raised?.clear();
   }
 
   resizeLines() {
@@ -259,5 +330,5 @@ export class CountryLayer {
     }
   }
 
-  tick(now) { this.fadeAnim?.(now); this.cull(); }
+  tick(now) { this.fadeAnim?.(now); this.cull(); this.tickRaised(now); }
 }

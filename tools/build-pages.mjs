@@ -2,12 +2,16 @@
  * Builds the crawlable, no-JavaScript pages around the globe:
  *   about.html, how-to-play.html, … (copied from the repo root, with the shared head/header/footer)
  *   countries/index.html, countries/<slug>/index.html   one page per country (+ a few big territories)
+ *   countries/region/<slug>/                           continent and subregion hubs (lists + totals)
+ *   countries/ranking/<slug>/                          full rankings: area, population, density
  *   compare/index.html,   compare/<a>-vs-<b>/index.html  a curated set of size comparisons
- *   404.html, sitemap.xml, robots.txt
+ *   404.html, sitemap.xml, robots.txt, llms.txt, <IndexNow key>.txt
  *
  * Usage:
  *   node tools/build-pages.mjs <outDir>              generated pages only (CI: the app is already in _site)
  *   node tools/build-pages.mjs dist-pages --with-app also copies the app, for a local preview
+ *   node tools/build-pages.mjs dist-pages --indexnow  builds, then submits every URL to IndexNow (run after a
+ *                                                    deploy; needs SITE.indexNowKey and network access)
  *   node tools/build-pages.mjs --sync                rewrites the shared head/header/footer of the
  *                                                    hand-written pages in the repo root, then exits
  *
@@ -24,6 +28,7 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const args = process.argv.slice(2);
 const SYNC = args.includes('--sync');
 const WITH_APP = args.includes('--with-app');
+const INDEXNOW = args.includes('--indexnow');
 const outDir = path.resolve(args.find(a => !a.startsWith('--')) || path.join(root, 'dist-pages'));
 
 /** Hand-written pages in the repo root that get the shared head/header/footer. */
@@ -36,7 +41,7 @@ const STATIC_PAGES = [
   { file: 'contact.html', type: 'ContactPage' },
 ];
 /** The app files the Pages workflow publishes (used only with --with-app). */
-const APP_FILES = ['index.html', 'manifest.webmanifest', 'sw.js', 'og-image.png', 'css', 'js', 'data', 'vendor', 'icons', 'LICENSE', 'THIRD_PARTY_NOTICES.md'];
+const APP_FILES = ['index.html', 'manifest.webmanifest', 'sw.js', 'og-image.png', 'css', 'js', 'data', 'vendor', 'icons', 'sounds', 'LICENSE', 'THIRD_PARTY_NOTICES.md'];
 
 // ───────────── consistency with the browser copies of the config ─────────────
 const fail = msg => { console.error('✗ ' + msg); process.exit(1); };
@@ -54,8 +59,10 @@ const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': 
 const int = new Intl.NumberFormat('en-US');
 const fmtInt = n => int.format(Math.round(n));
 const SQMI = 0.386102;
-const fmtKm2 = km2 => `${fmtInt(km2)} km²`;
-const fmtArea = km2 => `${fmtInt(km2)} km² (${fmtInt(km2 * SQMI)} sq mi)`;
+/** Whole numbers, except tiny areas (Vatican City 0.44 km², Monaco 2.02 km²) that would round to 0 or lose meaning. */
+const fmtSmall = n => (n < 10 ? String(+n.toFixed(2)) : fmtInt(n));
+const fmtKm2 = km2 => `${fmtSmall(km2)} km²`;
+const fmtArea = km2 => `${fmtSmall(km2)} km² (${fmtSmall(km2 * SQMI)} sq mi)`;
 const fmtPeople = n => (n >= 1e9 ? `${(n / 1e9).toFixed(2)} billion` : n >= 1e6 ? `${(n / 1e6).toFixed(1).replace(/\.0$/, '')} million` : fmtInt(n));
 const fmtGdp = md => (md >= 1e6 ? `$${(md / 1e6).toFixed(2)} trillion` : md >= 1e3 ? `$${(md / 1e3).toFixed(1)} billion` : `$${fmtInt(md)} million`);
 const fmtDensity = d => (d < 1 ? 'under 1' : d < 10 ? d.toFixed(1).replace(/\.0$/, '') : fmtInt(d));
@@ -78,7 +85,16 @@ function gitDate(file) {
     return out || TODAY;
   } catch { return TODAY; }
 }
+/** Date a file was first committed (for datePublished). */
+function gitFirstDate(file) {
+  try {
+    const out = execFileSync('git', ['log', '--diff-filter=A', '--follow', '--format=%cs', '--', file], { cwd: root, stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim().split('\n').at(-1);
+    return out || gitDate(file);
+  } catch { return gitDate(file); }
+}
 const DATA_DATE = gitDate('data/world.js');
+/** Generated pages change when the data or the template changes: that date is their lastmod / dateModified. */
+const PAGE_DATE = [DATA_DATE, gitDate('tools/build-pages.mjs')].sort().at(-1);
 
 // ───────────── data ─────────────
 const { default: data } = await import(pathToFileURL(path.join(root, 'data/world.js')).href);
@@ -111,10 +127,15 @@ const nameOf = k => SLUG_NAME[k] || info[k]?.name || defUnit.get(k)?.n || k;
 const nm = (k, start = false) => { const n = nameOf(k); const s = THE.test(n) ? 'the ' + n : n; return start ? cap(s) : s; };
 const slugify = s => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/&/g, ' and ').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 
-/** Area in km²: the official figure unless the mapped shape is very different (then the mapped one). */
+/**
+ * Area in km²: the official figure unless the mapped shape is very different (then the mapped one, e.g. where the
+ * "official" figure belongs to a parent country). Small places (< 20,000 km²) always use the official figure: at
+ * 1:50m, islands and city-states are drawn far too small or too big (Maldives 67 km² mapped vs 300 real, Monaco 12 vs 2).
+ */
 function areaOf(k) {
   const mapped = (unUnit.get(k) || defUnit.get(k))?.area || 0;
   const off = info[k]?.areaOfficial;
+  if (off && off < 20000) return off;
   return off && mapped && off / mapped < 2 && off / mapped > 0.5 ? off : mapped || off || 0;
 }
 
@@ -137,6 +158,66 @@ const R = { area: rankBy(areaOf), pop: rankBy(k => info[k].pop || 0) };
 const worldPop = ranked.reduce((s, k) => s + (info[k].pop || 0), 0);
 const worldArea = ranked.reduce((s, k) => s + areaOf(k), 0);
 const worldDensity = worldPop / worldArea;
+
+// ───────────── regions: continent + subregion hubs ─────────────
+// Natural Earth files a few island states under "Seven seas (open ocean)", and Cyprus under Asia while its
+// subregion is Southern Europe. A unit's continent is therefore the usual continent of its subregion.
+const SEVEN_SEAS = /^Seven seas/;
+const subCont = new Map();
+{
+  const votes = new Map();
+  for (const i of Object.values(info)) {
+    if (!i.subregion || !i.continent || SEVEN_SEAS.test(i.continent)) continue;
+    const m = votes.get(i.subregion) || new Map();
+    m.set(i.continent, (m.get(i.continent) || 0) + 1);
+    votes.set(i.subregion, m);
+  }
+  for (const [sub, m] of votes) subCont.set(sub, [...m].sort((x, y) => y[1] - x[1])[0][0]);
+}
+const continentOf = k => { const i = info[k]; return subCont.get(i.subregion) || (SEVEN_SEAS.test(i.continent || '') ? null : i.continent) || null; };
+/** Hubs: continents with 2+ pages, subregions with 3+ pages (unless the subregion is the whole continent). */
+const regions = new Map(); // name → { name, slug, kind, keys, parent }
+for (const k of pageKeys) {
+  const c = continentOf(k);
+  if (!c) continue;
+  if (!regions.has(c)) regions.set(c, { name: c, kind: 'continent', keys: [], parent: null });
+  regions.get(c).keys.push(k);
+}
+for (const k of pageKeys) {
+  const sub = info[k].subregion, c = continentOf(k);
+  if (!sub || !c || sub === c || regions.get(sub)?.kind === 'continent') continue;
+  if (!regions.has(sub)) regions.set(sub, { name: sub, kind: 'subregion', keys: [], parent: c });
+  regions.get(sub).keys.push(k);
+}
+for (const [n, r] of regions) if (r.keys.length < (r.kind === 'continent' ? 2 : 3)) regions.delete(n);
+for (const r of regions.values()) r.slug = slugify(r.name);
+const regionUrl = r => `${SITE.url}countries/region/${r.slug}/`;
+/** The most specific hub a page belongs to (subregion, else continent), and its continent hub. */
+function hubsOf(k) {
+  const c = regions.get(continentOf(k)) || null;
+  const s = regions.get(info[k].subregion);
+  return { cont: c, sub: s && s.kind === 'subregion' ? s : null };
+}
+/** Dependent territories (Greenland, Hong Kong…), as opposed to sovereign or limited-recognition states. */
+const isTerr = k => !!info[k].sovereign && defUnit.get(k)?.t !== 'limited';
+/** "8 countries", "16 countries and 2 territories" */
+const whatOf = keys => { const t = keys.filter(isTerr).length, c = keys.length - t; return [c && `${c} ${c === 1 ? 'country' : 'countries'}`, t && `${t} ${t === 1 ? 'territory' : 'territories'}`].filter(Boolean).join(' and '); };
+const regionName = (r, start = false) => (/^Caribbean$/.test(r.name) ? (start ? 'The ' : 'the ') + r.name : r.name);
+const RESERVED = ['region', 'ranking'];
+for (const r of RESERVED) if ([...slugs.values()].includes(r)) fail(`a country slug collides with countries/${r}/`);
+
+// ───────────── rankings ─────────────
+const densityOf = k => (info[k].pop && areaOf(k) > 0 ? info[k].pop / areaOf(k) : 0);
+R.density = rankBy(densityOf);
+const RANKINGS = [
+  { slug: 'largest-countries', short: 'Largest by area', by: 'area', h1: 'Largest countries in the world by area',
+    title: 'Largest countries in the world by area: full list' },
+  { slug: 'most-populous-countries', short: 'Most populous', by: 'pop', h1: 'Countries by population',
+    title: 'Most populous countries in the world: full list' },
+  { slug: 'population-density', short: 'Population density', by: 'density', h1: 'Countries by population density',
+    title: 'Most densely populated countries: people per km²' },
+];
+const rankingHref = (by, base) => `${base}countries/ranking/${RANKINGS.find(r => r.by === by).slug}/`;
 
 // ───────────── geometry: Mercator stretch, mainland centre ─────────────
 const DEG = Math.PI / 180;
@@ -221,24 +302,28 @@ const analytics = SITE.goatcounter
   ? `<script data-goatcounter="https://${esc(SITE.goatcounter)}.goatcounter.com/count" async src="https://gc.zgo.at/count.js"></script>` : '';
 const kofiLink = (text = 'Support') => (SITE.kofi ? `<a href="https://ko-fi.com/${esc(SITE.kofi)}" rel="noopener">${text}</a>` : '');
 
+const OG_ALT = 'A 3D globe with colourful country borders over Africa and Europe';
 function headTags({ title, description, canonical, base, jsonld, type = 'website' }) {
   return `<meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>${esc(title)}</title>
   <meta name="description" content="${esc(description)}">
   <link rel="canonical" href="${esc(canonical)}">
+  <meta name="robots" content="max-image-preview:large">
   <meta name="theme-color" content="#03040b">
   <link rel="icon" href="${base}icons/icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="${base}icons/apple-touch-icon.png">
   <link rel="stylesheet" href="${base}css/pages.css">
   <meta property="og:type" content="${type}">
   <meta property="og:site_name" content="${esc(SITE.name)}">
+  <meta property="og:locale" content="en_GB">
   <meta property="og:title" content="${esc(title)}">
   <meta property="og:description" content="${esc(description)}">
   <meta property="og:url" content="${esc(canonical)}">
   <meta property="og:image" content="${SITE.url}og-image.png">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="${esc(OG_ALT)}">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="${esc(title)}">
   <meta name="twitter:description" content="${esc(description)}">
@@ -298,7 +383,7 @@ ${body}
 `;
 }
 
-const WEBSITE = { '@type': 'WebSite', '@id': SITE.url + '#website', name: SITE.name, url: SITE.url };
+const WEBSITE = { '@type': 'WebSite', '@id': SITE.url + '#website', name: SITE.name, url: SITE.url, inLanguage: 'en', publisher: { '@type': 'Person', name: SITE.operator } };
 const crumbs = items => ({
   '@type': 'BreadcrumbList',
   itemListElement: items.map(([name, url], i) => ({ '@type': 'ListItem', position: i + 1, name, item: url })),
@@ -315,7 +400,7 @@ const sources = `<p class="sources">Sources: ${esc(data.source || 'Natural Earth
 
 // ───────────── writing ─────────────
 const written = []; // { rel, lastmod }
-function write(rel, html, lastmod = DATA_DATE) {
+function write(rel, html, lastmod = PAGE_DATE) {
   const file = path.join(outDir, rel);
   fs.mkdirSync(path.dirname(file), { recursive: true });
   fs.writeFileSync(file, html);
@@ -331,7 +416,7 @@ function applySite(html, { file, type } = {}) {
     const canonical = SITE.url + file;
     const unq = s => s.replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>');
     const main = { '@type': type, '@id': canonical, url: canonical, name: unq(title), description: unq(description), isPartOf: { '@id': WEBSITE['@id'] } };
-    if (type === 'Article') Object.assign(main, { headline: unq(title).replace(/ \| .*$/, ''), author: { '@type': 'Person', name: SITE.operator }, dateModified: gitDate(file), image: SITE.url + 'og-image.png' });
+    if (type === 'Article') Object.assign(main, { headline: unq(title).replace(/ \| .*$/, ''), author: { '@type': 'Person', name: SITE.operator }, datePublished: gitFirstDate(file), dateModified: gitDate(file), image: SITE.url + 'og-image.png', inLanguage: 'en' });
     const jsonld = { '@context': 'https://schema.org', '@graph': [WEBSITE, main] };
     const shared = headTags({ title: unq(title), description: unq(description), canonical, base: '', jsonld, type: type === 'Article' ? 'article' : 'website' })
       .replace(/^<meta charset="utf-8">\s*<meta name="viewport"[^>]*>\s*<title>[^<]*<\/title>\s*<meta name="description"[^>]*>\s*/, '');
@@ -344,6 +429,7 @@ function applySite(html, { file, type } = {}) {
     region('header', header(''));
     region('footer', footer(''));
   }
+  if (file) html = html.replace(/(<time data-site="modified")[^>]*>[^<]*<\/time>/g, (_, t) => `${t} datetime="${gitDate(file)}">${prettyDate(gitDate(file))}</time>`);
   html = html.replace(/<a data-site="contact"[^>]*>[\s\S]*?<\/a>/g, `<a data-site="contact" href="${esc(contactHref)}">${esc(contactText)}</a>`);
   html = html.replace(/<a data-site="kofi"[^>]*>([\s\S]*?)<\/a>/g, (_, t) => (SITE.kofi ? `<a data-site="kofi" href="https://ko-fi.com/${esc(SITE.kofi)}" rel="noopener">${t}</a>` : `<a data-site="kofi" href="https://ko-fi.com/" hidden>${t}</a>`));
   html = html.replace(/(data-site="kofi-block")( hidden)?/g, SITE.kofi ? '$1' : '$1 hidden');
@@ -387,6 +473,24 @@ function sizePhrase(a, b) {
   if (r < 1.05) return `${nm(a, true)} and ${nm(b)} are almost exactly the same size`;
   if (r < 1.5) return `${nm(big, true)} is about ${pct(r)} larger than ${nm(small)}`;
   return `${nm(big, true)} is about ${times(r)} times the size of ${nm(small)}`;
+}
+
+/** "Western Europe, Europe" with links to the hubs that exist. */
+function regionCell(k, base = BASE2) {
+  const i = info[k], { cont, sub } = hubsOf(k);
+  const link = (r, name) => (r ? `<a href="${base}countries/region/${r.slug}/">${esc(r.name)}</a>` : esc(name));
+  const parts = [];
+  if (i.subregion && i.subregion !== cont?.name) parts.push(link(sub, i.subregion));
+  const c = continentOf(k);
+  if (c) parts.push(link(cont, c));
+  return parts.join(', ') || null;
+}
+/** Breadcrumb trail [name, absolute url, relative href] from the countries index down to a hub. */
+function hubTrail(r, base) {
+  const out = [];
+  if (r?.parent && regions.get(r.parent)) { const p = regions.get(r.parent); out.push([p.name, regionUrl(p), `${base}countries/region/${p.slug}/`]); }
+  if (r) out.push([r.name, regionUrl(r), `${base}countries/region/${r.slug}/`]);
+  return out;
 }
 
 function statusSentence(k) {
@@ -444,7 +548,7 @@ for (const u of pageUnits) {
     ['Area', `${fmtArea(area)}${aRank ? ` <span class="rank">${ord(aRank)} largest</span>` : ''}`],
     ['Population', people && i.pop ? `${fmtInt(i.pop)}${i.popYear ? ` <span class="muted">(${i.popYear})</span>` : ''}${pRank ? ` <span class="rank">${ord(pRank)} most populous</span>` : ''}` : null],
     ['Density', density ? (density < 1 ? 'Fewer than 1 person per km²' : `${fmtDensity(density)} people per km²`) : null],
-    ['Region', esc([i.subregion, i.continent].filter((x, j, a) => x && a.indexOf(x) === j).join(', ')) || null],
+    ['Region', regionCell(k)],
     ['Languages', i.languages?.length ? esc(i.languages.join(', ')) : null],
     ['Currency', i.currencies?.length ? esc(i.currencies.join(', ')) : null],
     ['GDP', people && i.gdp && u.t !== 'disputed' ? `${fmtGdp(i.gdp)}${i.gdpYear ? ` <span class="muted">(${i.gdpYear})</span>` : ''}` : null],
@@ -453,18 +557,25 @@ for (const u of pageUnits) {
     ['Landlocked', i.landlocked ? 'Yes' : null],
   ].filter(r => r[1]);
 
+  const hub = hubsOf(k), home = hub.sub || hub.cont;
+  const inHub = (by, get) => { if (!home) return ''; const list = home.keys.filter(x => R[by].at.has(x)).filter(x => get(x) > 0).sort((x, y) => get(y) - get(x)); const n = list.indexOf(k) + 1; return n > 0 && list.length > 2 ? { n, of: whatOf(list) } : ''; };
+  const hubLink = r => `<a href="${BASE2}countries/region/${r.slug}/">${esc(regionName(r))}</a>`;
   // prose
   const p1 = [statusSentence(k)];
   if (i.capital) p1.push(`Its capital is ${esc(i.capital)}.`);
   if (i.formal && i.formal !== name && i.formal !== i.name) p1.push(`The official name is ${esc(i.formal)}.`);
   const note = noEmoji(u.note);
-  const sizeP = [`${nm(k, true)} covers ${fmtArea(area)}${aRank ? `, the ${ordWord(aRank)}largest of the ${R.area.n} countries and territories ranked here` : ''}.`];
+  const sizeP = [`${nm(k, true)} covers ${fmtArea(area)}${aRank ? `, the <a href="${rankingHref('area', BASE2)}#${slug}">${ordWord(aRank)}largest</a> of the ${R.area.n} countries and territories ranked here` : ''}.`];
+  const hA = inHub('area', areaOf);
+  if (hA && aRank) sizeP.push(`Within ${hubLink(home)} it is the ${ordWord(hA.n)}largest of ${hA.of}.`);
   const tg = compareTargets(k);
   if (tg[0]) sizeP.push(`The closest in size is ${cLink(tg[0].b)} (${fmtKm2(areaOf(tg[0].b))}). ${sizePhrase(k, tg[0].b)}.`);
   sizeP.push(mercSentence(k));
   const popP = [];
   if (people && i.pop) {
-    popP.push(`About ${fmtPeople(i.pop)} people live in ${nm(k)}${i.popYear ? ` (${i.popYear} estimate)` : ''}${pRank ? `, the ${ordWord(pRank)}largest population of the ${R.pop.n} ranked here` : ''}.`);
+    popP.push(`About ${fmtPeople(i.pop)} people live in ${nm(k)}${i.popYear ? ` (${i.popYear} estimate)` : ''}${pRank ? `, the <a href="${rankingHref('pop', BASE2)}#${slug}">${ordWord(pRank)}largest population</a> of the ${R.pop.n} ranked here` : ''}.`);
+    const hP = inHub('pop', x => info[x].pop || 0);
+    if (hP && pRank) popP.push(hP.n === 1 ? `No other country in ${esc(regionName(home))} has more people.` : `It has the ${ordWord(hP.n)}largest population of the ${hP.of} in ${esc(regionName(home))}.`);
     if (density) {
       const d = density / worldDensity;
       popP.push(`That is ${density < 1 ? 'fewer than 1 person' : `about ${fmtDensity(density)} people`} per km², ${d > 1.2 ? `${times(d)} times the world average of about ${fmtInt(worldDensity)}` : d < 0.83 ? `well below the world average of about ${fmtInt(worldDensity)}` : `close to the world average of about ${fmtInt(worldDensity)}`}.`);
@@ -482,18 +593,20 @@ for (const u of pageUnits) {
   const simPop = neighboursAround(R.pop.list, k).map(x => `<li>${flag(x, BASE2, 'flag sm', [24, 18])}${cLink(x)} <span class="muted">${fmtPeople(info[x].pop)}</span></li>`).join('');
 
   const title = `${name}: size, population and facts | ${SITE.name}`;
-  const description = `${name} covers ${fmtKm2(area)}${aRank ? ` (${ord(aRank)} largest)` : ''}${i.pop ? `, with ${fmtPeople(i.pop)} people` : ''}${i.capital ? `. Capital: ${i.capital}` : ''}. See its true size on a 3D globe and compare it with other countries.`;
+  const description = `${name} covers ${fmtKm2(area)}${aRank ? ` (${ord(aRank)} largest)` : ''}${i.pop ? `, with ${fmtPeople(i.pop)} people` : ''}${i.capital ? `. Capital: ${i.capital}` : ''}. See its true size on a 3D globe.`;
   const canonical = countryUrl(k);
   const placeType = u.t === 'country' && !i.sovereign ? 'Country' : 'AdministrativeArea';
+  const trail = hubTrail(home, BASE2);
   const jsonld = { '@context': 'https://schema.org', '@graph': [
     WEBSITE,
-    { '@type': 'WebPage', '@id': canonical, url: canonical, name: title, description, isPartOf: { '@id': WEBSITE['@id'] }, dateModified: DATA_DATE, about: { '@id': canonical + '#place' } },
+    { '@type': 'WebPage', '@id': canonical, url: canonical, name: title, description, isPartOf: { '@id': WEBSITE['@id'] }, dateModified: PAGE_DATE, about: { '@id': canonical + '#place' } },
     { '@type': placeType, '@id': canonical + '#place', name, alternateName: [i.formal, ...(i.alt || [])].filter(x => x && x !== name).slice(0, 4),
       ...(i.wikidata ? { sameAs: `https://www.wikidata.org/wiki/${i.wikidata}` } : {}),
+      ...(home ? { containedInPlace: { '@type': 'Place', name: home.name, url: regionUrl(home) } } : {}),
       geo: { '@type': 'GeoCoordinates', latitude: +geoOf(k).lat.toFixed(2), longitude: +geoOf(k).lon.toFixed(2) } },
-    crumbs([['Globe', SITE.url], ['Countries', SITE.url + 'countries/'], [name, canonical]]),
+    crumbs([['Globe', SITE.url], ['Countries', SITE.url + 'countries/'], ...trail.map(([n, u]) => [n, u]), [name, canonical]]),
   ] };
-  const body = `    ${breadcrumb([['Globe', BASE2], ['Countries', '../'], [name]])}
+  const body = `    ${breadcrumb([['Globe', BASE2], ['Countries', '../'], ...trail.map(([n, , h]) => [n, h]), [name]])}
     <article>
       <header class="hero">
         ${flag(k, BASE2, 'flag lg', [96, 72]).replace('alt=""', `alt="Flag of ${esc(nm(k))}"`)}
@@ -510,8 +623,8 @@ for (const u of pageUnits) {
       </dl>
       <h2>How big is ${esc(nm(k))}?</h2>
       <p>${sizeP.join(' ')}</p>
-      ${popP.length ? `<h2>Population</h2>\n      <p>${popP.join(' ')}</p>` : ''}
-      <h2>Neighbours</h2>
+      ${popP.length ? `<h2>How many people live in ${esc(nm(k))}?</h2>\n      <p>${popP.join(' ')}</p>` : ''}
+      <h2>${nbs.length ? `Which countries border ${esc(nm(k))}?` : 'Neighbours'}</h2>
       <p>${nbP}</p>
       <h2>Compare ${esc(nm(k))} with…</h2>
       <ul class="cmp-list">
@@ -547,13 +660,124 @@ for (const u of pageUnits) {
     <p class="lede">Size, population, capital and neighbours for ${sorted.length} countries and territories, with links to see each one at its true size on the 3D globe.</p>
     <nav class="az" aria-label="Jump to letter">${[...groups.keys()].map(L => `<a href="#${L}">${L}</a>`).join('')}</nav>
     <div class="cols">
-      <section><h2>Largest by area</h2><ol class="mini top">${top(R.area.list, k => fmtKm2(areaOf(k)))}</ol></section>
-      <section><h2>Most people</h2><ol class="mini top">${top(R.pop.list, k => fmtPeople(info[k].pop))}</ol></section>
+      <section><h2>Largest by area</h2><ol class="mini top">${top(R.area.list, k => fmtKm2(areaOf(k)))}</ol><p class="more"><a href="ranking/largest-countries/">All ${R.area.n} by area</a></p></section>
+      <section><h2>Most people</h2><ol class="mini top">${top(R.pop.list, k => fmtPeople(info[k].pop))}</ol><p class="more"><a href="ranking/most-populous-countries/">All ${R.pop.n} by population</a></p></section>
     </div>
+    <h2>By region</h2>
+    <ul class="regions">${[...regions.values()].filter(r => r.kind === 'continent').sort((a, b) => a.name.localeCompare(b.name)).map(c => `<li><a href="region/${c.slug}/"><b>${esc(c.name)}</b> <span class="muted">${c.keys.length}</span></a>${(() => { const subs = [...regions.values()].filter(r => r.parent === c.name).sort((a, b) => a.name.localeCompare(b.name)); return subs.length ? `<span class="subs">${subs.map(r => `<a href="region/${r.slug}/">${esc(r.name)}</a>`).join(' · ')}</span>` : ''; })()}</li>`).join('')}</ul>
+    <p>Rankings: <a href="ranking/largest-countries/">largest by area</a> · <a href="ranking/most-populous-countries/">most populous</a> · <a href="ranking/population-density/">population density</a></p>
     <h2>A–Z</h2>
     ${[...groups].map(([L, ks]) => `<section class="letter" id="${L}" aria-label="${L}"><h3>${L}</h3><ul class="grid">${ks.map(k => `<li><a href="${slugs.get(k)}/">${flag(k, '../', 'flag sm', [24, 18])}<span>${esc(nameOf(k))}</span></a></li>`).join('')}</ul></section>`).join('\n    ')}
     ${sources}`;
   write('countries/index.html', page({ title, description, canonical, base: '../', jsonld, body }));
+}
+
+// ───────────── region hubs ─────────────
+for (const r of regions.values()) {
+  const base = '../../../';
+  const keys = [...r.keys].sort((a, b) => areaOf(b) - areaOf(a));
+  const ranked = keys.filter(k => R.area.at.has(k));
+  const totArea = keys.reduce((s, k) => s + areaOf(k), 0);
+  const totPop = keys.reduce((s, k) => s + (k === 'ATA' ? 0 : info[k].pop || 0), 0);
+  const byPop = [...ranked].filter(k => info[k].pop).sort((a, b) => info[b].pop - info[a].pop);
+  const byDen = [...ranked].filter(k => densityOf(k) > 0 && areaOf(k) > 50).sort((a, b) => densityOf(b) - densityOf(a));
+  const what = whatOf(keys), nC = ranked.length;
+  const rn = regionName(r), Rn = regionName(r, true);
+  const subs = [...regions.values()].filter(x => x.parent === r.name).sort((a, b) => b.keys.reduce((s, k) => s + areaOf(k), 0) - a.keys.reduce((s, k) => s + areaOf(k), 0));
+  const parent = r.parent ? regions.get(r.parent) : null;
+  const lr = (k, start = false) => (pageKeys.has(k) ? `<a href="${base}countries/${slugs.get(k)}/">${esc(nm(k, start))}</a>` : esc(nm(k, start)));
+  const lede = [`${r.kind === 'continent' ? '' : `${esc(Rn)} is a subregion of ${parent ? `<a href="../${parent.slug}/">${esc(parent.name)}</a>` : esc(r.parent)}. `}The ${what} listed here cover ${fmtArea(totArea)} and are home to about ${fmtPeople(totPop)} people, ${Math.round(totPop / worldPop * 1000) / 10}% of the world's population.`];
+  const paras = [];
+  if (ranked.length > 1) paras.push(`The largest is ${lr(ranked[0])} (${fmtKm2(areaOf(ranked[0]))}) and the smallest is ${lr(ranked.at(-1))} (${fmtKm2(areaOf(ranked.at(-1)))}).${areaOf(ranked[0]) / areaOf(ranked.at(-1)) < 1000 ? ` ${sizePhrase(ranked[0], ranked.at(-1))}.` : ''}`);
+  if (byPop.length > 1) paras.push(`${lr(byPop[0], true)} has the most people (${fmtPeople(info[byPop[0]].pop)}), ${Math.round(info[byPop[0]].pop / totPop * 100)}% of the region's total.`);
+  if (byDen.length > 2) paras.push(`The most crowded is ${lr(byDen[0])} with ${fmtDensity(densityOf(byDen[0]))} people per km²; the emptiest is ${lr(byDen.at(-1))} with ${densityOf(byDen.at(-1)) < 1 ? 'fewer than 1' : fmtDensity(densityOf(byDen.at(-1)))}. The region as a whole averages ${fmtDensity(totPop / totArea)}, against about ${fmtInt(worldDensity)} for the world.`);
+  const mer = ranked.filter(mercOk).map(k => [k, geoOf(k).stretch]).sort((a, b) => b[1] - a[1]);
+  if (mer.length > 2 && mer[0][1] / mer.at(-1)[1] > 1.3) paras.push(`Flat maps treat the region unevenly: a Mercator map draws ${lr(mer[0][0])} about ${times(mer[0][1])} times too big, but ${lr(mer.at(-1)[0])} only ${times(mer.at(-1)[1])} times. <a href="${base}why-maps-lie.html">Why maps lie</a>.`);
+  const inPairs = pairs.filter(q => r.keys.includes(q.a) && r.keys.includes(q.b)).slice(0, 12);
+  const rows = keys.map(k => `<tr><td class="c">${flag(k, base, 'flag sm', [24, 18])}${cLink(k, base)}${isTerr(k) ? ' <span class="muted">(territory)</span>' : ''}</td><td>${fmtKm2(areaOf(k))}</td><td>${k !== 'ATA' && info[k].pop ? fmtPeople(info[k].pop) : '–'}</td><td>${k !== 'ATA' && densityOf(k) && areaOf(k) > 50 ? fmtDensity(densityOf(k)) : '–'}</td><td>${esc(info[k].capital || '–')}</td></tr>`).join('\n          ');
+  const label = r.kind === 'continent' ? `Countries in ${r.name}` : `Countries of ${rn}`;
+  const title = `${Rn}: countries by size and population | ${SITE.name}`;
+  const description = `The ${what} of ${rn} by area, population, density and capital. ${nC > 1 ? `Largest: ${nameOf(ranked[0])}. ` : ''}Total ${fmtKm2(totArea)}, ${fmtPeople(totPop)} people.`;
+  const canonical = regionUrl(r);
+  const trail = hubTrail(r, base);
+  const jsonld = { '@context': 'https://schema.org', '@graph': [WEBSITE,
+    { '@type': 'CollectionPage', '@id': canonical, url: canonical, name: title, description, isPartOf: { '@id': WEBSITE['@id'] }, dateModified: PAGE_DATE,
+      about: { '@type': 'Place', name: r.name, ...(parent ? { containedInPlace: { '@type': 'Place', name: parent.name, url: regionUrl(parent) } } : {}) },
+      mainEntity: { '@type': 'ItemList', numberOfItems: keys.length, itemListElement: keys.map((k, j) => ({ '@type': 'ListItem', position: j + 1, name: nameOf(k), url: countryUrl(k) })) } },
+    crumbs([['Globe', SITE.url], ['Countries', SITE.url + 'countries/'], ...trail.map(([n, u]) => [n, u])])] };
+  const body = `    ${breadcrumb([['Globe', base], ['Countries', '../../'], ...trail.slice(0, -1).map(([n, , h]) => [n, h]), [r.name]])}
+    <h1>${esc(label)}</h1>
+    <p class="lede">${lede.join(' ')}</p>
+    ${paras.length ? `<p>${paras.join(' ')}</p>` : ''}
+    ${subs.length ? `<h2>Subregions</h2>
+    <ul class="chips">${subs.map(x => `<li><a href="../${x.slug}/">${esc(x.name)} <span class="muted">${x.keys.length}</span></a></li>`).join('')}</ul>` : ''}
+    <h2>${esc(Rn)} by area</h2>
+    <div class="table-wrap">
+      <table class="vs-table list-table">
+        <thead><tr><th scope="col">Country</th><th scope="col">Area</th><th scope="col">Population</th><th scope="col">Per km²</th><th scope="col">Capital</th></tr></thead>
+        <tbody>
+          ${rows}
+        </tbody>
+      </table>
+    </div>
+    ${inPairs.length ? `<h2>Size comparisons in ${esc(rn)}</h2>
+    <ul class="chips">${inPairs.map(q => `<li><a href="${base}compare/${q.slug}/">${esc(nameOf(q.a))} vs ${esc(nameOf(q.b))}</a></li>`).join('')}</ul>` : ''}
+    <p class="cta"><a class="btn" href="${base}">Explore ${esc(rn)} on the 3D globe</a></p>
+    ${sources}`;
+  write(`countries/region/${r.slug}/index.html`, page({ title, description, canonical, base, jsonld, body }));
+}
+
+// ───────────── rankings ─────────────
+for (const rk of RANKINGS) {
+  const base = '../../../';
+  const list = R[rk.by].list.filter(k => rk.by !== 'density' || areaOf(k) > 0);
+  const val = { area: k => fmtKm2(areaOf(k)), pop: k => fmtPeople(info[k].pop), density: k => fmtDensity(densityOf(k)) }[rk.by];
+  const share = { area: k => areaOf(k) / worldArea, pop: k => info[k].pop / worldPop, density: null }[rk.by];
+  const extra = {
+    area: k => (mercOk(k) ? `${times(geoOf(k).stretch)}×` : '–'),
+    pop: k => (info[k].popYear ? String(info[k].popYear) : '–'),
+    density: k => fmtKm2(areaOf(k)),
+  }[rk.by];
+  const extraHead = { area: 'Mercator stretch', pop: 'Year', density: 'Area' }[rk.by];
+  const valHead = { area: 'Area', pop: 'Population', density: 'People per km²' }[rk.by];
+  const top3 = list.slice(0, 3), last = list.at(-1);
+  const top10share = share ? list.slice(0, 10).reduce((s, k) => s + share(k), 0) : 0;
+  const lk = (k, start = false) => `<a href="${base}countries/${slugs.get(k)}/">${esc(nm(k, start))}</a>`;
+  const n = `${list.length} countries and territories`;
+  const intro = {
+    area: `${listText(top3.map((k, j) => `${lk(k, j === 0)} (${fmtKm2(areaOf(k))})`))} are the three largest of the ${n} ranked here; the smallest is ${lk(last)} at ${fmtKm2(areaOf(last))}. The ten largest together cover ${Math.round(top10share * 100)}% of the land of all ${list.length}. The last column shows how much a Mercator world map enlarges each one, which is why the order on a flat map looks so different.`,
+    pop: `${listText(top3.map((k, j) => `${lk(k, j === 0)} (${fmtPeople(info[k].pop)})`))} have the most people of the ${n} ranked here, which together hold about ${fmtPeople(worldPop)}. The ten most populous are home to ${Math.round(top10share * 100)}% of them. The least populous is ${lk(last)} with ${fmtPeople(info[last].pop)}.`,
+    density: `The average for the ${n} ranked here is about ${fmtInt(worldDensity)} people per km². Small, city-sized places top the list: ${listText(top3.map((k, j) => `${lk(k, j === 0)} (${fmtDensity(densityOf(k))})`))}. The emptiest is ${lk(last)} with ${densityOf(last) < 1 ? 'fewer than 1 person' : fmtDensity(densityOf(last)) + ' people'} per km².${(() => { const big = list.filter(k => areaOf(k) >= 1e5)[0]; return big ? ` Among countries larger than 100,000 km², the most crowded is ${lk(big)} (${fmtDensity(densityOf(big))}).` : ''; })()}`,
+  }[rk.by];
+  const rows = list.map((k, j) => `<tr id="${slugs.get(k)}"><td class="n">${j + 1}</td><td class="c">${flag(k, base, 'flag sm', [24, 18])}${cLink(k, base)}${isTerr(k) ? ' <span class="muted">(territory)</span>' : ''}</td><td>${val(k)}</td>${share ? `<td class="sh">${(share(k) * 100).toFixed(share(k) < 0.001 ? 3 : share(k) < 0.01 ? 2 : 1)}%</td>` : ''}<td>${extra(k)}</td></tr>`).join('\n          ');
+  const title = `${rk.title} | ${SITE.name}`;
+  const description = {
+    area: `All ${list.length} countries and territories ranked by area in km² and share of land, from ${nameOf(list[0])} to ${nameOf(last)}, with how much a Mercator map stretches each one.`,
+    pop: `${list.length} countries and territories ranked by population (mostly ${info[list[0]].popYear || ''} World Bank figures), from ${nameOf(list[0])} to ${nameOf(last)}, with each one's share of the total.`,
+    density: `${list.length} countries and territories ranked by people per km², from ${nameOf(list[0])} to ${nameOf(last)}, against a world average of about ${fmtInt(worldDensity)}.`,
+  }[rk.by];
+  const canonical = `${SITE.url}countries/ranking/${rk.slug}/`;
+  const jsonld = { '@context': 'https://schema.org', '@graph': [WEBSITE,
+    { '@type': 'CollectionPage', '@id': canonical, url: canonical, name: title, description, isPartOf: { '@id': WEBSITE['@id'] }, dateModified: PAGE_DATE,
+      mainEntity: { '@type': 'ItemList', itemListOrder: 'https://schema.org/ItemListOrderDescending', numberOfItems: list.length,
+        itemListElement: list.slice(0, 50).map((k, j) => ({ '@type': 'ListItem', position: j + 1, name: nameOf(k), url: countryUrl(k) })) } },
+    crumbs([['Globe', SITE.url], ['Countries', SITE.url + 'countries/'], [rk.short, canonical]])] };
+  const others = RANKINGS.filter(x => x !== rk).map(x => `<a href="../${x.slug}/">${esc(x.short.toLowerCase())}</a>`).join(' · ');
+  const body = `    ${breadcrumb([['Globe', base], ['Countries', '../../'], [rk.short]])}
+    <h1>${esc(rk.h1)}</h1>
+    <p class="lede">${intro}</p>
+    <p class="muted">Other rankings: ${others}. The list follows the map: UN members, states with limited recognition, and territories the map draws separately, such as Greenland or Hong Kong (marked). Antarctica and smaller territories such as Puerto Rico are left out; they have their own pages in the <a href="../../">A–Z list</a>.</p>
+    <div class="table-wrap">
+      <table class="vs-table list-table rank-table">
+        <thead><tr><th scope="col">#</th><th scope="col">Country</th><th scope="col">${valHead}</th>${share ? `<th scope="col" class="sh">Share</th>` : ''}<th scope="col">${extraHead}</th></tr></thead>
+        <tbody>
+          ${rows}
+        </tbody>
+      </table>
+    </div>
+    <p class="cta"><a class="btn" href="${base}">See them at true size on the 3D globe</a></p>
+    ${sources}`;
+  write(`countries/ranking/${rk.slug}/index.html`, page({ title, description, canonical, base, jsonld, body }));
 }
 
 // ───────────── comparison pages ─────────────
@@ -576,6 +800,20 @@ function stretchSentence(a, b) {
     else s.push('They sit at similar distances from the equator, so a Mercator map shows this pair fairly honestly.');
   }
   return s.join(' ');
+}
+
+/** Plain share links: no third-party scripts, nothing loads until clicked. */
+function shareLinks(url, text) {
+  const u = encodeURIComponent(url), t = encodeURIComponent(text);
+  const links = [
+    ['X', `https://x.com/intent/post?text=${t}&url=${u}`],
+    ['Facebook', `https://www.facebook.com/sharer/sharer.php?u=${u}`],
+    ['Reddit', `https://www.reddit.com/submit?url=${u}&title=${t}`],
+    ['Bluesky', `https://bsky.app/intent/compose?text=${encodeURIComponent(text + ' ' + url)}`],
+    ['WhatsApp', `https://wa.me/?text=${encodeURIComponent(text + ' ' + url)}`],
+    ['Email', `mailto:?subject=${t}&body=${encodeURIComponent(url)}`],
+  ];
+  return `<p class="share"><span class="muted">Share:</span> ${links.map(([n, h]) => `<a href="${esc(h)}" rel="noopener nofollow"${h.startsWith('http') ? ' target="_blank"' : ''}>${n}</a>`).join(' ')}</p>`;
 }
 
 function comparePage(p, related) {
@@ -643,7 +881,7 @@ function comparePage(p, related) {
   const description = `${r < 1.05 ? `${na} and ${nb} are almost the same size` : `${nameOf(big)} is ${r < 1.5 ? pct(r) + ' larger than' : times(r) + ' times the size of'} ${nameOf(small)}`}. Compare area, population and density, then see their true size side by side on a 3D globe.`;
   const canonical = `${SITE.url}compare/${slug}/`;
   const jsonld = { '@context': 'https://schema.org', '@graph': [WEBSITE,
-    { '@type': 'WebPage', '@id': canonical, url: canonical, name: title, description, isPartOf: { '@id': WEBSITE['@id'] }, dateModified: DATA_DATE,
+    { '@type': 'WebPage', '@id': canonical, url: canonical, name: title, description, isPartOf: { '@id': WEBSITE['@id'] }, dateModified: PAGE_DATE,
       about: [a, b].map(k => ({ '@type': 'Place', name: nameOf(k), url: countryUrl(k) })) },
     crumbs([['Globe', SITE.url], ['Comparisons', SITE.url + 'compare/'], [`${na} vs ${nb}`, canonical]])] };
   const body = `    ${breadcrumb([['Globe', BASE2], ['Comparisons', '../'], [`${na} vs ${nb}`]])}
@@ -658,6 +896,7 @@ function comparePage(p, related) {
         <div style="--w:${(B / Math.max(A, B) * 100).toFixed(1)}%"><span>${esc(nb)}</span></div>
       </div>
       <p class="cta"><a class="btn" href="${BASE2}?compare=${a},${b}">See them side by side on the 3D globe</a></p>
+      ${shareLinks(canonical, `${nameOf(a)} vs ${nameOf(b)}: ${r < 1.05 ? 'almost exactly the same size' : `${nameOf(big)} is ${r < 1.5 ? pct(r) + ' larger than' : times(r) + ' times the size of'} ${nameOf(small)}`}. See them at true size on a 3D globe:`)}
       <h2>Size, people and density</h2>
       <p>${paras.join(' ')}</p>
       <h2>Why maps get this pair wrong</h2>
@@ -745,14 +984,83 @@ ${urls.map(u => `  <url><loc>${esc(u.loc)}</loc><lastmod>${u.lastmod}</lastmod><
 </urlset>
 `;
 fs.writeFileSync(path.join(outDir, 'sitemap.xml'), sitemap);
+// AI crawlers: everything is allowed on purpose. The site wants to be found and cited, including by AI search
+// (OAI-SearchBot, Claude-SearchBot, PerplexityBot, Google's AI features use Googlebot) and by assistants
+// fetching a page for a user. Training crawlers (GPTBot, ClaudeBot, Google-Extended, CCBot…) are allowed too:
+// the facts come from open data and the pages exist to spread them. See docs/seo.md to change this.
 fs.writeFileSync(path.join(outDir, 'robots.txt'), `# Crawlers read robots.txt only at the root of a host. While the site lives under ${sitePath}
 # on github.io this file is informational; it takes effect once the custom domain is live.
+# All crawlers, including AI search and AI training crawlers, are welcome (see docs/seo.md).
 User-agent: *
 Allow: /
 
 Sitemap: ${SITE.url}sitemap.xml
 `);
 
-const count = dir => written.filter(w => w.rel.startsWith(dir + '/') && w.rel !== dir + '/').length;
+// ───────────── llms.txt (https://llmstxt.org): a plain map of the site for language models ─────────────
+{
+  const L = (rel, text, note) => `- [${text}](${SITE.url}${rel})${note ? ': ' + note : ''}`;
+  const famous = pairs.filter(q => q.kind === 'famous').slice(0, 30);
+  const conts = [...regions.values()].filter(r => r.kind === 'continent').sort((a, b) => a.name.localeCompare(b.name));
+  const txt = `# ${SITE.name}
+
+> ${SITE.description}
+
+${SITE.name} is a free, browser-based 3D globe (WebGL, no sign-up) made by ${SITE.operator}. On a globe every country keeps its true size,
+so it is a way to see past the distortion of Mercator maps. Alongside the globe the site publishes plain HTML reference pages:
+one per country (${pageKeys.size} countries and territories), ${pairs.length} country size comparisons, continent and subregion lists, and rankings.
+
+Facts on the pages:
+- Area: official figures (mledoze/countries) where available, otherwise measured from Natural Earth 1:50m borders. km² and sq mi.
+- Population and GDP: World Bank World Development Indicators (population mostly ${info.CHN?.popYear || 'recent'}, GDP mostly ${info.CHN?.gdpYear || 'recent'}); older Natural Earth estimates where the World Bank has none. Each page shows the year.
+- "Mercator stretch": how many times larger a country is drawn on a Mercator map than its true area, computed from its real outline.
+- Rankings cover the ${R.area.n} countries and territories the map draws as separate units (UN members, states with limited recognition, and territories such as Greenland or Hong Kong); Antarctica and small territories are left out.
+- Borders are not an endorsement of any claim. The globe offers three border views (UN, de facto, neutral).
+- Data last updated ${DATA_DATE}.
+
+Linking into the globe: \`${SITE.url}?c=FRA\` opens a country (ISO 3166-1 alpha-3 code), \`${SITE.url}?compare=GRL,COD\` lifts two countries side by side at true size, \`${SITE.url}?play=daily\` starts the daily geography game.
+
+## Main pages
+${L('', 'The 3D globe', 'interactive true-size globe, country facts, size comparison, data maps, games (needs JavaScript and WebGL)')}
+${L('why-maps-lie.html', 'Why maps lie', 'the Mercator projection explained, how much each latitude is stretched, famous size illusions')}
+${L('how-to-play.html', 'How to play', 'controls, comparing countries, border views, Daily Challenge and Find it')}
+${L('about.html', 'About', 'who makes it, data sources and licences')}
+
+## Countries
+${L('countries/', 'All countries A–Z', `${pageKeys.size} country pages: area, population, density, capital, languages, currency, neighbours, Mercator stretch`)}
+${RANKINGS.map(rk => L(`countries/ranking/${rk.slug}/`, rk.h1)).join('\n')}
+${conts.map(c => L(`countries/region/${c.slug}/`, `Countries in ${c.name}`, [...regions.values()].filter(x => x.parent === c.name).map(x => x.name).join(', ') || undefined)).join('\n')}
+
+## Size comparisons
+${L('compare/', 'All size comparisons', `${pairs.length} pairs with true area ratio, population, density, distance and map distortion`)}
+${famous.map(q => L(`compare/${q.slug}/`, `${nameOf(q.a)} vs ${nameOf(q.b)}`, sizePhrase(q.a, q.b).replace(/^./, c => c.toUpperCase()))).join('\n')}
+
+## Optional
+${L('sitemap.xml', 'Sitemap', 'every page')}
+${L('privacy.html', 'Privacy policy')}
+${L('terms.html', 'Terms of use')}
+${L('contact.html', 'Contact')}
+`;
+  fs.writeFileSync(path.join(outDir, 'llms.txt'), txt);
+}
+
+// ───────────── IndexNow ─────────────
+if (SITE.indexNowKey) {
+  if (!/^[a-zA-Z0-9-]{8,128}$/.test(SITE.indexNowKey)) fail('SITE.indexNowKey must be 8–128 letters, digits or dashes');
+  fs.writeFileSync(path.join(outDir, `${SITE.indexNowKey}.txt`), SITE.indexNowKey);
+}
+if (INDEXNOW) {
+  if (!SITE.indexNowKey) fail('--indexnow needs SITE.indexNowKey in tools/site.config.mjs');
+  const u = new URL(SITE.url);
+  const res = await fetch('https://api.indexnow.org/indexnow', {
+    method: 'POST', headers: { 'content-type': 'application/json; charset=utf-8' },
+    body: JSON.stringify({ host: u.host, key: SITE.indexNowKey, keyLocation: `${SITE.url}${SITE.indexNowKey}.txt`, urlList: urls.map(x => x.loc) }),
+  });
+  if (res.status !== 200 && res.status !== 202) fail(`IndexNow answered ${res.status} ${await res.text()}`);
+  console.log(`✓ IndexNow: submitted ${urls.length} URLs (HTTP ${res.status})`);
+}
+
+const count = dir => written.filter(w => w.rel.startsWith(dir + '/') && w.rel !== dir + '/' && !/^countries\/(region|ranking)\//.test(w.rel)).length;
 console.log(`✓ ${written.length} pages in ${path.relative(root, outDir) || outDir}: ${count('countries')} countries, ${count('compare')} comparisons, `
-  + `${STATIC_PAGES.length} content pages, 2 indexes, home; + 404.html, sitemap.xml (${urls.length} URLs), robots.txt`);
+  + `${regions.size} region hubs, ${RANKINGS.length} rankings, ${STATIC_PAGES.length} content pages, 2 indexes, home; `
+  + `+ 404.html, sitemap.xml (${urls.length} URLs), robots.txt, llms.txt${SITE.indexNowKey ? ', IndexNow key' : ''}`);

@@ -134,6 +134,25 @@ figure { margin: 24px 0; }
 .cmp-index a { font-weight: 700; }
 .cmp-index .muted { font-size: 14px; }
 
+/* region hubs, rankings */
+.more { margin: 8px 0 0; font-size: 14.5px; }
+.regions { list-style: none; padding: 0; display: grid; gap: 8px; }
+.regions li { padding: 10px 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--card); }
+.regions li > a { text-decoration: none; }
+.regions .subs { display: block; margin-top: 2px; font-size: 14px; color: var(--muted); }
+.list-table th, .list-table td { white-space: nowrap; }
+.list-table td.c { white-space: normal; min-width: 8.5em; }
+.list-table td .flag.sm { margin-right: 6px; }
+.list-table td:not(.c) { font-variant-numeric: tabular-nums; }
+.rank-table td.n { color: var(--muted); width: 2em; }
+@media (max-width: 560px) {
+  /* phones: drop the least important column so the rest fits without sideways scrolling */
+  .list-table:not(.rank-table) tr > :nth-child(5), .rank-table .sh { display: none; }
+}
+.rank-table tr:target td { background: rgba(157, 77, 255, 0.18); }
+.rank-table tr { scroll-margin-top: 16px; }
+.share { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; font-size: 14px; margin: -8px 0 8px; }
+
 /* 404 search */
 .find label { display: block; font-weight: 700; margin-bottom: 6px; }
 .find div { display: flex; gap: 8px; max-width: 420px; }

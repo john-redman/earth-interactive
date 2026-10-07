@@ -1,4 +1,16 @@
 // DOM UI: view switch pill, country popup, compare bar, pick banner, hint, hover tooltip.
+
+/** Play an element's .out animation, then hide it (reopening before then cancels the hide). */
+function hideAnimated(el, ms) {
+  if (el.hidden) return;
+  el.classList.remove('in'); el.classList.add('out');
+  clearTimeout(el.hideTimer);
+  el.hideTimer = setTimeout(() => { el.hidden = true; el.classList.remove('out'); }, ms);
+}
+function showAnimated(el) {
+  clearTimeout(el.hideTimer); el.classList.remove('out');
+  el.hidden = false; el.classList.remove('in'); void el.offsetWidth; el.classList.add('in');
+}
 import { flagImg } from './flags.js';
 import { attachSheetDrag } from './sheet-drag.js';
 const $ = (sel, el = document) => el.querySelector(sel);
@@ -17,7 +29,7 @@ const ICONS = {
 const SHORT = { un: 'UN', defacto: 'De facto', neutral: 'Neutral' };
 const KIND_LABEL = { country: 'Country', territory: 'Territory', limited: 'Limited recognition', breakaway: 'Breakaway region', disputed: 'Disputed area' };
 
-export function createUI({ data, initialView, onView, onCompareRequest, onCompareCancelPick, onCompareReset, onCompareEnd, onClosePopup, onNeighbour, onShare, onInfo }) {
+export function createUI({ data, initialView, onView, onCompareRequest, onCompareCancelPick, onCompareReset, onCompareEnd, onClosePopup, onNeighbour, onShare, onInfo, onSound }) {
   // ---------- view switch ----------
   const vs = $('#view-switch');
   const order = ['un', 'defacto', 'neutral'];
@@ -88,7 +100,9 @@ export function createUI({ data, initialView, onView, onCompareRequest, onCompar
       </div>`;
     const same = pop.dataset.key === o.key && !pop.hidden;
     pop.dataset.key = o.key;
-    pop.hidden = false; document.body.classList.add('card-open'); // the 3D pin marks the spot, so no anchor dot
+    clearTimeout(pop.hideTimer); pop.classList.remove('out');
+    pop.classList.toggle('sheet', innerWidth < 720); // decide the layout now, so the right open animation plays
+    pop.hidden = false; document.body.classList.add('card-open'); // the pin marks the spot, so no anchor dot
     if (!same) { setPeek(true); pop.scrollTop = 0; pop.classList.remove('in'); void pop.offsetWidth; pop.classList.add('in'); }
     else setPeek(pop.classList.contains('peek'));
     $('.pop-x', pop).onclick = () => onClosePopup();
@@ -102,7 +116,10 @@ export function createUI({ data, initialView, onView, onCompareRequest, onCompar
     if (!list.length) return i.landlocked === false && (u.t === 'country' || u.t === 'limited') ? '<div class="pop-nb"><span>Neighbours</span><small>No land borders</small></div>' : '';
     return `<div class="pop-nb"><span>Neighbours</span><div>${list.map(n => `<button type="button" class="chip" data-nb="${esc(n.key)}">${esc(n.name)}</button>`).join('')}</div></div>`;
   }
-  function hidePopup() { popFor = null; pop.hidden = true; dot.hidden = true; delete pop.dataset.key; document.body.classList.remove('card-open'); }
+  function hidePopup() {
+    popFor = null; dot.hidden = true; delete pop.dataset.key; document.body.classList.remove('card-open');
+    hideAnimated(pop, 300);
+  }
 
   // Phone sheet: opens as a short peek (name + key facts) so the globe stays visible.
   // Swipe up or tap the handle to expand; swipe down to shrink, then to close.
@@ -121,7 +138,7 @@ export function createUI({ data, initialView, onView, onCompareRequest, onCompar
     enabled: () => pop.classList.contains('sheet'),
     states: () => ({ peek: 196, full: Math.min(pop.scrollHeight + 2, innerHeight * 0.7) }),
     current: () => pop.classList.contains('peek') ? 'peek' : 'full',
-    settle: state => setPeek(state === 'peek'),
+    settle: state => { const was = pop.classList.contains('peek'); setPeek(state === 'peek'); if (was !== (state === 'peek')) onSound?.(was ? 'open' : 'close'); },
     dismiss: () => onClosePopup(),
   });
   // ---------- pin tag: flag + name + two choices, floating above the 3D pin ----------
@@ -140,7 +157,23 @@ export function createUI({ data, initialView, onView, onCompareRequest, onCompar
     $('[data-act="compare"]', tag).onclick = () => onCompareRequest(o);
     $('[data-act="info"]', tag).onclick = () => onInfo?.(o);
   }
-  function hideTag() { tagFor = null; tag.hidden = true; }
+  function hideTag() { tagFor = null; tag.hidden = true; tag.classList.remove('confirm'); }
+  /** In a game: the pin marks your guess and the tag asks to confirm it (no name, that would give it away). */
+  function showConfirm({ onYes, onNo }) {
+    tagFor = null;
+    tag.innerHTML = `
+      <div class="tag-name"><b>Your answer?</b></div>
+      <div class="tag-acts">
+        <button type="button" class="tag-btn" data-act="guess-no">Not here</button>
+        <button type="button" class="tag-btn primary" data-act="guess-yes">Confirm</button>
+      </div>`;
+    tag.style.setProperty('--c', 'var(--accent)');
+    tag.classList.add('confirm');
+    tag.hidden = false; tag.classList.remove('in'); void tag.offsetWidth; tag.classList.add('in');
+    $('[data-act="guess-no"]', tag).onclick = onNo;
+    $('[data-act="guess-yes"]', tag).onclick = onYes;
+    $('[data-act="guess-yes"]', tag).focus({ preventScroll: true });
+  }
   /** Called every frame with the projected pin head. */
   function placeTag(x, y, visible, vw) {
     if (tag.hidden) return;
@@ -183,8 +216,8 @@ export function createUI({ data, initialView, onView, onCompareRequest, onCompar
   function setCmpOpen(on, animate = true) {
     cmpOpen = on;
     bar.classList.toggle('open', on);
-    bar.hidden = !on; pill.hidden = on;
-    if (on && animate) { bar.classList.remove('in'); void bar.offsetWidth; bar.classList.add('in'); }
+    if (on) { if (animate || bar.hidden) showAnimated(bar); else { clearTimeout(bar.hideTimer); bar.hidden = false; } pill.hidden = true; }
+    else { hideAnimated(bar, 320); pill.hidden = false; }
     const grab = $('.cmp-grab', bar), btn = $('[data-act="stats"]', bar);
     grab?.setAttribute('aria-expanded', String(on)); grab?.setAttribute('aria-label', on ? 'Hide stats' : 'Compare stats');
     btn?.setAttribute('aria-expanded', String(on));
@@ -221,7 +254,7 @@ export function createUI({ data, initialView, onView, onCompareRequest, onCompar
     ].join('');
   }
   function showCompare(state) {
-    if (!state) { bar.hidden = true; pill.hidden = true; cmpOpen = false; bar.classList.remove('open'); return; }
+    if (!state) { hideAnimated(bar, 320); pill.hidden = true; cmpOpen = false; bar.classList.remove('open'); return; }
     const { a, b } = state;
     const A = { n: a.o.unit.n, area: a.area }, B = { n: b.o.unit.n, area: b.area };
     const big = A.area >= B.area ? [A, B] : [B, A];
@@ -261,11 +294,11 @@ export function createUI({ data, initialView, onView, onCompareRequest, onCompar
     states: () => ({ peek: null, full: Math.min(bar.scrollHeight + 2, innerHeight * 0.72) }),
     current: () => 'full',
     settle: () => {},
-    dismiss: () => setCmpOpen(false),
+    dismiss: () => { setCmpOpen(false); onSound?.('close'); },
   });
   let pillY = null;
   pill.addEventListener('touchstart', e => { pillY = e.touches[0].clientY; }, { passive: true });
-  pill.addEventListener('touchmove', e => { if (pillY != null && pillY - e.touches[0].clientY > 24) { pillY = null; setCmpOpen(true); } }, { passive: true });
+  pill.addEventListener('touchmove', e => { if (pillY != null && pillY - e.touches[0].clientY > 24) { pillY = null; setCmpOpen(true); onSound?.('open'); } }, { passive: true });
 
   // ---------- hover tooltip ----------
   const tip = $('#tooltip');
@@ -285,7 +318,7 @@ export function createUI({ data, initialView, onView, onCompareRequest, onCompar
   const toast = $('#toast'); let toastT;
   function showToast(msg) { toast.textContent = msg; toast.hidden = false; toast.classList.remove('in'); void toast.offsetWidth; toast.classList.add('in'); clearTimeout(toastT); toastT = setTimeout(() => (toast.hidden = true), 2600); }
 
-  return { showPopup, hidePopup, placePopup, get popFor() { return popFor; }, showTag, hideTag, placeTag, get tagFor() { return tagFor; }, showPick, hidePick, showCompare, showTip, dismissHint, showToast, setViewSilently(k) { current = k; paintSwitch(); } };
+  return { showPopup, hidePopup, placePopup, get popFor() { return popFor; }, showTag, hideTag, showConfirm, placeTag, get tagFor() { return tagFor; }, showPick, hidePick, showCompare, showTip, dismissHint, showToast, setViewSilently(k) { current = k; paintSwitch(); } };
 }
 
 const ICON_LINK = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 14a4 4 0 005.7 0l3-3a4 4 0 00-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 00-5.7 0l-3 3a4 4 0 005.7 5.7l1-1"/></svg>';

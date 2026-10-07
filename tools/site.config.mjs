@@ -22,6 +22,11 @@ export const SITE = {
   goatcounter: '',
   /** Who runs the site, for the About page and the legal pages. */
   operator: 'John Redman',
+  /**
+   * IndexNow key (Bing, Yandex, Seznam, Naver…): a public token, not a secret. The build writes <key>.txt next to
+   * the pages; `node tools/build-pages.mjs dist-pages --indexnow` submits every URL after a deploy. Empty = off.
+   */
+  indexNowKey: '80f1c6e95726956bd656007c2e8df97e',
   /** Date the privacy policy and terms last changed (shown on those pages). */
   legalUpdated: '2026-10-05',
 };
