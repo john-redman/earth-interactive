@@ -5,6 +5,7 @@ All notable changes to EarthInteractive are documented here.
 ## [Unreleased]
 
 ### Added
+- **A living ocean**: lighter shallows along the real coastline, darker, choppier water where seas are rough on average, and white wave crests travelling with the prevailing winds through the Southern Ocean, Drake Passage, the North Atlantic and North Pacific storm tracks, the Agulhas current, Biscay, the North Sea, the Bering Sea and (lightly) the cyclone belts. Driven by a small baked map (`data/ocean.png`, 57 KB) from a wave model on the real coastline. The repeating swell stripes are gone, and the sun glint follows the real Sun.
 - **Card never covers its country**: the card docks on the right (bottom sheet on phones) and the globe turns and zooms so the country sits in the free space.
 - **Games use the UN map** automatically, and your view comes back afterwards.
 - **Games: miss line**: after a wrong answer, a line arcs from your guess to the right country with the distance on it, and the camera frames both.

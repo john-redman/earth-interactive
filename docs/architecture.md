@@ -8,7 +8,7 @@ Static site, no bundler. `index.html` loads `js/main.js` as an ES module; an imp
 | Module | Responsibility | Key exports |
 |---|---|---|
 | `main.js` | App state machine (`browse`, `pick`, `compare`, `quiz`), pointer & keyboard routing, deep links, render loop | `window.EarthInteractive` (debug API) |
-| `globe.js` | Renderer, camera, OrbitControls (pinch zoom only), eased `zoomBy()`, idle auto-rotate flag, ocean shader, atmosphere, twinkling stars, `fit()` sizing, `flyTo()` | `createGlobe`, `tickGlobe`, `LIGHT_DIR_VIEW`, `PINCH_MS` |
+| `globe.js` | Renderer, camera, OrbitControls (pinch zoom only), eased `zoomBy()`, idle auto-rotate flag, ocean shader (shallows + storm crests from `data/ocean.png`), atmosphere, twinkling stars, `fit()` sizing, `flyTo()` | `createGlobe`, `tickGlobe`, `LIGHT_DIR_VIEW`, `PINCH_MS` |
 | `geo.js` | lon/lat ⇄ unit sphere, triangulation on the sphere, border segments, walls, centroids, ray–sphere, point-in-polygon | many helpers |
 | `countries.js` | Builds per-view fill meshes + border lines, palette, style states (hover, selected, dim, sockets, lens, quiz marks), picking grid | `CountryLayer`, `PALETTE`, `fillMaterial`, `lineMaterial` |
 | `compare.js` | True-size compare: main-landmass extraction, pop-out pieces (top, walls, rim, shadow), side-by-side layout, dragging | `Compare` |
