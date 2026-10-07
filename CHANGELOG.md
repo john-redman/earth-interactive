@@ -5,7 +5,7 @@ All notable changes to EarthInteractive are documented here.
 ## [Unreleased]
 
 ### Added
-- **A living ocean**: lighter shallows along the real coastline, darker, choppier water where seas are rough on average, and white wave crests travelling with the prevailing winds through the Southern Ocean, Drake Passage, the North Atlantic and North Pacific storm tracks, the Agulhas current, Biscay, the North Sea, the Bering Sea and (lightly) the cyclone belts. Driven by a small baked map (`data/ocean.png`, 57 KB) from a wave model on the real coastline. The repeating swell stripes are gone, and the sun glint follows the real Sun.
+- **A satellite-style ocean with its currents**: a medium ocean blue with fine swell lines in long, gently curving rows that drift over all open water (no more white crests bunched in the storm belts), and about 20 major surface currents drawn as dark lines whose dashes run with the flow, each labelled with its name, direction and typical speed. Ocean names sit on the water in the same type, larger. Labels thin out when zoomed out and step aside for data lenses, games, compare and country cards.
 - **Card never covers its country**: the card docks on the right (bottom sheet on phones) and the globe turns and zooms so the country sits in the free space.
 - **Games use the UN map** automatically, and your view comes back afterwards.
 - **Games: miss line**: after a wrong answer, a line arcs from your guess to the right country with the distance on it, and the camera frames both.
@@ -16,6 +16,9 @@ All notable changes to EarthInteractive are documented here.
 - **Stars**: a light scatter of soft, slowly twinkling stars.
 
 ### Changed
+- **Games**: the map view is locked to UN while playing, and the Search/Play/Data dock hides on desktop too (it already did on phones). Compare keeps the dock on phones as on desktop.
+- **Phones**: search raises the keyboard on iOS; the globe draws at half rate while nothing moves (saves battery); Share image asks for a second tap if the phone refused the share sheet after a slow render; pulling the card sheet up keeps the country visible above it.
+- `?compare=X,X` (the same country twice) is ignored.
 - **Day & night is clearer**: a darker, moonlit-blue night side, a sharper terminator and a slightly brighter day side.
 - **Switching views clears the pin** (a spot can belong to a different country in another view).
 - Pins and fly-tos aim at a country's main landmass (France no longer pins into Spain).

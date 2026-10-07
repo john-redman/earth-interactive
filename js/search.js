@@ -60,7 +60,8 @@ export function createSearch({ getObjects, onPick }) {
   list.addEventListener('pointerdown', e => { const li = e.target.closest('li[data-i]'); if (li) { e.preventDefault(); choose(+li.dataset.i); } });
   root.addEventListener('pointerdown', e => { if (e.target === root) close(); });
 
-  function open() { root.hidden = false; input.value = ''; results = []; paint(); requestAnimationFrame(() => input.focus()); }
+  // focus right away, inside the tap: iOS only raises the keyboard for a focus made during the user's gesture
+  function open() { root.hidden = false; input.value = ''; results = []; paint(); input.focus({ preventScroll: true }); }
   function close() { root.hidden = true; input.blur(); }
   return { open, close, get isOpen() { return !root.hidden; } };
 }

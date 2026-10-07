@@ -35,8 +35,8 @@ float snoise(vec3 v){
 }`;
 
 /**
- * The baked ocean map (tools/build-ocean.mjs): R closeness to the coast, G storminess, B land. Until it arrives
- * the shader sees a calm open sea.
+ * The baked ocean map (tools/build-ocean.mjs): R closeness to the coast, G unused, B land. Until it arrives the
+ * shader sees open sea everywhere.
  */
 function oceanMap() {
   const empty = new THREE.DataTexture(new Uint8Array([0, 0, 0, 255]), 1, 1);
@@ -50,6 +50,12 @@ function oceanMap() {
   return uniform;
 }
 
+/**
+ * The sea as seen from orbit: a medium ocean blue with fine, slightly lighter swell lines in long, gently curving
+ * rows over all open water, drifting slowly. The rows run along the parallels and are bent by a large, slow noise
+ * (which also shades the water); a second noise breaks them into swell trains. Desktop adds a finer, crossing set
+ * (third noise). Each set fades to its average tone once its rows are too fine for the pixels, so nothing shimmers.
+ */
 function oceanMaterial() {
   return new THREE.ShaderMaterial({
     defines: { OCTAVES: QUALITY.oceanOctaves },
@@ -67,73 +73,58 @@ function oceanMaterial() {
       uniform float uTime; uniform vec3 uLight; uniform vec3 uSun; uniform float uNight; uniform sampler2D uMap;
       varying vec3 vPos; varying vec3 vN; varying vec3 vView;
       ${NOISE}
+      // thin lines on the crests of a phase field; fades to the average coverage when the rows get too fine
+      // (about px pixels wide, never more than a fraction w of the row spacing)
+      float rows(float ph, float w, float px){
+        float fw = fwidth(ph) / 6.2831853;
+        float f = fract(ph / 6.2831853), d = min(f, 1.0 - f);
+        float hw = min(w, fw * px * 0.5);
+        float l = 1.0 - smoothstep(hw, hw + fw * 1.2, d);
+        return mix(min(2.0 * hw + fw, 0.2), l, smoothstep(0.2, 0.06, fw));
+      }
       void main(){
         vec3 N = normalize(vN), P = normalize(vPos);
         float t = uTime;
         float lon = atan(P.x, P.z), lat = asin(clamp(P.y, -1.0, 1.0));
-        vec3 m = texture2D(uMap, vec2(lon / 6.2831853 + 0.5, lat / 3.1415927 + 0.5)).rgb;
-        float shelf = m.r, storm = m.g;
-        // slow, swirling water: large domain-warped noise (no repeating bands), finer ripples on top
-        float n1 = snoise(P * 3.2 + vec3(t * 0.010, -t * 0.007, t * 0.009));
-        float n2 = snoise(P * 10.0 + n1 * 0.7 + vec3(-t * 0.030, t * 0.022, t * 0.026));
+        float shelf = texture2D(uMap, vec2(lon / 6.2831853 + 0.5, lat / 3.1415927 + 0.5)).r;
+        float n1 = snoise(P * 2.3 + vec3(t * 0.004, -t * 0.003, t * 0.0035));   // broad: tone and the bend of the rows
+        float n2 = snoise(P * 9.0 + n1 * 0.4 + vec3(-t * 0.010, t * 0.008, t * 0.009)); // swell trains
+        float facing = clamp(dot(N, vView), 0.0, 1.0);
+        // medium ocean blue, deeper towards the limb, a touch of teal over the coastal shallows
+        vec3 col = mix(vec3(0.060, 0.170, 0.400), vec3(0.120, 0.300, 0.610), pow(facing, 1.1));
+        col *= 0.95 + 0.07 * n1 + 0.03 * n2;
+        col = mix(col, vec3(0.110, 0.380, 0.600), pow(shelf, 1.8) * 0.32);
+
+        // swell: long rows along the parallels, bent by the broad noise, drifting slowly
+        float open = (1.0 - 0.75 * shelf) * (1.0 - smoothstep(1.13, 1.30, abs(lat)));  // calmer near coasts and the pack ice
+        float ph = lat * 400.0 + n1 * 16.0 + n2 * 2.0 - t * 0.35;
+        float sw = rows(ph, 0.08, 1.2) * smoothstep(-0.5, 0.6, n2);
         #if OCTAVES > 2
-        float n3 = snoise(P * 46.0 + n2 * 0.5 + vec3(t * 0.11, -t * 0.08, t * 0.06));
+        float n3 = snoise(P * 34.0 + vec3(t * 0.03, -t * 0.02, t * 0.025));
+        float ph2 = lat * 1100.0 - n1 * 44.0 + n2 * 6.0 + n3 * 1.5 - t * 0.9;  // a finer set, crossing at a slight angle
+        sw = max(sw, rows(ph2, 0.1, 1.0) * smoothstep(-0.3, 0.7, n3 + n2 * 0.5) * 0.75);
         #else
         float n3 = n2 * 0.6;
         #endif
-        float facing = clamp(dot(N, vView), 0.0, 1.0);
-        // realistic, muted palette: deep navy offshore, lighter teal over the coastal shallows
-        vec3 deep = vec3(0.016, 0.055, 0.135), mid = vec3(0.032, 0.130, 0.290);
-        vec3 col = mix(deep, mid, pow(facing, 1.5));
-        col *= 0.92 + 0.16 * (n1 * 0.6 + n2 * 0.4);
-        col = mix(col, vec3(0.045, 0.215, 0.27), pow(shelf, 1.7) * 0.6);
-        col = mix(col, col * vec3(0.86, 0.94, 1.0) + vec3(0.010, 0.016, 0.022), storm * 0.55); // rough water: greyer, choppier
-        vec3 Np = normalize(N + vec3(n2, n3, n1) * (0.05 + 0.06 * storm));
-        float diff = clamp(dot(Np, uLight), 0.0, 1.0);
-        col *= 0.62 + 0.5 * diff;
+        col += vec3(0.080, 0.135, 0.210) * sw * open;
 
-        // white crests where the sea is rough: wave fronts lying across the wind, travelling downwind, bent by the
-        // swell and broken into short segments that form and fade on their own. A finer set joins in when zoomed
-        // in close; each set fades out once it is too fine to draw. Only computed inside the storm areas.
-        float foam = 0.0;
-        if (storm > 0.03) {
-          vec3 E = vec3(cos(lon), 0.0, -sin(lon));                            // east, along the surface
-          float alat = abs(lat), dir = alat > 0.56 && alat < 1.15 ? 1.0 : -1.0; // westerlies blow east, trades west
-          float along = dot(P, E) * dir;
-          float broken = snoise(P * vec3(55.0, 70.0, 55.0) + vec3(t * 0.05, -t * 0.04, t * 0.12));
-          float amount = smoothstep(0.08, 0.7, storm);
-          // coarse fronts
-          float ph = along * 230.0 + n2 * 2.6 + n1 * 4.0 - t * 0.9;
-          float f = fract(ph / 6.2831853), fw = fwidth(ph) / 6.2831853 + 0.002;
-          float crest = smoothstep(0.80 - fw, 0.95, f) * (1.0 - smoothstep(0.96, 0.96 + fw * 2.0 + 0.02, f)); // sharp front, foam trailing behind
-          foam = crest * smoothstep(0.05, 0.5, broken) * smoothstep(0.28, 0.08, fw);
-          #if OCTAVES > 2
-          // fine fronts, only up close (not on the low tier)
-          float fade2 = smoothstep(0.12, 0.03, fw * 3.2);
-          if (fade2 > 0.01) {
-            float ph2 = along * 740.0 + n3 * 3.0 + n2 * 5.0 - t * 1.7;
-            float f2 = fract(ph2 / 6.2831853), fw2 = fwidth(ph2) / 6.2831853 + 0.002;
-            float crest2 = smoothstep(0.84 - fw2, 0.96, f2) * (1.0 - smoothstep(0.97, 0.99 + fw2, f2));
-            foam = max(foam, crest2 * smoothstep(0.25, 0.7, broken + n3 * 0.5) * fade2 * 0.75);
-          }
-          #endif
-          foam *= amount;
-        }
-        col = mix(col, vec3(0.78, 0.86, 0.94), foam * 0.6);
+        vec3 Np = normalize(N + vec3(n2, n3, n1) * 0.04);
+        float diff = clamp(dot(Np, uLight), 0.0, 1.0);
+        col *= 0.66 + 0.46 * diff;
 
         // day & night; the glint follows the real Sun while it is on
         float sd = dot(P, uSun), day = smoothstep(-0.05, 0.10, sd);
         vec3 sunV = normalize((viewMatrix * vec4(uSun, 0.0)).xyz);
         vec3 L = normalize(mix(uLight, sunV, uNight * 0.85));
         vec3 H = normalize(L + vView);
-        vec3 Ns = normalize(N + vec3(n1, n2 * 0.5, -n1) * 0.03);           // a calmer surface for the glint, so it isn't blotchy
+        vec3 Ns = normalize(N + vec3(n1, n2 * 0.5, -n1) * 0.03);           // a calm surface for the glint, so it isn't blotchy
         float spec = pow(max(dot(Ns, H), 0.0), 140.0) * mix(1.0, day, uNight);
-        col += vec3(0.62, 0.78, 1.0) * spec * (0.2 + 0.16 * (1.0 - storm));
-        vec3 lit = mix(col * vec3(0.17, 0.21, 0.38), col * 1.1, day);            // night sea: dark, moonlit
+        col += vec3(0.62, 0.78, 1.0) * spec * 0.3;
+        vec3 lit = mix(col * vec3(0.15, 0.19, 0.34), col * 1.05, day);            // night sea: dark, moonlit
         lit += vec3(1.0, 0.55, 0.25) * 0.06 * (1.0 - smoothstep(0.0, 0.09, abs(sd - 0.01))); // dusk glow
         col = mix(col, lit, uNight);
         float rim = pow(1.0 - facing, 3.0) * mix(1.0, 0.3 + 0.7 * day, uNight); // limb glow, dimmer on the night side
-        col += vec3(0.20, 0.45, 1.0) * rim * 0.5;
+        col += vec3(0.20, 0.45, 1.0) * rim * 0.45;
         gl_FragColor = vec4(col, 1.0);
       }`,
   });
