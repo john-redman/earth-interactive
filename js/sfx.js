@@ -3,6 +3,8 @@
 // drops and a click when compare pieces snap out (backwards when they snap back). Quiet, and silenced by the
 // same mute button as the ride audio.
 const VOLUME = 0.22;
+// the pin falls for 0.16 s (css/style.css @keyframes pinDrop); the plop's peak is 22 ms into the file
+const PIN_LANDS = matchMedia('(prefers-reduced-motion: reduce)').matches ? 0.02 : 0.16, PLOP_PEAK = 0.022;
 const FILES = { swipe: 'sounds/swipe.mp3', plop: 'sounds/pin-drop.mp3', click: 'sounds/click.mp3' };
 
 let ctx = null, out = null, noise = null;
@@ -67,7 +69,8 @@ function whoosh(t, { from = 400, to = 1600, dur = 0.22, gain = 0.35, q = 0.8 } =
 
 const SOUNDS = {
   // picking a country: a muted wooden knock as the pin drops in with a plop
-  tap(t) { tone(t, 190, { dur: 0.16, gain: 0.55, glide: 0.62 }); tone(t, 520, { dur: 0.05, gain: 0.12, type: 'triangle' }); sample(t + 0.02, 'plop', 0.9); },
+  // the pin landing: just the plop, timed to the moment the pin hits the globe (see .map-pin.drop in the CSS)
+  tap(t) { sample(t + PIN_LANDS - PLOP_PEAK, 'plop', 1); },
   // opening a panel: a swipe and two low marimba notes
   open(t) { sample(t, 'swipe', 1.1); tone(t + 0.05, 220, { dur: 0.42, gain: 0.32 }); tone(t + 0.05, 880, { dur: 0.18, gain: 0.05 }); tone(t + 0.12, 330, { dur: 0.5, gain: 0.26 }); tone(t + 0.12, 1320, { dur: 0.2, gain: 0.04 }); },
   // closing: the swipe in reverse, one soft knock

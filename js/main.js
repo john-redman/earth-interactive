@@ -71,7 +71,7 @@ let selected = null;          // country marked by the pin
 const ui = createUI({
   data, initialView: viewKey,
   onView: k => switchView(k),
-  onCompareRequest: o => { mode = 'pick'; pickFrom = o; closePopup(); layer.setSelected(o); ui.showPick(o); },
+  onCompareRequest: o => { mode = 'pick'; pickFrom = o; closePopup(); compare.preview(o); sfx.play('snapOut'); ui.showPick(o); }, // it lifts out straight away
   onCompareCancelPick: () => cancelPick(),
   onCompareReset: () => compare.resetPositions(),
   onCompareEnd: () => endCompare(),
@@ -258,7 +258,10 @@ function recenter() {
   globe.resumeAuto();
 }
 document.getElementById('recenter').addEventListener('click', recenter);
-function cancelPick() { mode = 'browse'; pickFrom = null; ui.hidePick(); layer.setSelected(null); }
+function cancelPick() {
+  if (mode === 'pick' && compare.previewPiece) { compare.end(); sfx.play('snapIn'); } // the lifted piece settles back
+  mode = 'browse'; pickFrom = null; ui.hidePick(); layer.setSelected(null);
+}
 function endCompare(immediate) {
   if (!immediate && mode === 'compare') sfx.play('snapIn'); // pieces settle back into their sockets
   compare.end(immediate); mode = 'browse'; ui.showCompare(null);
@@ -290,7 +293,7 @@ stage.addEventListener('pointerdown', e => {
   pointers.add(e.pointerId);
   ui.dismissHint();
   down = { x: e.clientX, y: e.clientY, t: performance.now(), moved: false, multi: pointers.size > 1 };
-  if (mode === 'compare' && pointers.size === 1) {
+  if ((mode === 'compare' || mode === 'pick') && pointers.size === 1) { // pieces can be dragged while choosing the second country too
     const hit = compare.hitPiece(rayAt(e.clientX, e.clientY));
     if (hit) {
       globe.controls.enabled = false;
@@ -321,11 +324,10 @@ function hoverAt(x, y) {
   hoverQueued = [x, y];
   requestAnimationFrame(() => {
     const [hx, hy] = hoverQueued; hoverQueued = null;
-    if (mode === 'compare') {
+    if (mode === 'compare' || (mode === 'pick' && compare.previewPiece)) {
       const hit = compare.hitPiece(rayAt(hx, hy));
       stage.classList.toggle('over-piece', !!hit);
-      ui.showTip(hit ? hit.piece.o.unit.n : null, hx, hy);
-      return;
+      if (hit || mode === 'compare') { ui.showTip(hit ? hit.piece.o.unit.n : null, hx, hy); if (hit) layer.setHover(null); return; }
     }
     const r = countryAt(hx, hy);
     const o = r?.o || null;
@@ -358,6 +360,7 @@ function onClick(x, y) {
   if (r) ripple(x, y, !!r.o);
   if (mode === 'quiz') { if (r && quiz.waiting) proposeGuess(r); return; }
   if (mode === 'pick') {
+    if (compare.hitPiece(rayAt(x, y))) return; // a tap on the lifted piece isn't a choice
     if (r?.o && r.o !== pickFrom) {
       const a = pickFrom; ui.hidePick(); pickFrom = null; mode = 'compare';
       layer.setHover(null); compare.start(a, r.o); sfx.play('confirm'); sfx.play('snapOut');

@@ -136,9 +136,18 @@ body.card-open .hint { opacity: 0; }
   filter: drop-shadow(0 3px 4px rgba(0, 0, 0, 0.35)); }
 .map-pin svg { display: block; overflow: visible; }
 .map-pin.away { opacity: 0; }
-.map-pin.drop .pin-body { animation: pinDrop 0.55s cubic-bezier(0.3, 0.9, 0.4, 1.25) both; }
-.map-pin.drop .pin-shadow { animation: pinShadow 0.55s ease-out both; transform-origin: 20px 55.5px; }
-@keyframes pinDrop { from { transform: translateY(-46px); opacity: 0; } 35% { opacity: 1; } to { transform: none; } }
+.map-pin.drop .pin-body { animation: pinDrop 0.42s linear both; }
+.map-pin.drop .pin-shadow { animation: pinShadow 0.16s ease-in both; transform-origin: 20px 55.5px; }
+/* falls for 0.16 s (lands at 38%: the plop in js/sfx.js is timed to it), then a small settle bounce */
+@keyframes pinDrop {
+  0% { transform: translateY(-46px); opacity: 0; animation-timing-function: cubic-bezier(0.5, 0, 1, 1); }
+  15% { opacity: 1; }
+  38% { transform: none; animation-timing-function: cubic-bezier(0, 0, 0.4, 1); }
+  60% { transform: translateY(-5px); animation-timing-function: cubic-bezier(0.6, 0, 1, 1); }
+  80% { transform: none; animation-timing-function: ease-out; }
+  90% { transform: translateY(-1.2px); }
+  100% { transform: none; }
+}
 @keyframes pinShadow { from { transform: scale(0.3); opacity: 0; } to { transform: none; opacity: 1; } }
 
 /* ───────────── Pin tag (small label above the pin) ───────────── */
