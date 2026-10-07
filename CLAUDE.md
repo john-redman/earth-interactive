@@ -62,6 +62,10 @@ Unit keys are Natural Earth `ADM0_A3` codes (e.g. `FRA`), or `X_<SLUG>` for disp
 - **Text/SEO pages** (`docs/seo.md`): `about.html` … `contact.html` are hand-written; `countries/` (incl. `countries/region/`, `countries/ranking/`), `compare/`, `404.html`, `sitemap.xml`, `robots.txt`, `llms.txt` and the IndexNow key file are generated at deploy by `tools/build-pages.mjs _site` and never committed (`npm run build:pages` → `dist-pages/` to preview). Shared head/header/footer live in the script; after changing them run `node tools/build-pages.mjs --sync`. Config is `tools/site.config.mjs`; its `url` must equal `SITE_URL` in `js/site.js` and `goatcounter` must equal `GOATCOUNTER_CODE` in `js/analytics.js` (the build fails otherwise). Slugs are public URLs — don't rename them.
 - **Service worker navigation**: only the scope root / `index.html` is mapped to the cached globe; every other navigation is network-first with a cached fallback. Never map all navigations to `./` again — it would serve the globe for `/countries/...`.
 
+## Workflow
+
+Owner's standing instruction: after finishing a change, open a PR, wait for CI, **merge it to `main` and confirm the Pages deploy** — unless told otherwise in that request.
+
 ## Testing
 
 No unit-test framework yet. Verify changes by:
