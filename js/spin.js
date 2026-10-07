@@ -2,11 +2,13 @@
 //  • grab      → stops it dead, immediately
 //  • drag      → the surface follows your finger
 //  • flick     → it keeps spinning at the speed you let go with, slowing gently
-// OrbitControls keeps zoom (wheel / pinch) and the idle auto-rotate; rotation is handled here.
+//  • pinch     → zooms only: the spin (or the idle auto-rotate) carries on
+// OrbitControls keeps zoom (wheel / pinch); rotation, including the idle auto-rotate, is handled here.
 import * as THREE from 'three';
+import { PINCH_MS } from './globe.js';
 
 export const SPIN = {
-  friction: 0.26,        // per second while spinning fast (lower = keeps momentum longer); ~2.7 s half-life
+  friction: 0.34,        // per second while spinning fast (lower = keeps momentum longer); ~2 s half-life
   slowFriction: 1.6,     // per second below `slowBelow`, so a slow drift settles instead of crawling forever
   slowBelow: 0.5,        // rad/s
   maxSpeed: 24,          // rad/s
@@ -17,8 +19,9 @@ export class Spin {
   constructor(globe) {
     this.globe = globe;
     this.v = 0; this.vPhi = 0;           // angular velocities (rad/s) of camera azimuth / polar angle
-    this.angle = 0;                      // total azimuth travelled — drives the direction of the ride audio
+    this.angle = 0;                      // total azimuth travelled
     this.dragging = false; this.pending = { t: 0, p: 0 }; this.samples = [];
+    this.auto = 0;                       // 0…1: the idle auto-rotate eases in and out instead of jumping
     this.sph = new THREE.Spherical();
   }
 
@@ -32,7 +35,8 @@ export class Spin {
   /** Pointer down on the globe: a hand on the globe stops it at once. */
   begin(x, y, now) {
     this.wasSpinning = Math.abs(this.v) > 0.6;
-    this.v = 0; this.vPhi = 0;
+    this.saved = { v: this.v, vPhi: this.vPhi, auto: this.auto, t: now };
+    this.v = 0; this.vPhi = 0; this.auto = 0;
     this.dragging = true; this.ox = x; this.oy = y; this.last = { x, y, now }; this.lastMoveAt = now; this.samples = [];
   }
 
@@ -65,6 +69,13 @@ export class Spin {
   }
 
   cancel() { this.dragging = false; this.pending.t = this.pending.p = 0; this.samples = []; }
+
+  /** A second finger went down: if it followed the first at once, this is a pinch, so give the spin back. */
+  pinch(now) {
+    const s = this.saved, quick = this.dragging && s && now - s.t < PINCH_MS;
+    this.cancel();
+    if (quick) { this.v = s.v; this.vPhi = s.vPhi; this.auto = s.auto; this.wasSpinning = false; }
+  }
   stop() { this.v = 0; this.vPhi = 0; }
   brake() { this.stop(); }
 
@@ -80,7 +91,12 @@ export class Spin {
     if (Math.abs(this.v) < 0.003) this.v = 0;
     this.vPhi *= Math.exp(-SPIN.tiltDamping * dt);
 
-    const dTheta = this.pending.t + this.v * dt, dPhi = this.pending.p + this.vPhi * dt;
+    // idle auto-rotate: eases in over ~1.5 s, out over ~0.3 s
+    const want = g.autoRotate && !this.dragging ? 1 : 0;
+    this.auto += (want - this.auto) * (1 - Math.exp(-(want ? 2 : 10) * dt));
+    if (this.auto < 0.001) this.auto = want ? 0.001 : 0;
+
+    const dTheta = this.pending.t + (this.v - this.auto * g.autoRotateSpeed) * dt, dPhi = this.pending.p + this.vPhi * dt;
     this.pending.t = this.pending.p = 0;
     if (!dTheta && !dPhi) return;
     this.angle += dTheta;

@@ -4,9 +4,15 @@ import { LineSegments2 } from 'three/addons/lines/LineSegments2.js';
 import { LineSegmentsGeometry } from 'three/addons/lines/LineSegmentsGeometry.js';
 import { borderSegments, wallGeometry, frameAt, northUpRotation, raySphere, rayClosestOnSphere, vec3ToLonLat, lonLatToVec3, pointInMulti, triangulate, sphereCentroid } from './geo.js';
 import { PALETTE, borderColorFor, fillMaterial, lineMaterial } from './countries.js';
+import { LIGHT_DIR_VIEW } from './globe.js';
 
 const ease = k => 1 - Math.pow(1 - k, 3);
 const easeIO = k => (k < 0.5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2);
+// how high a piece floats: grows with the pair's width (radians) so tiny countries don't get towering walls
+const liftFor = span => THREE.MathUtils.clamp(span * 0.03, 0.004, 0.038);
+// the soft shadow: a few offset copies stacked, so its edge fades instead of ending in a hard line
+const SHADOW_LAYERS = [0.6, 0.75, 0.9, 1.05, 1.2], SHADOW_ALPHA = 0.095, SHADOW_REACH = 1.6;
+const _L = new THREE.Vector3(), _T = new THREE.Vector3(), _S = new THREE.Vector3();
 
 export class Compare {
   constructor(globe, layer) {
@@ -57,19 +63,22 @@ export class Compare {
     const topGeom = new THREE.BufferGeometry();
     topGeom.setAttribute('position', new THREE.BufferAttribute(tri.positions, 3)); // unit sphere; group scale lifts it
     topGeom.setIndex(new THREE.BufferAttribute(tri.index, 1));
-    const top = new THREE.Mesh(topGeom, fillMaterial(hex, { opacity: 0.74, pieceId: this.pieceSeq = ((this.pieceSeq || 0) + 1) % 100 }));
+    const top = new THREE.Mesh(topGeom, fillMaterial(hex, { opacity: 0.94, pieceId: this.pieceSeq = ((this.pieceSeq || 0) + 1) % 100 }));
     top.material.uniforms.uNight = { value: 0 }; // moved pieces ignore day/night
-    const walls = new THREE.Mesh(wallGeometry(tri.rings, 1 - thick, 1), new THREE.MeshBasicMaterial({ color: borderColorFor(hex), transparent: true, opacity: 0.9, side: THREE.DoubleSide, depthWrite: false }));
-    const lm = lineMaterial(borderColorFor(hex), { width: 2 });
+    top.material.uniforms.uBright.value = 0.35;  // a touch brighter than the map, so the piece reads as lifted
+    const walls = new THREE.Mesh(wallGeometry(tri.rings, 1 - thick, 1), new THREE.MeshBasicMaterial({ color: borderColorFor(hex), transparent: true, opacity: 0.95, side: THREE.DoubleSide, depthWrite: false }));
+    // a light rim catches the edge of the top face
+    const lm = lineMaterial(new THREE.Color(hex).lerp(new THREE.Color('#ffffff'), 0.55), { width: 2.2 });
     const rim = new LineSegments2(new LineSegmentsGeometry().setPositions(borderSegments(tri.rings, 1.0006)), lm);
     this.layer.registerLineMaterial(lm);
     const group = new THREE.Group(); group.add(walls, top, rim);
-    const shadowGeom = topGeom.clone();
-    const shadow = new THREE.Mesh(shadowGeom, new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0, depthWrite: false }));
-    shadow.scale.setScalar(1.003);
-    const shadowGroup = new THREE.Group(); shadowGroup.add(shadow);
-    this.globe.world.add(shadowGroup, group);
-    const p = { o, shape, hex, group, shadowGroup, shadow, top, walls, rim, lm, lift, liftNow: 0, center: shape.centroid.clone(), ext: this.extent(shape) };
+    const shadowMat = new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0, depthWrite: false });
+    const shadows = SHADOW_LAYERS.map(() => {
+      const g = new THREE.Group(), m = new THREE.Mesh(topGeom, shadowMat);
+      m.scale.setScalar(1.003); g.add(m); return g;
+    });
+    this.globe.world.add(...shadows, group);
+    const p = { o, shape, hex, group, shadows, shadowMat, top, walls, rim, lm, lift, liftNow: 0, center: shape.centroid.clone(), ext: this.extent(shape) };
     this.raise(p);
     return p;
   }
@@ -77,15 +86,27 @@ export class Compare {
   raise(p) {
     p.z = ++this.order;
     const base = 10 + p.z * 4;
-    p.shadow.renderOrder = base; p.walls.renderOrder = base + 1; p.top.renderOrder = base + 2; p.rim.renderOrder = base + 3;
+    for (const g of p.shadows) g.children[0].renderOrder = base;
+    p.walls.renderOrder = base + 1; p.top.renderOrder = base + 2; p.rim.renderOrder = base + 3;
   }
 
   place(p, center, liftNow) {
     p.center.copy(center); p.liftNow = liftNow;
-    const q = northUpRotation(p.shape.centroid, center);
-    p.group.quaternion.copy(q); p.shadowGroup.quaternion.copy(q);
+    p.group.quaternion.copy(northUpRotation(p.shape.centroid, center));
     p.group.scale.setScalar(1 + liftNow);
-    p.shadow.material.opacity = 0.32 * (liftNow / p.lift);
+    this.placeShadow(p);
+  }
+
+  /** The shadow falls away from the light (which is fixed to the viewer), further the higher the piece floats. */
+  placeShadow(p) {
+    _L.copy(LIGHT_DIR_VIEW).applyQuaternion(this.globe.camera.quaternion);
+    _T.copy(_L).addScaledVector(p.center, -_L.dot(p.center));          // the light's slant across the surface
+    const k = Math.min(1, p.liftNow / p.lift);
+    p.shadowMat.opacity = SHADOW_ALPHA * k;
+    p.shadows.forEach((g, i) => {
+      _S.copy(p.center).addScaledVector(_T, -p.liftNow * SHADOW_REACH * SHADOW_LAYERS[i]).normalize();
+      g.quaternion.copy(northUpRotation(p.shape.centroid, _S));
+    });
   }
 
   /** Where the two pieces should sit: side by side, same latitude, centred on what the camera looks at. */
@@ -119,11 +140,11 @@ export class Compare {
     this.flushEnd();
     if (this.active || this.previewPiece) this.end(true);
     const ext = this.extent(this.shapeFor(a));
-    const lift = THREE.MathUtils.clamp((ext.xmax - ext.xmin) * 2 * 0.022, 0.0025, 0.028);
+    const lift = liftFor((ext.xmax - ext.xmin) * 2);
     const p = this.makePiece(a, this.hexFor(a), lift);
     this.pieces = [p]; this.previewPiece = p;
     this.layer.setSelected(null); this.layer.setHover(null); this.layer.setSockets([a.key]);
-    this.globe.lockAuto = true; this.globe.controls.autoRotate = false;
+    this.globe.lockAuto = true; this.globe.autoRotate = false;
     const t0 = performance.now();
     this.anim = now => { const k = Math.min(1, (now - t0) / 420); this.place(p, p.center, p.lift * ease(k)); if (k >= 1) this.anim = null; };
   }
@@ -140,9 +161,9 @@ export class Compare {
     // lift scales with the pair's size so tiny countries don't get towering walls
     const tmp = [this.extent(this.shapeFor(a)), this.extent(this.shapeFor(b))];
     const span = Math.max(tmp[0].xmax - tmp[0].xmin + tmp[1].xmax - tmp[1].xmin, 0.02);
-    const lift = THREE.MathUtils.clamp(span * 0.022, 0.0025, 0.028);
+    const lift = liftFor(span);
     this.pieces = [kept ? Object.assign(kept, { lift }) : this.makePiece(a, hexA, lift), this.makePiece(b, hexB, lift)];
-    this.globe.lockAuto = true; this.globe.controls.autoRotate = false;
+    this.globe.lockAuto = true; this.globe.autoRotate = false;
     this.animateTo(this.layout(), true);
     this.emit();
   }
@@ -177,9 +198,9 @@ export class Compare {
     const pieces = this.pieces; this.pieces = []; this.active = false; this.drag = null; this.previewPiece = null;
     const cleanup = () => {
       for (const p of pieces) {
-        this.globe.world.remove(p.group, p.shadowGroup);
+        this.globe.world.remove(p.group, ...p.shadows);
         p.group.traverse(c => { c.geometry?.dispose?.(); c.material?.dispose?.(); });
-        p.shadow.geometry.dispose(); p.shadow.material.dispose();
+        p.shadowMat.dispose();
         this.layer.unregisterLineMaterial(p.lm);
       }
       this.layer.setSockets([]); this.layer.setDim(null);
@@ -239,5 +260,8 @@ export class Compare {
     this.onChange({ a: { o: A.o, hex: A.hex, area: A.shape.area, trimmed: A.shape.trimmed }, b: { o: B.o, hex: B.hex, area: B.shape.area, trimmed: B.shape.trimmed } });
   }
 
-  tick(now) { this.anim?.(now); }
+  tick(now) {
+    this.anim?.(now);
+    if (!this.anim) for (const p of this.pieces) this.placeShadow(p); // the light turns with the camera
+  }
 }

@@ -4,6 +4,9 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { SKY } from './sun.js';
 import { QUALITY, ResolutionGovernor } from './perf.js';
 
+/** A second finger within this many ms of the first starts a pinch (zoom) rather than a grab. */
+export const PINCH_MS = 280;
+
 export const LIGHT_DIR_VIEW = new THREE.Vector3(-0.45, 0.55, 0.7).normalize(); // light fixed relative to the viewer
 
 const NOISE = /* glsl */`
@@ -150,25 +153,37 @@ export function createGlobe(canvas) {
   const controls = new OrbitControls(camera, canvas);
   controls.enableDamping = true; controls.dampingFactor = 0.07;
   controls.enablePan = false;
-  controls.rotateSpeed = 0.5; controls.zoomSpeed = 0.7;
+  controls.zoomSpeed = 0.7;
   controls.minDistance = 1.25; controls.maxDistance = 7;
-  controls.autoRotate = !matchMedia('(prefers-reduced-motion: reduce)').matches; controls.autoRotateSpeed = 0.35;
+  // The idle auto-rotate is driven by js/spin.js (globe.autoRotate), not OrbitControls: OrbitControls pauses
+  // its own auto-rotate while a pinch is in progress, and zooming must never stop or start the rotation.
+  controls.autoRotate = false;
 
-  // Idle → gentle auto-rotate; any interaction pauses it. Holds (e.g. an open country card) keep it off.
+  // Idle → gentle auto-rotate; grabbing the globe pauses it. Holds (e.g. an open country card) keep it off.
+  // Zooming (wheel, pinch, +/-) leaves it alone.
   let idleTimer;
   const holds = new Set();
   const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
   const autoAllowed = () => !globe.lockAuto && !holds.size && !reducedMotion.matches;
-  const pauseAuto = () => { controls.autoRotate = false; clearTimeout(idleTimer); idleTimer = setTimeout(() => { if (autoAllowed()) controls.autoRotate = true; }, 12000); };
-  canvas.addEventListener('pointerdown', pauseAuto);
-  canvas.addEventListener('wheel', pauseAuto, { passive: true });
+  const pauseAuto = () => { globe.autoRotate = false; clearTimeout(idleTimer); idleTimer = setTimeout(() => { if (autoAllowed()) globe.autoRotate = true; }, 12000); };
+  // a second finger arriving straight after the first is a pinch, not a grab: undo the pause
+  const touches = new Set(); let grab = null;
+  canvas.addEventListener('pointerdown', e => {
+    touches.add(e.pointerId);
+    if (touches.size === 1) { grab = { t: performance.now(), auto: globe.autoRotate }; pauseAuto(); }
+    else if (grab && performance.now() - grab.t < PINCH_MS && grab.auto && autoAllowed()) globe.resumeAuto();
+  });
+  const lift = e => touches.delete(e.pointerId);
+  addEventListener('pointerup', lift); addEventListener('pointercancel', lift);
 
   const globe = {
     renderer, scene, camera, controls, world, ocean, lockAuto: false, pauseAuto,
+    autoRotate: !reducedMotion.matches,
+    autoRotateSpeed: 0.0367, // rad/s (about 2¾ minutes per turn)
     /** Keep the idle auto-rotate off while `reason` is held. Releasing returns whether it was held. */
-    hold(reason, on) { if (on) { holds.add(reason); controls.autoRotate = false; return true; } return holds.delete(reason); },
+    hold(reason, on) { if (on) { holds.add(reason); globe.autoRotate = false; return true; } return holds.delete(reason); },
     /** Start the idle auto-rotate now instead of after the idle delay. */
-    resumeAuto() { clearTimeout(idleTimer); controls.autoRotate = autoAllowed(); },
+    resumeAuto() { clearTimeout(idleTimer); globe.autoRotate = autoAllowed(); },
     /** Fly back to the start-up framing. */
     flyHome(ms = 1100) { globe.flyTo(HOME_DIR, globe.fitDistance, ms); },
     insetX: 0, // horizontal px reserved by side banners
@@ -191,9 +206,16 @@ export function createGlobe(canvas) {
       controls.maxDistance = Math.max(4, globe.fitDistance * 1.6);
       globe.onResize?.(w, h);
     },
+    /** Zoom by a factor (keyboard +/-), eased, without touching the rotation. */
+    zoomBy(f) {
+      if (globe.flight) return;
+      const d0 = camera.position.length(), to = THREE.MathUtils.clamp((globe.zoom?.to ?? d0) * f, controls.minDistance, controls.maxDistance);
+      globe.zoom = { from: d0, to, t0: performance.now() };
+    },
     /** Smoothly turn the camera to face `dir` (unit vector) at distance `dist`. */
     flyTo(dir, dist = camera.position.length(), ms = 1100) {
       if (reducedMotion.matches) ms = 1; // jump instead of flying
+      globe.zoom = null;
       const from = camera.position.clone().normalize(); const to = dir.clone().normalize();
       const d0 = camera.position.length(); const t0 = performance.now();
       const q = new THREE.Quaternion().setFromUnitVectors(from, to);
@@ -218,10 +240,13 @@ export function createGlobe(canvas) {
   return globe;
 }
 
+const reducedMotionQuery = matchMedia('(prefers-reduced-motion: reduce)');
 export function tickGlobe(globe, t) {
   globe.ocean.material.uniforms.uTime.value = t;
   globe.scene.children.forEach(c => c.material?.uniforms?.uTime && (c.material.uniforms.uTime.value = t));
-  // rotate faster when zoomed out, slower when close — keeps the surface "under the finger"
-  const d = globe.camera.position.length();
-  globe.controls.rotateSpeed = THREE.MathUtils.clamp((d - 1) * 0.32, 0.06, 0.9);
+  if (globe.zoom) {
+    const z = globe.zoom, k = Math.min(1, (performance.now() - z.t0) / (reducedMotionQuery.matches ? 1 : 260));
+    globe.camera.position.setLength(z.from + (z.to - z.from) * (1 - Math.pow(1 - k, 3)));
+    if (k >= 1) globe.zoom = null;
+  }
 }
