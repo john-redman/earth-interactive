@@ -61,7 +61,7 @@ const pin = new Pin(document.getElementById('stage'));
 const sfx = createSfx({ muted: () => thrills.muted });
 const music = createMusic(document.getElementById('music-toggle'));
 const missLine = new MissLine(globe, layer, stage);
-const currents = new Currents(globe, layer, stage);
+const currents = new Currents(globe);
 const cotdKey = countryOfTheDay(data);
 /** Fly to today's country and open its card (from the chip or the Play menu). */
 function goDaily() { const o = layer.get(cotdKey); if (!o || mode === 'quiz') return; if (mode === 'compare') endCompare(true); openCountry(o, { fly: true }); openInfo(o); }

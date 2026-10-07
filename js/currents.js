@@ -1,17 +1,16 @@
-// Major surface currents drawn on the sea: dark lines whose dashes run with the flow, a quiet label on each
-// (name, direction, typical speed) and the ocean names in the same type, larger. Decorative: nothing is clickable.
+// Major surface currents painted on the sea, like the type and markings on a real globe: soft, feathered ribbons
+// that meander a little, with faint streaks drifting along the flow, and their names (direction, typical speed)
+// laid on the surface beside them, curving with the current and the sphere. Ocean names in the same type, larger,
+// along their parallel. Everything is fixed to the Earth and turns with it. Decorative: nothing is clickable.
 import * as THREE from 'three';
-import { LineSegments2 } from 'three/addons/lines/LineSegments2.js';
-import { LineSegmentsGeometry } from 'three/addons/lines/LineSegmentsGeometry.js';
-import { lineMaterial } from './countries.js';
 import { lonLatToVec3 } from './geo.js';
 
 /**
  * Waypoints are [lon, lat] in the direction of flow, kept off the coasts. Speeds are typical surface speeds in m/s
  * (textbook figures; the strong western boundary currents peak higher; the Somali Current runs in the summer
- * monsoon). `major` labels stay when zoomed out; `at` places the label along the line (0…1); `side` is the side of
- * the flow the label sits on ('left' by default; 'right' keeps it off the coast); labels sharing a `group` show
- * one at a time (the one facing the camera most); `label: false` draws the line only.
+ * monsoon). `major` labels appear first as you zoom in; `at` places the label along the line (0…1); `side` is the
+ * side of the flow the label sits on ('left' by default; 'right' keeps it off the coast); `label: false` draws the
+ * line only.
  */
 export const CURRENTS = [
   { name: 'Gulf Stream', side: 'right', strength: 'strong', speed: 2, warm: true, major: true, at: 0.62,
@@ -75,132 +74,226 @@ export const OCEANS = [
   { name: 'Arctic Ocean', at: [-20, 84] },
 ];
 
-const R = 1.002;                      // just above the sea, under the country fills
-const COLOR = '#0a1c44';              // dark navy, a shade below the sea
-const STYLE = {                       // line widths (CSS px), dash flow speed (globe radii per second)
-  strong: { under: 4, dash: 2.4, flow: 0.022 },
-  moderate: { under: 3, dash: 1.8, flow: 0.013 },
-  weak: { under: 2.2, dash: 1.3, flow: 0.008 },
-};
-const phone = matchMedia('(max-width: 720px)');
+const R_LINE = 1.0016, R_TEXT = 1.0022;  // just above the sea, under the country fills
+const WIDTH = { strong: 0.0095, moderate: 0.0072, weak: 0.0056 }; // ribbon half-width (radians)
+const FLOW = { strong: 1.0, moderate: 0.6, weak: 0.4 };          // streak drift speed, relative
+const TEXT_H = { current: 0.0125, ocean: 0.03 };                  // cap height on the globe (radians)
 const reduced = matchMedia('(prefers-reduced-motion: reduce)');
-const _a = new THREE.Vector3(), _b = new THREE.Vector3(), _n = new THREE.Vector3(), _c = new THREE.Vector3();
 const smooth = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
 const fmtSpeed = s => `${s < 1 ? s.toFixed(1) : s} m/s`;
+const NORTH = new THREE.Vector3(0, 1, 0);
 
-/** A smooth curve through the waypoints, lifted onto the sphere. */
-function sample(path) {
+/** A smooth path through the waypoints on the sphere, with a gentle meander so it never runs ruler-straight. */
+function makePath(path, seed) {
   const pts = path.map(([lon, lat]) => lonLatToVec3(lon, lat));
   const curve = new THREE.CatmullRomCurve3(pts, false, 'centripetal');
-  let ang = 0; for (let i = 1; i < pts.length; i++) ang += pts[i - 1].angleTo(pts[i]);
-  return { curve, n: Math.max(16, Math.round(ang * 160)) };
+  const len = curve.getLength();                                     // ≈ radians on the unit sphere
+  const waves = Math.max(1.5, len / 0.11), amp = 0.0042;
+  const at = u => {
+    const p = curve.getPointAt(Math.min(1, Math.max(0, u))).normalize();
+    const q = curve.getPointAt(Math.min(1, Math.max(0, u + 0.002))).normalize();
+    const side = new THREE.Vector3().crossVectors(p, q.sub(p)).normalize();  // left of the flow
+    const m = Math.sin(u * waves * 6.2832 + seed) * 0.7 + Math.sin(u * waves * 2.3 * 6.2832 + seed * 1.7) * 0.3;
+    return p.addScaledVector(side, amp * m * Math.sin(Math.PI * u)).normalize(); // still at the ends
+  };
+  return { at, len };
 }
 
+/** Left-of-direction vector at p for a path heading along d (both on the unit sphere). */
+const leftOf = (p, d) => new THREE.Vector3().crossVectors(p, d).normalize();
+
+/**
+ * A strip laid on the sphere along centre(t), t 0…1, `half` radians either side. Pushes positions, uv (x along, y
+ * across −1…1 or 0…1) and per-vertex extras into the given arrays.
+ */
+function strip(out, centre, n, half, r, uvy, extra) {
+  const base = out.pos.length / 3;
+  for (let i = 0; i <= n; i++) {
+    const t = i / n, c = centre(t), d = centre(Math.min(1, t + 1 / n)).sub(centre(Math.max(0, t - 1 / n)));
+    const l = leftOf(c, d);
+    for (const s of [-1, 1]) {
+      const v = c.clone().addScaledVector(l, s * half).normalize().multiplyScalar(r);
+      out.pos.push(v.x, v.y, v.z);
+      out.uv.push(t, s < 0 ? uvy[0] : uvy[1]);
+      for (const [k, val] of Object.entries(extra)) out[k].push(...(typeof val === 'function' ? val(t) : [val]).flat());
+    }
+    if (i < n) { const a = base + i * 2; out.idx.push(a, a + 2, a + 1, a + 1, a + 2, a + 3); }
+  }
+}
+
+const SHARED_VERT = /* glsl */`
+  varying vec2 vUv; varying float vFace;
+  void main(){
+    vUv = uv;
+    vec4 mv = modelViewMatrix * vec4(position, 1.0);
+    vFace = dot(normalize(normalMatrix * normalize(position)), normalize(-mv.xyz)); // > 0 facing the camera
+    gl_Position = projectionMatrix * mv;
+  }`;
+
 export class Currents {
-  constructor(globe, layer, stage) {
+  constructor(globe) {
     this.globe = globe;
     this.group = new THREE.Group();
-    this.dashMats = [];
-    const segs = { strong: [], moderate: [], weak: [] };
-    this.labels = [];
-    const box = document.createElement('div');
-    box.className = 'ocean-labels'; box.setAttribute('aria-hidden', 'true');
-    stage.querySelector('canvas')?.after(box) ?? stage.prepend(box);
-    this.box = box;
-
-    for (const c of CURRENTS) {
-      const { curve, n } = sample(c.path);
-      const pts = curve.getSpacedPoints(n).map(p => p.normalize().multiplyScalar(R));
-      const s = segs[c.strength];
-      for (let i = 0; i < pts.length - 1; i++) s.push(pts[i].x, pts[i].y, pts[i].z, pts[i + 1].x, pts[i + 1].y, pts[i + 1].z);
-      if (c.label === false) continue;
-      const el = document.createElement('div');
-      el.className = 'ocean-label cur' + (c.major ? ' major' : '');
-      const meta = `${c.strength} · ${fmtSpeed(c.speed)}`;
-      el.innerHTML = '<span class="arr"></span><span class="nm"></span><span class="meta"></span><span class="arr"></span>';
-      el.children[1].textContent = c.name; el.children[2].textContent = meta;
-      box.append(el);
-      const at = c.at ?? 0.5;
-      this.labels.push({ el, kind: 'current', major: !!c.major, group: c.group, right: c.side === 'right', anchor: curve.getPointAt(at).normalize(),
-        ahead: curve.getPointAt(Math.min(1, at + 0.03)).normalize(), behind: curve.getPointAt(Math.max(0, at - 0.03)).normalize(), flip: null, last: {} });
-    }
-    for (const o of OCEANS) {
-      const el = document.createElement('div');
-      el.className = 'ocean-label ocean'; el.textContent = o.name;
-      box.append(el);
-      const [lon, lat] = o.at;
-      this.labels.push({ el, kind: 'ocean', major: true, group: o.group, anchor: lonLatToVec3(lon, lat), ahead: lonLatToVec3(lon + 4, lat), behind: lonLatToVec3(lon - 4, lat), flip: null, last: {} });
-    }
-
-    for (const [k, pos] of Object.entries(segs)) {
-      if (!pos.length) continue;
-      const st = STYLE[k];
-      const under = lineMaterial(COLOR, { width: st.under, opacity: 0.3 });
-      const dash = lineMaterial(COLOR, { width: st.dash, opacity: 0.8, dashed: true });
-      dash.dashSize = 0.016; dash.gapSize = 0.011;
-      dash.userData.flow = st.flow;
-      for (const m of [under, dash]) {
-        layer.registerLineMaterial(m);
-        const line = new LineSegments2(new LineSegmentsGeometry().setPositions(pos), m);
-        line.renderOrder = -5;        // over the ocean (−10), under every country fill (1.x)
-        if (m.dashed) line.computeLineDistances();
-        this.group.add(line);
-      }
-      this.dashMats.push(dash);
-    }
-    globe.world.add(this.group);
     this.visible = true;
+    this.fade = { minor: 0, major: 0, ocean: 1, ui: 1 };
+
+    // ---- the currents: soft feathered ribbons, one merged mesh
+    const R = { pos: [], uv: [], idx: [], aLen: [], aFlow: [] };
+    CURRENTS.forEach((c, i) => {
+      const p = makePath(c.path, i * 1.618);
+      c._path = p;
+      const n = Math.max(24, Math.round(p.len * 220));
+      strip(R, p.at, n, WIDTH[c.strength], R_LINE, [-1, 1], { aLen: p.len, aFlow: FLOW[c.strength] });
+    });
+    const rg = new THREE.BufferGeometry();
+    rg.setAttribute('position', new THREE.Float32BufferAttribute(R.pos, 3));
+    rg.setAttribute('uv', new THREE.Float32BufferAttribute(R.uv, 2));
+    rg.setAttribute('aLen', new THREE.Float32BufferAttribute(R.aLen, 1));
+    rg.setAttribute('aFlow', new THREE.Float32BufferAttribute(R.aFlow, 1));
+    rg.setIndex(R.idx);
+    this.ribbonMat = new THREE.ShaderMaterial({
+      transparent: true, depthWrite: false,
+      uniforms: { uTime: { value: 0 }, uOpacity: { value: 1 } },
+      vertexShader: SHARED_VERT.replace('varying vec2 vUv;', 'attribute float aLen; attribute float aFlow; varying float vLen; varying float vFlow; varying vec2 vUv;')
+        .replace('vUv = uv;', 'vUv = uv; vLen = aLen; vFlow = aFlow;'),
+      fragmentShader: /* glsl */`
+        uniform float uTime; uniform float uOpacity;
+        varying vec2 vUv; varying float vFace; varying float vLen; varying float vFlow;
+        void main(){
+          if (vFace < 0.0) discard;
+          float across = 1.0 - vUv.y * vUv.y;                       // feathered edges
+          float ends = smoothstep(0.0, 0.08, vUv.x) * smoothstep(1.0, 0.85, vUv.x);
+          float s = vUv.x * vLen * 140.0 - uTime * vFlow * 0.35;      // faint streaks drifting with the flow
+          float streak = 0.75 + 0.25 * sin(s) * sin(s * 0.37 + 1.3);
+          float a = across * across * ends * streak * 0.34 * uOpacity * smoothstep(0.0, 0.2, vFace);
+          gl_FragColor = vec4(0.02, 0.08, 0.2, a);
+        }`,
+    });
+    const ribbons = new THREE.Mesh(rg, this.ribbonMat);
+    ribbons.renderOrder = -5;          // over the ocean (−10), under every country fill (1.x)
+    this.group.add(ribbons);
+    globe.world.add(this.group);
+
+    // ---- the type: painted once the font is ready
+    const ready = document.fonts?.load ? Promise.all(['600 40px', '500 40px'].map(f => document.fonts.load(`${f} "Plus Jakarta Sans"`))).catch(() => {}) : Promise.resolve();
+    ready.then(() => this.buildLabels(globe));
   }
 
-  /** Show or hide the lines (the labels follow). */
-  setVisible(on) { this.visible = on; }
-
-  /** Every frame: run the dashes with the flow, keep the labels on their lines. */
-  tick(now) {
-    const lens = document.body.classList.contains('lens-on');
-    const show = this.visible && !lens;
-    this.group.visible = show;
-    if (!show) { if (!this.box.hidden) this.box.hidden = true; return; }
-    if (this.box.hidden) this.box.hidden = false;
-    if (!reduced.matches) for (const m of this.dashMats) m.dashOffset = -(now / 1000) * m.userData.flow;
-
-    const g = this.globe, cam = g.camera, { x: W, y: H } = g.size;
-    const m = g.world.matrixWorld, dist = cam.position.length(), fit = g.fitDistance;
-    // zoomed out: ocean names and the major currents; closer in: every current (phones need to come closer)
-    const allAt = phone.matches ? 0.55 : 0.8;
-    const minor = smooth(allAt + 0.08, allAt - 0.04, dist / fit);
-    const best = this.best || (this.best = new Map()); best.clear();
-    for (const L of this.labels) {
-      _n.copy(L.anchor).applyMatrix4(m);
-      L.facing = _c.copy(cam.position).sub(_n).normalize().dot(_n); // 0 on the horizon, 1 straight on
-      if (L.group && L.facing > (best.get(L.group)?.facing ?? -2)) best.set(L.group, L);
+  buildLabels(globe) {
+    // one atlas for every label: rows of text, white on transparent (tinted in the shader)
+    const items = [];
+    for (const c of CURRENTS) if (c.label !== false) items.push({ kind: 'current', c, text: null });
+    for (const o of OCEANS) items.push({ kind: 'ocean', o, text: o.name.toUpperCase() });
+    const PX = { current: 44, ocean: 60 }, PAD = 8, W = 2048;
+    const cv = document.createElement('canvas'), ctx = cv.getContext('2d');
+    const font = k => k === 'ocean' ? `600 ${PX.ocean}px "Plus Jakarta Sans", sans-serif` : `600 ${PX.current}px "Plus Jakarta Sans", sans-serif`;
+    // decide each current's reading direction now: the text must read upright when north is up
+    for (const it of items) {
+      if (it.kind !== 'current') continue;
+      const { c } = it, at = c.at ?? 0.5, p = c._path.at(at), d = c._path.at(at + 0.01).sub(c._path.at(at - 0.01));
+      it.forward = leftOf(p, d).dot(NORTH) >= 0;   // the text's "up" (left of reading) must point north-ish
+      const meta = `${c.strength} · ${fmtSpeed(c.speed)}`;
+      it.text = it.forward ? `${c.name}   ${meta}  →` : `←  ${c.name}   ${meta}`;
     }
-    for (const L of this.labels) {
-      let op = (L.group && best.get(L.group) !== L) ? 0 : smooth(0.22, 0.5, L.facing) * (L.major ? 1 : minor);
-      let x = 0, y = 0, deg = 0, flip = false;
-      if (op > 0.01) {
-        _n.copy(L.anchor).applyMatrix4(m).project(cam);
-        _a.copy(L.behind).applyMatrix4(m).project(cam); _b.copy(L.ahead).applyMatrix4(m).project(cam);
-        x = (_n.x + 1) / 2 * W; y = (1 - _n.y) / 2 * H;
-        deg = Math.atan2(-(_b.y - _a.y) * H, (_b.x - _a.x) * W) * 180 / Math.PI; // screen angle of the flow
-        flip = deg > 90 || deg < -90;
-        if (flip) deg += deg > 0 ? -180 : 180;      // keep the text upright
-        if (L.kind === 'current' && flip !== L.flip) {
-          L.flip = flip;
-          L.el.children[0].textContent = flip ? '←' : '';
-          L.el.children[3].textContent = flip ? '' : '→';
-        }
-        if (x < -200 || x > W + 200 || y < -60 || y > H + 60) op = 0;
-      } else op = 0;
-      const last = L.last;
-      if (op === 0) { if (last.op !== 0) { L.el.style.opacity = '0'; last.op = 0; } continue; }
-      if (Math.abs(op - (last.op ?? -1)) > 0.02) { L.el.style.opacity = op.toFixed(2); last.op = op; }
-      // above the line is left of the flow, or right of it once the text is turned upright
-      const dy = L.kind === 'ocean' ? '-50%' : (L.right !== flip) ? '5px' : 'calc(-100% - 5px)';
-      if (Math.abs(x - (last.x ?? -1e9)) > 0.4 || Math.abs(y - (last.y ?? -1e9)) > 0.4 || Math.abs(deg - (last.deg ?? 1e9)) > 0.3 || dy !== last.dy) {
-        L.el.style.transform = `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px) rotate(${deg.toFixed(1)}deg) translate(-50%, ${dy})`;
-        last.x = x; last.y = y; last.deg = deg; last.dy = dy;
+    // measure and pack into rows
+    let x = 0, y = 0, rowH = 0;
+    for (const it of items) {
+      ctx.font = font(it.kind);
+      const spacing = it.kind === 'ocean' ? 0.3 * PX.ocean : 0;
+      it.w = Math.ceil(ctx.measureText(it.text).width + spacing * it.text.length) + PAD * 2;
+      it.h = Math.ceil(PX[it.kind] * 1.35) + PAD * 2;
+      if (x + it.w > W) { x = 0; y += rowH; rowH = 0; }
+      it.x = x; it.y = y; x += it.w; rowH = Math.max(rowH, it.h);
+    }
+    const H = THREE.MathUtils.ceilPowerOfTwo(y + rowH);
+    cv.width = W; cv.height = H;
+    for (const it of items) {
+      ctx.font = font(it.kind); ctx.textBaseline = 'middle'; ctx.fillStyle = '#fff';
+      if (it.kind === 'ocean') ctx.letterSpacing = `${0.3 * PX.ocean}px`;
+      else ctx.letterSpacing = '0px';
+      ctx.fillText(it.text, it.x + PAD, it.y + it.h / 2);
+    }
+    const tex = new THREE.CanvasTexture(cv);
+    tex.anisotropy = Math.min(8, globe.renderer.capabilities.getMaxAnisotropy());
+    tex.colorSpace = THREE.NoColorSpace;
+
+    // lay every label on the sphere as a curved strip
+    const L = { pos: [], uv: [], idx: [], aRect: [], aKind: [] };
+    const push = (it, centre, half, kind) => {
+      const before = L.pos.length / 3;
+      strip(L, centre, 28, half, R_TEXT, [1, 0], {});
+      // map uv into the atlas rect; aKind: 0 minor current, 1 major current, 2 ocean
+      for (let v = before; v < L.pos.length / 3; v++) {
+        const u = L.uv[v * 2], w = L.uv[v * 2 + 1];
+        L.uv[v * 2] = (it.x + u * it.w) / W; L.uv[v * 2 + 1] = 1 - (it.y + w * it.h) / H;
+        L.aKind.push(kind);
+      }
+    };
+    for (const it of items) {
+      const hRad = TEXT_H[it.kind] * (it.h / (PX[it.kind] * 1.35)); // whole row height incl. padding
+      const wRad = hRad * it.w / it.h;
+      if (it.kind === 'ocean') {
+        const [lon, lat] = it.o.at, halfDeg = (wRad / 2) / Math.max(0.2, Math.cos(lat * Math.PI / 180)) * 180 / Math.PI;
+        push(it, t => lonLatToVec3(lon - halfDeg + 2 * halfDeg * t, lat), hRad / 2, 2);
+      } else {
+        const { c } = it, p = c._path, at = c.at ?? 0.5, du = Math.min(0.48, (wRad / p.len) / 2);
+        const u0 = Math.max(0, Math.min(1 - 2 * du, at - du)), u1 = u0 + 2 * du;
+        const sideSign = c.side === 'right' ? -1 : 1;                      // left of the flow by default
+        const off = (WIDTH[c.strength] + hRad * 0.55) * sideSign;
+        const centre = t => {
+          const u = it.forward ? u0 + (u1 - u0) * t : u1 - (u1 - u0) * t;
+          const q = p.at(u), d = p.at(u + 0.004).sub(p.at(u - 0.004));
+          return q.addScaledVector(leftOf(q, d), off).normalize();
+        };
+        push(it, centre, hRad / 2, c.major ? 1 : 0);
       }
     }
+    const lg = new THREE.BufferGeometry();
+    lg.setAttribute('position', new THREE.Float32BufferAttribute(L.pos, 3));
+    lg.setAttribute('uv', new THREE.Float32BufferAttribute(L.uv, 2));
+    lg.setAttribute('aKind', new THREE.Float32BufferAttribute(L.aKind, 1));
+    lg.setIndex(L.idx);
+    this.labelMat = new THREE.ShaderMaterial({
+      transparent: true, depthWrite: false,
+      uniforms: { uMap: { value: tex }, uMinor: { value: 0 }, uMajor: { value: 0 }, uOcean: { value: 1 } },
+      vertexShader: SHARED_VERT.replace('varying vec2 vUv;', 'attribute float aKind; varying float vKind; varying vec2 vUv;')
+        .replace('vUv = uv;', 'vUv = uv; vKind = aKind;'),
+      fragmentShader: /* glsl */`
+        uniform sampler2D uMap; uniform float uMinor; uniform float uMajor; uniform float uOcean;
+        varying vec2 vUv; varying float vFace; varying float vKind;
+        void main(){
+          if (vFace < 0.0) discard;
+          float a = texture2D(uMap, vUv).a;
+          float k = vKind < 0.5 ? uMinor : vKind < 1.5 ? uMajor : uOcean;
+          a *= k * smoothstep(0.05, 0.35, vFace);                     // printed on the globe: fades towards the rim
+          vec3 col = vKind > 1.5 ? vec3(0.80, 0.88, 1.0) : vec3(0.84, 0.91, 1.0);
+          gl_FragColor = vec4(col, a * (vKind > 1.5 ? 0.55 : 0.88));
+        }`,
+    });
+    const labels = new THREE.Mesh(lg, this.labelMat);
+    labels.renderOrder = -4;
+    this.group.add(labels);
+  }
+
+  /** Show or hide the whole layer. */
+  setVisible(on) { this.visible = on; }
+
+  /** Every frame: drift the streaks; fade the type by zoom and around the UI. */
+  tick(now) {
+    const body = document.body.classList;
+    this.group.visible = this.visible && !body.contains('lens-on');
+    if (!this.group.visible) return;
+    this.ribbonMat.uniforms.uTime.value = reduced.matches ? 0 : now / 1000;
+    if (!this.labelMat) return;
+    const g = this.globe, d = g.camera.position.length() / g.fitDistance;
+    const busy = body.contains('quiz-on') || body.contains('comparing') || body.contains('card-open');
+    const target = {
+      major: busy ? 0 : smooth(0.92, 0.72, d),   // the big currents' names come in first as you zoom
+      minor: busy ? 0 : smooth(0.7, 0.55, d),
+      ocean: smooth(0.42, 0.62, d),              // ocean names step back when you are right down at the sea
+    };
+    const f = this.fade, u = this.labelMat.uniforms;
+    for (const k of ['major', 'minor', 'ocean']) f[k] += (target[k] - f[k]) * 0.12;
+    u.uMajor.value = f.major; u.uMinor.value = f.minor; u.uOcean.value = f.ocean;
   }
 }

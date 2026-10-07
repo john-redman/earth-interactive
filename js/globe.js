@@ -58,9 +58,15 @@ function oceanMap() {
  * baked map (G) sets how many: a few everywhere, more along the storm tracks. Everything fades to its average tone
  * once it is too fine for the pixels, so nothing shimmers.
  */
+/**
+ * Swell-line styles to compare (owner review): ?ocean=0 current · 1 whisper · 2 patches · 3 calm glass · 4 long swell.
+ * Pick one, then make it the default and drop the others.
+ */
+const OCEAN_STYLE = Math.min(4, Math.max(0, parseInt(new URLSearchParams(location.search).get('ocean'), 10) || 0));
+
 function oceanMaterial() {
   return new THREE.ShaderMaterial({
-    defines: { OCTAVES: QUALITY.oceanOctaves },
+    defines: { OCTAVES: QUALITY.oceanOctaves, OCEAN_STYLE },
     uniforms: { uTime: { value: 0 }, uLight: { value: LIGHT_DIR_VIEW }, uSun: SKY.uSun, uNight: SKY.uNight, uMap: oceanMap() },
     vertexShader: /* glsl */`
       varying vec3 vPos; varying vec3 vN; varying vec3 vView;
@@ -105,13 +111,25 @@ function oceanMaterial() {
         // swell: long rows along the parallels, bent by the broad noise; still, except where the water sways
         float open = (1.0 - 0.75 * shelf) * (1.0 - smoothstep(1.13, 1.30, abs(lat)));  // calmer near coasts and the pack ice
         float phStill = lat * 400.0 + n1 * 16.0 + n2 * 2.0, ph = phStill + sway;
+        #if OCEAN_STYLE == 4
+        float phL = lat * 140.0 + n1 * 7.0 + n2 * 1.2 + sway * 0.4;           // long swell: few, broad, soft bands
+        float sw = rows(phL, 0.22, 4.0) * smoothstep(-0.6, 0.5, n2) * 0.45;
+        #else
         float sw = rows(ph, 0.08, 1.2) * smoothstep(-0.5, 0.6, n2);
-        #if OCTAVES > 2
+        #endif
+        #if OCTAVES > 2 && OCEAN_STYLE != 4
         float n3 = snoise(P * 34.0);
         float ph2 = lat * 1100.0 - n1 * 44.0 + n2 * 6.0 + n3 * 1.5 + sway * 2.0;  // a finer set, crossing at a slight angle
         sw = max(sw, rows(ph2, 0.1, 1.0) * smoothstep(-0.3, 0.7, n3 + n2 * 0.5) * 0.75);
         #else
         float n3 = n2 * 0.6;
+        #endif
+        #if OCEAN_STYLE == 1
+        sw *= 0.35;                                                         // whisper: same lines, barely there
+        #elif OCEAN_STYLE == 2
+        sw *= smoothstep(0.15, 0.55, n1) * 0.8;                             // patches: lines only here and there
+        #elif OCEAN_STYLE == 3
+        sw = 0.0;                                                           // calm glass: no lines at all
         #endif
         col += vec3(0.080, 0.135, 0.210) * sw * open;
 
