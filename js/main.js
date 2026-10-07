@@ -29,6 +29,16 @@ const data = await loadWorld();
 // Offline + instant repeat visits (skipped on localhost so development always sees fresh files)
 if ('serviceWorker' in navigator && !/^(localhost|127\.0\.0\.1)$/.test(location.hostname)) {
   const register = () => navigator.serviceWorker.register('sw.js').catch(() => {});
+  // A new deploy's worker takes over right after it installs. If that happens in the first seconds of a visit,
+  // reload once so the visitor sees the new version instead of the cached old one (never mid-use, never on a
+  // first visit, which has no previous worker).
+  if (navigator.serviceWorker.controller) {
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      try {
+        if (performance.now() < 10000 && !sessionStorage.getItem('ei-sw-reloaded')) { sessionStorage.setItem('ei-sw-reloaded', '1'); location.reload(); }
+      } catch { /* storage blocked: the next visit gets the new version */ }
+    });
+  }
   if (document.readyState === 'complete') register(); else addEventListener('load', register);
 }
 
