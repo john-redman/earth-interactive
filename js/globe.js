@@ -113,19 +113,46 @@ function graticule() {
   return new THREE.LineSegments(g, new THREE.LineBasicMaterial({ color: 0x8fb4ff, transparent: true, opacity: 0.07, depthWrite: false }));
 }
 
+/**
+ * A light scatter of soft stars, like the backdrop of a solar-system model: mostly faint pinpoints, a few
+ * brighter ones with a gentle glow, faintly blue or warm, each twinkling slowly at its own pace.
+ */
 function stars() {
-  const n = QUALITY.stars, p = new Float32Array(n * 3), s = new Float32Array(n);
+  const n = QUALITY.stars, p = new Float32Array(n * 3), seed = new Float32Array(n), tint = new Float32Array(n * 3);
+  const warm = [1.0, 0.86, 0.72], cool = [0.76, 0.86, 1.0], white = [1, 1, 1];
   for (let i = 0; i < n; i++) {
-    const v = new THREE.Vector3().randomDirection().multiplyScalar(40 + Math.random() * 20);
-    p.set([v.x, v.y, v.z], i * 3); s[i] = Math.random();
+    const v = new THREE.Vector3().randomDirection().multiplyScalar(50);
+    p.set([v.x, v.y, v.z], i * 3);
+    seed[i] = Math.random();
+    const r = Math.random();
+    tint.set(r < 0.18 ? warm : r < 0.5 ? cool : white, i * 3);
   }
   const g = new THREE.BufferGeometry();
-  g.setAttribute('position', new THREE.BufferAttribute(p, 3)); g.setAttribute('seed', new THREE.BufferAttribute(s, 1));
+  g.setAttribute('position', new THREE.BufferAttribute(p, 3));
+  g.setAttribute('seed', new THREE.BufferAttribute(seed, 1));
+  g.setAttribute('tint', new THREE.BufferAttribute(tint, 3));
   const m = new THREE.ShaderMaterial({
     uniforms: { uTime: { value: 0 }, uPR: { value: 1 } }, transparent: true, depthWrite: false,
-    vertexShader: `attribute float seed; uniform float uTime; uniform float uPR; varying float vA;
-      void main(){ vA = 0.25 + 0.35*seed + 0.15*sin(uTime*0.6 + seed*40.0); gl_PointSize = (0.8 + seed*1.4)*uPR; gl_Position = projectionMatrix*modelViewMatrix*vec4(position,1.0); }`,
-    fragmentShader: `varying float vA; void main(){ float d = length(gl_PointCoord-0.5); gl_FragColor = vec4(0.8,0.87,1.0, vA*smoothstep(0.5,0.1,d)); }`,
+    vertexShader: /* glsl */`
+      attribute float seed; attribute vec3 tint; uniform float uTime; uniform float uPR;
+      varying float vA; varying vec3 vTint; varying float vGlow;
+      void main(){
+        float bright = pow(seed, 6.0);                       // most stars faint, a handful bright
+        float tw = 0.5 + 0.5 * sin(uTime * (0.35 + seed * 0.9) + seed * 61.0);
+        vA = (0.22 + 0.7 * bright) * (0.55 + 0.45 * tw);
+        vGlow = bright;
+        vTint = tint;
+        gl_PointSize = (1.6 + bright * 5.5) * uPR;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+      }`,
+    fragmentShader: /* glsl */`
+      varying float vA; varying vec3 vTint; varying float vGlow;
+      void main(){
+        float d = length(gl_PointCoord - 0.5) * 2.0;
+        float core = smoothstep(0.55, 0.0, d);
+        float halo = exp(-d * d * 5.0) * 0.45 * vGlow;   // soft glow only around the brighter ones
+        gl_FragColor = vec4(vTint, clamp((core + halo) * vA, 0.0, 1.0)); // alpha falloff: the canvas is transparent
+      }`,
   });
   return new THREE.Points(g, m);
 }

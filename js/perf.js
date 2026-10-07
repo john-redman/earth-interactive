@@ -13,8 +13,8 @@ export const TIER = (() => {
 })();
 
 export const QUALITY = TIER === 'low'
-  ? { antialias: false, maxPixelRatio: 1.5, minPixelRatio: 1, oceanOctaves: 2, oceanSegments: [96, 72], atmosphereSegments: [64, 40], stars: 400, borderTolerance: 0.06 }
-  : { antialias: true, maxPixelRatio: 2, minPixelRatio: 1, oceanOctaves: 3, oceanSegments: [160, 120], atmosphereSegments: [96, 64], stars: 700, borderTolerance: 0 };
+  ? { antialias: false, maxPixelRatio: 1.5, minPixelRatio: 1, oceanOctaves: 2, oceanSegments: [96, 72], atmosphereSegments: [64, 40], stars: 2600, borderTolerance: 0.06 }
+  : { antialias: true, maxPixelRatio: 2, minPixelRatio: 1, oceanOctaves: 3, oceanSegments: [160, 120], atmosphereSegments: [96, 64], stars: 3800, borderTolerance: 0 };
 
 document.documentElement.dataset.quality = TIER;
 

@@ -16,6 +16,10 @@ import { shareBase } from './site.js';
 import { Pin } from './pin.js';
 import { createSfx } from './sfx.js';
 import { createMusic } from './music.js';
+import { MissLine } from './miss-line.js';
+import { countryOfTheDay, factsFor, mountDailyChip } from './daily-country.js';
+import { flagImg } from './flags.js';
+import { shareCompareImage } from './share-image.js';
 import { track } from './analytics.js';
 
 const data = await loadWorld();
@@ -44,6 +48,10 @@ const thrills = new Thrills(globe, spin);
 const pin = new Pin(document.getElementById('stage'));
 const sfx = createSfx({ muted: () => thrills.muted });
 const music = createMusic(document.getElementById('music-toggle'));
+const missLine = new MissLine(globe, layer, stage);
+const cotdKey = countryOfTheDay(data);
+/** Fly to today's country and open its card (from the chip or the Play menu). */
+function goDaily() { const o = layer.get(cotdKey); if (!o || mode === 'quiz') return; if (mode === 'compare') endCompare(true); openCountry(o, { fly: true }); openInfo(o); }
 
 /** Soft ring that spreads from where the globe was tapped. */
 function ripple(x, y, strong) {
@@ -52,6 +60,10 @@ function ripple(x, y, strong) {
   el.style.left = x - r.left + 'px'; el.style.top = y - r.top + 'px';
   stage.append(el); setTimeout(() => el.remove(), 650); // a timer, not animationend: reduced motion skips the animation
 }
+
+// the brand sits above the footer links, which wrap to more lines on narrow phones
+const siteLinks = document.querySelector('.site-links');
+if (siteLinks && window.ResizeObserver) new ResizeObserver(() => document.documentElement.style.setProperty('--links-h', siteLinks.offsetHeight + 'px')).observe(siteLinks);
 
 // sound toggle (bottom-right)
 const soundBtn = document.getElementById('sound-toggle');
@@ -71,7 +83,7 @@ let selected = null;          // country marked by the pin
 const ui = createUI({
   data, initialView: viewKey,
   onView: k => switchView(k),
-  onCompareRequest: o => { mode = 'pick'; pickFrom = o; closePopup(); compare.preview(o); sfx.play('snapOut'); ui.showPick(o); }, // it lifts out straight away
+  onCompareRequest: o => { mode = 'pick'; document.body.classList.add('picking'); pickFrom = o; closePopup(); compare.preview(o); sfx.play('snapOut'); ui.showPick(o); }, // it lifts out straight away
   onCompareCancelPick: () => cancelPick(),
   onCompareReset: () => compare.resetPositions(),
   onCompareEnd: () => endCompare(),
@@ -80,13 +92,26 @@ const ui = createUI({
   onInfo: o => openInfo(o),
   onNeighbour: key => { const o = layer.get(key); if (o) { openCountry(o, { fly: true }); openInfo(o); } },
   onShare: o => copyLink(o),
+  onCompareImage: () => compareImage(),
 });
+let cmpState = null;
+/** Compare → Share image: a square post of the two countries at true size. */
+async function compareImage() {
+  if (!cmpState) return;
+  const side = s => ({ ...s, shape: compare.shapeFor(s.o) });
+  const url = new URL(shareBase()); url.search = ''; url.searchParams.set('compare', `${cmpState.a.o.key},${cmpState.b.o.key}`);
+  try {
+    const how = await shareCompareImage({ a: side(cmpState.a), b: side(cmpState.b) }, url.toString().replace(/%2C/gi, ','));
+    if (how === 'downloaded') ui.showToast('Image saved');
+    track('compare-image', `${cmpState.a.o.key},${cmpState.b.o.key}`);
+  } catch (e) { console.warn(e); ui.showToast('Could not make the image'); }
+}
 
 let trackedPair = '';
 compare.onChange = state => {
   const pair = state ? `${state.a.o.key},${state.b.o.key}` : '';
   if (pair && pair !== trackedPair) track('compare', pair); // counted once per pair, not on every drag
-  trackedPair = pair;
+  trackedPair = pair; cmpState = state;
   ui.showCompare(state); document.body.classList.toggle('comparing', !!state); setParam('compare', state ? `${state.a.o.key},${state.b.o.key}` : null); };
 thrills.onFirstScream = () => setTimeout(() => ui.showToast('Hold on tight! Sound can be muted bottom-right.'), 900);
 
@@ -121,12 +146,21 @@ function extras(o) {
     ranks: counted ? { pop: R.pop.at.has(o.key) ? [R.pop.at.get(o.key), R.pop.n] : null, area: [R.area.at.get(o.key), R.area.n] } : null,
     neighbours: o.unit.t === 'country' || o.unit.t === 'limited' || o.unit.t === 'territory' ? nb : null,
     lens: lensVal != null ? { label: lens.label, text: lens.fmt(lensVal) } : null,
+    daily: o.key === cotdKey ? factsFor(o, k => layer.get(k), R) : null,
   };
 }
 function flyToCountry(o, minDist = 1.6) {
   const r = Math.sqrt(o.unit.area / Math.PI) / 6371;
   const dist = THREE.MathUtils.clamp(1 + r * 6, minDist, Math.max(minDist, globe.fitDistance));
   spin.stop(); globe.flyTo(o.g.centroid, dist, 1200);
+}
+/** Frame a wrong guess and the right country together (the miss line runs between them). */
+function flyToBoth(point, o) {
+  const a = point.clone().normalize(), b = o.g.centroid.clone().normalize();
+  const r = Math.sqrt(o.unit.area / Math.PI) / 6371, half = a.angleTo(b) / 2 + r;
+  const mid = a.clone().add(b); if (mid.lengthSq() < 1e-6) mid.copy(b);
+  const dist = THREE.MathUtils.clamp(1 + half * 3.2, 2.1, Math.max(2.1, globe.fitDistance));
+  spin.stop(); globe.flyTo(mid.normalize(), dist, 1200);
 }
 // Games: a tap drops the pin on your guess and asks to confirm it, so a stray tap never costs a round
 let guess = null;
@@ -191,7 +225,6 @@ function applyLens() {
   if (!layer.view) return;
   lens = lensKey === 'none' ? null : buildLens(lensKey, layer.view.objects);
   layer.setLens(lens ? o => lens.color(o) : null);
-  SKY.uNight.value = lens ? 0 : 0.42;      // no night shading over data colours
   renderLegend(legendEl, lens);
   document.body.classList.toggle('lens-on', !!lens);
   document.querySelector('[data-dock="lens"]').classList.toggle('on', !!lens);
@@ -203,7 +236,9 @@ function startGame(m) { track(`play/${m}`); quiz.start(m); }
 const search = createSearch({ getObjects: () => layer.view?.objects || [], onPick: o => { if (mode === 'quiz') return; if (mode === 'compare') endCompare(true); openCountry(o, { fly: true }); } });
 const quiz = createQuiz({
   data, layer, globe,
-  flyTo: o => flyToCountry(o, 2.1),
+  flyTo: (o, from) => from ? flyToBoth(from, o) : flyToCountry(o, 2.1),
+  onMiss: (from, to, km) => (from ? missLine.show(from, to, km) : missLine.hide()),
+  onResult: ok => sfx.play(ok ? 'correct' : 'wrong'),
   onMode: on => {
     ui.showTip(null);
     if (on) { if (mode === 'compare') endCompare(true); if (mode === 'pick') cancelPick(); closePopup(); mode = 'quiz'; layer.setHover(null); }
@@ -220,10 +255,11 @@ function openMenu(k) {
     const done = quiz.dailyDone(); let best = 0; try { best = +JSON.parse(localStorage.getItem('ei-best')) || 0; } catch { /* no storage */ }
     m.innerHTML = `
       <button type="button" role="menuitem" data-play="daily"><span class="m-ico">5</span><span><b>Daily Challenge</b><small>Same 5 countries for everyone today</small></span>${done ? '<span class="m-done">Done ✓</span>' : ''}</button>
+      <button type="button" role="menuitem" data-play="cotd"><span class="m-ico">${flagImg(layer.get(cotdKey)?.info, 'm-flag') || '★'}</span><span><b>Country of the day</b><small>${layer.get(cotdKey)?.unit.n || ''}: a new one every day</small></span></button>
       <button type="button" role="menuitem" data-play="classic"><span class="m-ico">10</span><span><b>Find it</b><small>${best ? 'Your best: ' + best.toLocaleString('en-US') + ' pts' : 'Ten countries, getting smaller'}</small></span></button>`;
-    m.querySelectorAll('[data-play]').forEach(b => (b.onclick = () => { closeMenus(); startGame(b.dataset.play); }));
+    m.querySelectorAll('[data-play]').forEach(b => (b.onclick = () => { closeMenus(); if (b.dataset.play === 'cotd') goDaily(); else startGame(b.dataset.play); }));
   } else {
-    m.innerHTML = LENS_ORDER.map(k2 => `<button type="button" role="menuitemradio" aria-checked="${k2 === lensKey}" data-lens="${k2}"><span class="m-ramp ${k2 === 'none' ? 'none' : ''}"></span><span><b>${LENSES[k2].short}</b><small>${k2 === 'none' ? 'Political colours, live day & night' : LENSES[k2].label}</small></span></button>`).join('');
+    m.innerHTML = LENS_ORDER.map(k2 => `<button type="button" role="menuitemradio" aria-checked="${k2 === lensKey}" data-lens="${k2}"><span class="m-ramp ${k2 === 'none' ? 'none' : ''}"></span><span><b>${LENSES[k2].short}</b><small>${k2 === 'none' ? 'Political colours' : LENSES[k2].label}</small></span></button>`).join('');
     m.querySelectorAll('[data-lens]').forEach(b => (b.onclick = () => { lensKey = b.dataset.lens; closeMenus(); applyLens(); }));
   }
   m.hidden = false; document.querySelector(`[data-dock="${k}"]`).setAttribute('aria-expanded', 'true');
@@ -237,6 +273,25 @@ document.addEventListener('pointerdown', e => { if (!e.target.closest('.dock')) 
 
 // ---------- live day & night ----------
 const clock = document.getElementById('clock');
+const NIGHT = 0.42; // how dark the night side gets
+let dayNight = true;
+try { dayNight = localStorage.getItem('ei-daynight') !== '0'; } catch { /* storage unavailable */ }
+const dnBtn = document.getElementById('daynight-toggle');
+function paintDayNight() {
+  dnBtn.setAttribute('aria-checked', String(dayNight)); dnBtn.title = `Day & night: ${dayNight ? 'on' : 'off'}`;
+  clock.hidden = !dayNight;
+}
+dnBtn.addEventListener('click', () => {
+  dayNight = !dayNight; paintDayNight();
+  try { localStorage.setItem('ei-daynight', dayNight ? '1' : '0'); } catch { /* storage unavailable */ }
+});
+paintDayNight();
+SKY.uNight.value = dayNight ? NIGHT : 0;
+/** Ease the night shading towards on/off (and off under data lenses, which need their true colours). */
+function tickNight(dt) {
+  const target = dayNight && !lens ? NIGHT : 0;
+  SKY.uNight.value += (target - SKY.uNight.value) * Math.min(1, dt * 4);
+}
 function tickSun() {
   const now = new Date(); updateSun(now);
   clock.textContent = `Live day & night · ${String(now.getUTCHours()).padStart(2, '0')}:${String(now.getUTCMinutes()).padStart(2, '0')} UTC`;
@@ -260,7 +315,7 @@ function recenter() {
 document.getElementById('recenter').addEventListener('click', recenter);
 function cancelPick() {
   if (mode === 'pick' && compare.previewPiece) { compare.end(); sfx.play('snapIn'); } // the lifted piece settles back
-  mode = 'browse'; pickFrom = null; ui.hidePick(); layer.setSelected(null);
+  mode = 'browse'; pickFrom = null; ui.hidePick(); layer.setSelected(null); document.body.classList.remove('picking');
 }
 function endCompare(immediate) {
   if (!immediate && mode === 'compare') sfx.play('snapIn'); // pieces settle back into their sockets
@@ -370,7 +425,7 @@ function onClick(x, y) {
   if (mode === 'pick') {
     if (compare.hitPiece(rayAt(x, y))) return; // a tap on the lifted piece isn't a choice
     if (r?.o && r.o !== pickFrom) {
-      const a = pickFrom; ui.hidePick(); pickFrom = null; mode = 'compare';
+      const a = pickFrom; ui.hidePick(); pickFrom = null; mode = 'compare'; document.body.classList.remove('picking');
       layer.setHover(null); compare.start(a, r.o); sfx.play('snapOut');
     } else if (r?.o === pickFrom) ui.showToast('Pick a different country');
     return;
@@ -417,6 +472,8 @@ function frame(now) {
   tickGlobe(globe, t);
   layer.tick(now);
   compare.tick(now);
+  missLine.tick(now);
+  tickNight(dt);
   if (guess && !quiz.waiting) cancelGuess(); // the round moved on (hint, Show me, next)
   thrills.tick(now);
   if (anchor) {
@@ -445,6 +502,8 @@ requestAnimationFrame(() => setTimeout(async () => {
   if (cmp?.length === 2 && layer.get(cmp[0]) && layer.get(cmp[1])) { mode = 'compare'; compare.start(layer.get(cmp[0]), layer.get(cmp[1])); }
   else if (play === 'daily' || play === 'classic') startGame(play);
   else if (c && layer.get(c)) openCountry(layer.get(c), { fly: true });
+  const chip = layer.get(cotdKey) && mountDailyChip(document.getElementById('cotd'), { o: layer.get(cotdKey), onGo: goDaily });
+  if (chip && !c && !cmp && !play) setTimeout(() => chip.show(), 1400); // after the globe has settled in
   requestAnimationFrame(frame);
   const idle = window.requestIdleCallback || (fn => setTimeout(fn, 400));
   for (const k of Object.keys(data.views)) if (k !== viewKey) idle(() => layer.build(k));

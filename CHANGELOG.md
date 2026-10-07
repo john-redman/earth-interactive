@@ -4,6 +4,14 @@ All notable changes to EarthInteractive are documented here.
 
 ## [Unreleased]
 
+### Added
+- **Games: miss line**: after a wrong answer, a line arcs from your guess to the right country with the distance on it, and the camera frames both.
+- **Games: right/wrong sounds** (the owner's recordings).
+- **Country of the day**: a chip at the top (once a day) and in the Play menu; flies there and opens the card with two facts.
+- **Day & night switch** (corner button, on by default, remembered).
+- **Compare → Share image**: a square image of both countries at true size with the ratio, population and link, shared via the share sheet or downloaded.
+- **Stars**: a light scatter of soft, slowly twinkling stars.
+
 ### Changed
 - **Rollercoaster is screams only**: the wind, the low drone and the dread bed are gone.
 - **Zoom leaves rotation alone**: scrolling, pinching and +/- never stop a spin or the idle rotation; wheel and key zoom ease smoothly. The idle rotation eases in and out.
