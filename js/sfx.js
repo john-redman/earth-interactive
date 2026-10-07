@@ -75,8 +75,6 @@ const SOUNDS = {
   open(t) { sample(t, 'swipe', 1.1); tone(t + 0.05, 220, { dur: 0.42, gain: 0.32 }); tone(t + 0.05, 880, { dur: 0.18, gain: 0.05 }); tone(t + 0.12, 330, { dur: 0.5, gain: 0.26 }); tone(t + 0.12, 1320, { dur: 0.2, gain: 0.04 }); },
   // closing: the swipe in reverse, one soft knock
   close(t) { sample(t, 'swipeRev', 1); tone(t + 0.1, 160, { dur: 0.2, gain: 0.35, glide: 0.7 }); },
-  // starting a comparison: a warm bell, fifth above
-  confirm(t) { tone(t, 262, { dur: 0.7, gain: 0.28 }); tone(t, 524, { dur: 0.35, gain: 0.07 }); tone(t + 0.09, 392, { dur: 0.8, gain: 0.24 }); tone(t + 0.09, 1176, { dur: 0.3, gain: 0.03 }); },
   // compare pieces snap out of the globe / settle back into their sockets
   snapOut(t) { sample(t, 'click', 1); },
   snapIn(t) { sample(t, 'clickRev', 1); },
@@ -105,7 +103,7 @@ export function createSfx({ muted }) {
   const MAP = [
     ['[data-act="info"], .pill-main, .cmp-grab, .pop-grab, [data-act="stats"]', 'open'],
     ['.pop-x:not(.pop-link), .pill-x, [data-act="done"], .qz-x', 'close'],
-    ['[data-act="compare"]', 'confirm'],
+    ['[data-act="compare"]', null],         // the piece's snap-out click is its sound (a dedicated one comes later)
     ['#sound-toggle', null],                // the mute button speaks for itself
   ];
   document.addEventListener('click', e => {

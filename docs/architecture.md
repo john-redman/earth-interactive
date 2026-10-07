@@ -13,7 +13,7 @@ Static site, no bundler. `index.html` loads `js/main.js` as an ES module; an imp
 | `countries.js` | Builds per-view fill meshes + border lines, palette, style states (hover, selected, dim, sockets, lens, quiz marks), picking grid | `CountryLayer`, `PALETTE`, `fillMaterial`, `lineMaterial` |
 | `compare.js` | True-size compare: main-landmass extraction, pop-out pieces (top, walls, rim, shadow), side-by-side layout, dragging | `Compare` |
 | `spin.js` | Flywheel rotation of the camera around the globe | `Spin`, `SPIN` |
-| `thrills.js` | Rollercoaster audio: offline-rendered crowd loops, HRTF orbit, wind | `Thrills`, `RideAudio`, `renderCrowdLoop`, `THRILLS` |
+| `thrills.js` | Rollercoaster audio: the recorded crowd loop, faded by spin speed | `Thrills`, `RideAudio`, `THRILLS` |
 | `sun.js` | Sub-solar point → shared `uSun` / `uNight` uniforms | `SKY`, `updateSun`, `subsolarPoint` |
 | `lens.js` | Quantile choropleths + legend | `LENSES`, `buildLens`, `renderLegend` |
 | `search.js` | Search palette (combobox) | `createSearch` |

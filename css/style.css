@@ -395,6 +395,20 @@ body.quiz-on .legend, body.comparing .legend { display: none; }
 .pop-link svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
 .pop-head { padding-right: 66px !important; }
 
+/* ───────────── Finishing touches ───────────── */
+html { -webkit-tap-highlight-color: transparent; text-rendering: optimizeLegibility; }
+::selection { background: rgba(157, 77, 255, 0.45); color: #fff; }
+/* floating text stays readable over bright countries */
+.view-caption, .brand, .site-links, .hint, .clock, .credit { text-shadow: 0 1px 2px rgba(3, 4, 11, 0.75), 0 0 14px rgba(3, 4, 11, 0.6); }
+.view-caption, .pop-note, .pop-sub, .cmp-ratio { text-wrap: pretty; }
+.pop-head h2, .cmp-item b { text-wrap: balance; }
+/* numbers line up in the stat tables */
+.pop-stats dd, .cs-row, .cmp-item span, .lg-ends { font-variant-numeric: tabular-nums; }
+/* slim, quiet scrollbars inside panels */
+.popup, .compare-bar, .menu, .quiz { scrollbar-width: thin; scrollbar-color: rgba(255, 255, 255, 0.2) transparent; }
+.popup::-webkit-scrollbar, .compare-bar::-webkit-scrollbar { width: 6px; }
+.popup::-webkit-scrollbar-thumb, .compare-bar::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.2); border-radius: 3px; }
+
 /* ───────────── Small screens ───────────── */
 @media (max-width: 720px) {
   .top-left { top: 12px; left: 12px; right: 12px; }

@@ -71,7 +71,7 @@ for (const [dev, opts] of [['desktop', { viewport: { width: 1280, height: 800 } 
   });
   await t('recenter + keyboard', async () => {
     await go('?c=JPN'); await p.keyboard.press('r'); await p.waitForTimeout(2500);
-    const s = await E(() => ({ tag: !document.getElementById('pin-tag').hidden, auto: window.EarthInteractive.globe.controls.autoRotate }));
+    const s = await E(() => ({ tag: !document.getElementById('pin-tag').hidden, auto: window.EarthInteractive.globe.autoRotate }));
     ok(`${dev} recenter (R)`, !s.tag && (s.auto || matchMedia('(prefers-reduced-motion: reduce)').matches), JSON.stringify(s));
   });
   await t('deep links', async () => {

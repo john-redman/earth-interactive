@@ -5,6 +5,12 @@ All notable changes to EarthInteractive are documented here.
 ## [Unreleased]
 
 ### Changed
+- **Rollercoaster is screams only**: the wind, the low drone and the dread bed are gone.
+- **Zoom leaves rotation alone**: scrolling, pinching and +/- never stop a spin or the idle rotation; wheel and key zoom ease smoothly. The idle rotation eases in and out.
+- **Compare pieces float higher** with a soft shadow that falls away from the light, a light rim and a more solid top.
+- **Compare is silent on press** (the bell is gone; the piece's click remains).
+- **Spin** slows down a little sooner.
+- **Polish**: floating text stays readable over bright countries, tidier text wrapping, aligned numbers in stat tables, slim scrollbars, no grey tap flash on phones; the gesture hint hides once a country is open.
 - **Compare**: the first country lifts out (with its click) as soon as you press Compare, and you can drag it around while choosing the second; cancelling sinks it back.
 - **Pin drop**: just the plop, landing exactly when the pin hits the globe (shorter drop with a small settle bounce); the extra tones are gone.
 - **Rollercoaster**: only the recorded crowd now (no synthesised voices or fly-by screams), played without 3D panning or pitch drift.

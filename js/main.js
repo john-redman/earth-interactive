@@ -152,7 +152,7 @@ function openCountry(o, { fly = false, point = null } = {}) {
   selected = o;
   layer.setSelected(o);
   anchor = (point || o.g.centroid).clone().normalize();
-  ui.hidePopup(); ui.showTag(o);
+  ui.hidePopup(); ui.showTag(o); ui.dismissHint();
   pin.show();
   if (fly) flyToCountry(o); else spin.brake();
   globe.hold('card', true); // the globe stays put while a country card is open
@@ -302,9 +302,17 @@ stage.addEventListener('pointerdown', e => {
       stage.classList.add('dragging-piece');
     }
   }
-  if (!compare.drag) { if (pointers.size === 1) spin.begin(e.clientX, e.clientY, performance.now()); else spin.cancel(); }
+  if (!compare.drag) { if (pointers.size === 1) spin.begin(e.clientX, e.clientY, performance.now()); else spin.pinch(performance.now()); }
   stage.classList.add('grabbing');
 }, { capture: true });
+
+// wheel / trackpad zoom: eased (OrbitControls would jump a step per notch); never touches the rotation
+stage.addEventListener('wheel', e => {
+  if (e.target !== canvas) return;
+  e.preventDefault(); e.stopPropagation();
+  const px = e.deltaY * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? 400 : 1);
+  globe.zoomBy(Math.exp(THREE.MathUtils.clamp(px, -240, 240) * 0.0016));
+}, { capture: true, passive: false });
 
 window.addEventListener('pointermove', e => {
   if (down) {
@@ -363,7 +371,7 @@ function onClick(x, y) {
     if (compare.hitPiece(rayAt(x, y))) return; // a tap on the lifted piece isn't a choice
     if (r?.o && r.o !== pickFrom) {
       const a = pickFrom; ui.hidePick(); pickFrom = null; mode = 'compare';
-      layer.setHover(null); compare.start(a, r.o); sfx.play('confirm'); sfx.play('snapOut');
+      layer.setHover(null); compare.start(a, r.o); sfx.play('snapOut');
     } else if (r?.o === pickFrom) ui.showToast('Pick a different country');
     return;
   }
@@ -386,12 +394,11 @@ window.addEventListener('keydown', e => {
   const step = 0.12;
   if (e.key === 'ArrowLeft') { spin.pending.t += step; } else if (e.key === 'ArrowRight') { spin.pending.t -= step; }
   else if (e.key === 'ArrowUp') { spin.pending.p -= step; } else if (e.key === 'ArrowDown') { spin.pending.p += step; }
-  else if (e.key === '+' || e.key === '=') { globe.camera.position.multiplyScalar(0.88); }
-  else if (e.key === '-' || e.key === '_') { globe.camera.position.multiplyScalar(1.12); }
+  else if (e.key === '+' || e.key === '=') { globe.zoomBy(0.8); }
+  else if (e.key === '-' || e.key === '_') { globe.zoomBy(1.25); }
   else return;
-  const d = globe.camera.position.length(), c = globe.controls;
-  if (d < c.minDistance || d > c.maxDistance) globe.camera.position.setLength(THREE.MathUtils.clamp(d, c.minDistance, c.maxDistance));
-  globe.pauseAuto(); e.preventDefault();
+  if (e.key.startsWith('Arrow')) globe.pauseAuto(); // zooming leaves the rotation alone
+  e.preventDefault();
 });
 
 // ---------- resize & loop ----------
