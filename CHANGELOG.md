@@ -16,6 +16,8 @@ All notable changes to EarthInteractive are documented here.
 - **Stars**: a light scatter of soft, slowly twinkling stars.
 
 ### Changed
+- **The ocean is calm and mostly still**: white crests now sit still on the swell (a bright top with a soft shadow, so they look raised), a few everywhere and more along the storm tracks; only here and there does the water sway, slowly. Nothing piles up at the poles any more.
+- **Returning visitors see a new deploy straight away** (one quiet reload when the new version takes over in the first seconds of a visit).
 - **Games**: the map view is locked to UN while playing, and the Search/Play/Data dock hides on desktop too (it already did on phones). Compare keeps the dock on phones as on desktop.
 - **Phones**: search raises the keyboard on iOS; the globe draws at half rate while nothing moves (saves battery); Share image asks for a second tap if the phone refused the share sheet after a slow render; pulling the card sheet up keeps the country visible above it.
 - `?compare=X,X` (the same country twice) is ignored.

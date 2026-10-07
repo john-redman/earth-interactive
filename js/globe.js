@@ -51,10 +51,12 @@ function oceanMap() {
 }
 
 /**
- * The sea as seen from orbit: a medium ocean blue with fine, slightly lighter swell lines in long, gently curving
- * rows over all open water, drifting slowly. The rows run along the parallels and are bent by a large, slow noise
- * (which also shades the water); a second noise breaks them into swell trains. Desktop adds a finer, crossing set
- * (third noise). Each set fades to its average tone once its rows are too fine for the pixels, so nothing shimmers.
+ * The sea as seen from orbit, calm and mostly still: a medium ocean blue with fine, slightly lighter swell lines in
+ * long, gently curving rows (bent by a broad noise that also shades the water; a second noise breaks them into
+ * trains; desktop adds a finer crossing set). Only here and there, in slowly wandering patches, does the swell sway a
+ * little. Still white crests sit on the swell rows, a bright top with a soft shadow below so they read as raised; the
+ * baked map (G) sets how many: a few everywhere, more along the storm tracks. Everything fades to its average tone
+ * once it is too fine for the pixels, so nothing shimmers.
  */
 function oceanMaterial() {
   return new THREE.ShaderMaterial({
@@ -82,31 +84,50 @@ function oceanMaterial() {
         float l = 1.0 - smoothstep(hw, hw + fw * 1.2, d);
         return mix(min(2.0 * hw + fw, 0.2), l, smoothstep(0.2, 0.06, fw));
       }
+      float hash2(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
       void main(){
         vec3 N = normalize(vN), P = normalize(vPos);
         float t = uTime;
         float lon = atan(P.x, P.z), lat = asin(clamp(P.y, -1.0, 1.0));
-        float shelf = texture2D(uMap, vec2(lon / 6.2831853 + 0.5, lat / 3.1415927 + 0.5)).r;
-        float n1 = snoise(P * 2.3 + vec3(t * 0.004, -t * 0.003, t * 0.0035));   // broad: tone and the bend of the rows
-        float n2 = snoise(P * 9.0 + n1 * 0.4 + vec3(-t * 0.010, t * 0.008, t * 0.009)); // swell trains
+        vec2 map = texture2D(uMap, vec2(lon / 6.2831853 + 0.5, lat / 3.1415927 + 0.5)).rg;
+        float shelf = map.r, storm = map.g;
+        float n1 = snoise(P * 2.3);                  // broad: tone and the bend of the rows (still)
+        float n2 = snoise(P * 9.0 + n1 * 0.4);       // swell trains (still)
+        // the water moves only here and there: slowly wandering patches where the swell sways back and forth
+        float flow = smoothstep(0.62, 0.95, 0.5 + 0.5 * sin(dot(P, vec3(2.7, 1.9, 2.3)) * 3.0 + n1 * 4.0 + t * 0.02));
+        float sway = flow * 1.1 * sin(t * 0.15 + n2 * 3.0);
         float facing = clamp(dot(N, vView), 0.0, 1.0);
         // medium ocean blue, deeper towards the limb, a touch of teal over the coastal shallows
         vec3 col = mix(vec3(0.060, 0.170, 0.400), vec3(0.120, 0.300, 0.610), pow(facing, 1.1));
         col *= 0.95 + 0.07 * n1 + 0.03 * n2;
         col = mix(col, vec3(0.110, 0.380, 0.600), pow(shelf, 1.8) * 0.32);
 
-        // swell: long rows along the parallels, bent by the broad noise, drifting slowly
+        // swell: long rows along the parallels, bent by the broad noise; still, except where the water sways
         float open = (1.0 - 0.75 * shelf) * (1.0 - smoothstep(1.13, 1.30, abs(lat)));  // calmer near coasts and the pack ice
-        float ph = lat * 400.0 + n1 * 16.0 + n2 * 2.0 - t * 0.35;
+        float phStill = lat * 400.0 + n1 * 16.0 + n2 * 2.0, ph = phStill + sway;
         float sw = rows(ph, 0.08, 1.2) * smoothstep(-0.5, 0.6, n2);
         #if OCTAVES > 2
-        float n3 = snoise(P * 34.0 + vec3(t * 0.03, -t * 0.02, t * 0.025));
-        float ph2 = lat * 1100.0 - n1 * 44.0 + n2 * 6.0 + n3 * 1.5 - t * 0.9;  // a finer set, crossing at a slight angle
+        float n3 = snoise(P * 34.0);
+        float ph2 = lat * 1100.0 - n1 * 44.0 + n2 * 6.0 + n3 * 1.5 + sway * 2.0;  // a finer set, crossing at a slight angle
         sw = max(sw, rows(ph2, 0.1, 1.0) * smoothstep(-0.3, 0.7, n3 + n2 * 0.5) * 0.75);
         #else
         float n3 = n2 * 0.6;
         #endif
         col += vec3(0.080, 0.135, 0.210) * sw * open;
+
+        // still white crests on the swell rows: short strokes (hashed per row and cell, so no extra noise), a bright
+        // top with a soft shadow on the lee side; a few everywhere, more along the storm tracks
+        float rowId = floor(phStill / 6.2831853 + 0.5);                        // crests stay put, even where the water sways
+        float along = lon * cos(lat) * 150.0 + rowId * 3.7;
+        float cell = floor(along), fa = fract(along);
+        float dens = mix(0.035, 0.3, storm), len = 0.3 + 0.55 * hash2(vec2(cell, rowId + 17.0));
+        float bright = 0.55 + 0.45 * hash2(vec2(rowId - 5.0, cell));
+        float u = clamp(fa / len, 0.0, 1.0);
+        float dash = step(hash2(vec2(rowId, cell)), dens) * step(fa, len) * pow(sin(3.1415927 * u), 0.7) * bright; // tapered ends
+        dash = mix(dens * len * 0.45, dash, smoothstep(0.6, 0.15, fwidth(along)));   // far away: an even, faint tone
+        float top = rows(phStill, 0.03, 1.2) * dash, under = rows(phStill + 0.5, 0.045, 1.5) * dash;
+        col = mix(col, col * 0.64, under * 0.45 * open);
+        col = mix(col, vec3(0.86, 0.92, 0.98), top * 0.7 * open);
 
         vec3 Np = normalize(N + vec3(n2, n3, n1) * 0.04);
         float diff = clamp(dot(Np, uLight), 0.0, 1.0);
