@@ -46,10 +46,14 @@ export function fillMaterial(hex, { hatch = false, opacity = 0.42, pieceId = nul
       void main(){
         if (vVis < 0.0) discard; // flat triangles may sag below the ocean, so we cull the far side ourselves instead of depth-testing
         float shade = 0.9 + 0.22 * clamp(dot(normalize(vN), uLight), 0.0, 1.0);
-        float day = smoothstep(-0.10, 0.16, dot(vPos, uSun));
+        float sd = dot(vPos, uSun), day = smoothstep(-0.05, 0.10, sd);
         // solid fills: the palette colour toned towards deep ocean blue (uMix) instead of letting the sea show through
         vec3 base = mix(vec3(0.030, 0.070, 0.160), uColor, uMix);
-        vec3 col = (base * shade + uBright * 0.18) * mix(1.0 - uNight, 1.0, day);
+        vec3 col = base * shade + uBright * 0.18;
+        // day & night (uNight 0…1): sunlit side a touch brighter, night side dark and moonlit blue, warm dusk between
+        vec3 lit = mix(col * vec3(0.26, 0.31, 0.50), col * 1.06, day);
+        lit += vec3(1.0, 0.5, 0.2) * 0.05 * (1.0 - smoothstep(0.0, 0.05, abs(sd - 0.01)));
+        col = mix(col, lit, uNight);
         float a = uOpacity;
         if (uHatch > 0.5) { float s = fract(dot(vPos, uHatchDir) * 140.0); col *= mix(0.7, 1.08, step(0.5, s)); }
         gl_FragColor = vec4(col, clamp(a, 0.0, 1.0));

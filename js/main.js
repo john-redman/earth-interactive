@@ -5,7 +5,7 @@ import { CountryLayer } from './countries.js';
 import { Compare } from './compare.js';
 import { createUI } from './ui.js';
 import { mountAds } from './ads.js';
-import { raySphere, vec3ToLonLat } from './geo.js';
+import { raySphere, vec3ToLonLat, lonLatToVec3 } from './geo.js';
 import { Thrills } from './thrills.js';
 import { Spin } from './spin.js';
 import { SKY, updateSun } from './sun.js';
@@ -119,14 +119,11 @@ function switchView(k) {
   viewKey = k;
   if (mode === 'compare') endCompare(true);
   if (mode === 'pick') cancelPick();
-  const keep = selected?.key, cardOpen = !!ui.popFor;
+  // the pin goes: the same spot can belong to a different country in the new view (Crimea → Russia)
+  if (guess) cancelGuess(); else if (selected || ui.popFor) closePopup();
   layer.setView(k);
   const url = new URL(location.href); url.searchParams.set('view', k); history.replaceState(null, '', url);
   applyLens();
-  if (keep) {
-    const o = layer.get(keep);
-    if (o) { selected = o; layer.setSelected(o); if (cardOpen) ui.showPopup(o, k, extras(o)); else ui.showTag(o); } else closePopup();
-  }
 }
 
 // ---------- country focus, ranks, links ----------
@@ -152,7 +149,7 @@ function extras(o) {
 function flyToCountry(o, minDist = 1.6) {
   const r = Math.sqrt(o.unit.area / Math.PI) / 6371;
   const dist = THREE.MathUtils.clamp(1 + r * 6, minDist, Math.max(minDist, globe.fitDistance));
-  spin.stop(); globe.flyTo(o.g.centroid, dist, 1200);
+  spin.stop(); globe.flyTo(compare.shapeFor(o).centroid, dist, 1200); // the main landmass, not a centroid pulled out to sea by overseas parts
 }
 /** Frame a wrong guess and the right country together (the miss line runs between them). */
 function flyToBoth(point, o) {
@@ -185,7 +182,7 @@ function openCountry(o, { fly = false, point = null } = {}) {
   if (mode === 'pick') cancelPick();
   selected = o;
   layer.setSelected(o);
-  anchor = (point || o.g.centroid).clone().normalize();
+  anchor = (point || compare.shapeFor(o).centroid).clone().normalize(); // main landmass: France's pin belongs in France, not between it and Guiana
   ui.hidePopup(); ui.showTag(o); ui.dismissHint();
   pin.show();
   if (fly) flyToCountry(o); else spin.brake();
@@ -198,6 +195,38 @@ function openInfo(o) {
   if (selected !== o) openCountry(o);
   ui.hideTag();
   ui.showPopup(o, viewKey, extras(o));
+  frameBesideCard(o);
+}
+/**
+ * The card must not cover its country: turn the globe so the country sits in the free space, to the left of the
+ * docked card on desktop, above the bottom sheet's peek on phones, zoomed so it fits there.
+ */
+function frameBesideCard(o) {
+  const { x: W, y: H } = globe.size, pop = document.getElementById('popup');
+  if (!W || !H || pop.hidden) return;
+  const m = 16, inset = window.__adInset || 0, sheet = W < 720;
+  const free = sheet
+    ? { l: 0, r: W, t: 70, b: H - 196 - 8 }                                 // above the sheet's peek
+    : { l: inset + m, r: W - pop.offsetWidth - inset - m * 2, t: 70, b: H - 60 }; // left of the docked card
+  const cx = (free.l + free.r) / 2, cy = (free.t + free.b) / 2, room = Math.max(60, Math.min(free.r - free.l, free.b - free.t) / 2);
+  // exact perspective: a point `a` radians from the point under the camera, seen from distance d, lands this many px out
+  const tanHalf = Math.tan(THREE.MathUtils.degToRad(globe.camera.fov / 2)), pxPer = (H / 2) / tanHalf;
+  const proj = (a, d) => Math.sin(a) / (d - Math.cos(a)) * pxPer;
+  // frame the main landmass (far-flung islands would zoom right out): its centre and how far it reaches from it
+  const shape = compare.shapeFor(o), c = shape.centroid.clone().normalize();
+  if (shape.reach == null) { const v = new THREE.Vector3(); shape.reach = 0; for (const poly of shape.multi) for (const [lon, lat] of poly[0]) shape.reach = Math.max(shape.reach, lonLatToVec3(lon, lat, 1, v).angleTo(c)); }
+  // distance at which that reach fills ~80% of the free room
+  const r = Math.min(1.2, shape.reach);
+  const dist = THREE.MathUtils.clamp(Math.cos(r) + Math.sin(r) * pxPer / (room * 0.8), 1.6, globe.controls.maxDistance * 0.95);
+  const right = new THREE.Vector3(0, 1, 0).cross(c); if (right.lengthSq() < 1e-6) right.set(1, 0, 0); right.normalize();
+  const up = c.clone().cross(right).normalize();
+  const ox = cx - W / 2, oy = cy - H / 2, rho = Math.hypot(ox, oy);
+  // how far the camera looks away from the country so it lands at (cx, cy): solve proj(a) = rho by bisection
+  let lo = 0, hi = Math.acos(1 / dist) * 0.95;
+  for (let i = 0; i < 24; i++) { const mid = (lo + hi) / 2; if (proj(mid, dist) < rho) lo = mid; else hi = mid; }
+  const a = lo;
+  const dir = rho < 1 ? c : c.clone().multiplyScalar(Math.cos(a)).addScaledVector(right, -Math.sin(a) * ox / rho).addScaledVector(up, Math.sin(a) * oy / rho);
+  spin.stop(); globe.flyTo(dir.normalize(), dist, 900);
 }
 /** Close the card but keep the pin and its tag. */
 function closeCard() {
@@ -232,6 +261,8 @@ function applyLens() {
 }
 
 // ---------- dock: search, play, data ----------
+const GAME_VIEW = 'un';
+let viewBeforeGame = null;
 function startGame(m) { track(`play/${m}`); quiz.start(m); }
 const search = createSearch({ getObjects: () => layer.view?.objects || [], onPick: o => { if (mode === 'quiz') return; if (mode === 'compare') endCompare(true); openCountry(o, { fly: true }); } });
 const quiz = createQuiz({
@@ -241,8 +272,15 @@ const quiz = createQuiz({
   onResult: ok => sfx.play(ok ? 'correct' : 'wrong'),
   onMode: on => {
     ui.showTip(null);
-    if (on) { if (mode === 'compare') endCompare(true); if (mode === 'pick') cancelPick(); closePopup(); mode = 'quiz'; layer.setHover(null); }
-    else { if (guess) cancelGuess(); mode = 'browse'; native.then(n => n?.showInterstitial()); } // an ad between games in the app, never mid-round
+    if (on) {
+      if (mode === 'compare') endCompare(true); if (mode === 'pick') cancelPick(); closePopup(); mode = 'quiz'; layer.setHover(null);
+      // games play on the UN map: the internationally recognised countries the questions are about
+      if (mode === 'quiz' && viewKey !== GAME_VIEW && !viewBeforeGame) { viewBeforeGame = viewKey; ui.setViewSilently(GAME_VIEW); switchView(GAME_VIEW); ui.showToast('Games use the UN map'); }
+    } else {
+      if (guess) cancelGuess(); mode = 'browse'; native.then(n => n?.showInterstitial()); // an ad between games in the app, never mid-round
+      if (viewBeforeGame && viewKey === GAME_VIEW) { ui.setViewSilently(viewBeforeGame); switchView(viewBeforeGame); } // back to the view you had
+      viewBeforeGame = null;
+    }
     document.body.classList.toggle('quiz-on', on);
     setParam('play', null);
   },
@@ -273,7 +311,7 @@ document.addEventListener('pointerdown', e => { if (!e.target.closest('.dock')) 
 
 // ---------- live day & night ----------
 const clock = document.getElementById('clock');
-const NIGHT = 0.42; // how dark the night side gets
+const NIGHT = 1; // day & night fully on (the shaders set how dark night is)
 let dayNight = true;
 try { dayNight = localStorage.getItem('ei-daynight') !== '0'; } catch { /* storage unavailable */ }
 const dnBtn = document.getElementById('daynight-toggle');
