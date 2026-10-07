@@ -8,7 +8,7 @@ Static site, no bundler. `index.html` loads `js/main.js` as an ES module; an imp
 | Module | Responsibility | Key exports |
 |---|---|---|
 | `main.js` | App state machine (`browse`, `pick`, `compare`, `quiz`), pointer & keyboard routing, deep links, render loop | `window.EarthInteractive` (debug API) |
-| `globe.js` | Renderer, camera, OrbitControls (pinch zoom only), eased `zoomBy()`, idle auto-rotate flag, ocean shader (shallows + storm crests from `data/ocean.png`), atmosphere, twinkling stars, `fit()` sizing, `flyTo()` | `createGlobe`, `tickGlobe`, `LIGHT_DIR_VIEW`, `PINCH_MS` |
+| `globe.js` | Renderer, camera, OrbitControls (pinch zoom only), eased `zoomBy()`, idle auto-rotate flag, ocean shader (medium blue with fine drifting swell lines, shallows from `data/ocean.png`), atmosphere, twinkling stars, `fit()` sizing, `flyTo()` | `createGlobe`, `tickGlobe`, `LIGHT_DIR_VIEW`, `PINCH_MS` |
 | `geo.js` | lon/lat ⇄ unit sphere, triangulation on the sphere, border segments, walls, centroids, ray–sphere, point-in-polygon | many helpers |
 | `countries.js` | Builds per-view fill meshes + border lines, palette, style states (hover, selected, dim, sockets, lens, quiz marks), picking grid | `CountryLayer`, `PALETTE`, `fillMaterial`, `lineMaterial` |
 | `compare.js` | True-size compare: main-landmass extraction, pop-out pieces (top, walls, rim, shadow), side-by-side layout, dragging | `Compare` |
@@ -23,6 +23,7 @@ Static site, no bundler. `index.html` loads `js/main.js` as an ES module; an imp
 | `pin.js` | 3D map pin for the selected country (drop-in animation, constant on-screen size, leans to screen-up) | `Pin` |
 | `load.js` | Streams `data/world.js` with loader progress, then evaluates it via a blob `import()` | `loadWorld`, `setLoader` |
 | `miss-line.js` | Games: arc from a wrong guess to the answer, drawn in, with a distance label | `MissLine` |
+| `currents.js` | Major ocean currents as dark lines with dashes running with the flow, labels (name, direction, strength) and ocean names; decluttered by zoom, hidden under data lenses | `Currents`, `CURRENTS`, `OCEANS` |
 | `daily-country.js` | Country of the day (seeded by local date), its facts, the top chip | `countryOfTheDay`, `factsFor`, `mountDailyChip` |
 | `share-image.js` | Compare → 1080² share image (equal-area silhouettes on a 2D canvas), share sheet or download | `renderCompareImage`, `shareCompareImage` |
 | `sfx.js` | UI sounds: synthesised tones + recorded samples (`sounds/`), delegated button sounds | `createSfx` |

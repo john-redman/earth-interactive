@@ -1,0 +1,22 @@
+/* Ocean names and current labels (js/currents.js): quiet, decorative text that rides on the globe. */
+.ocean-labels { position: absolute; inset: 0; z-index: 2; overflow: hidden; pointer-events: none; }
+.ocean-label { position: absolute; top: 0; left: 0; white-space: nowrap; pointer-events: none; opacity: 0;
+  font-family: var(--font); color: rgba(214, 229, 255, 0.78); transform-origin: 0 0; transition: opacity 0.35s ease;
+  text-shadow: 0 1px 2px rgba(4, 18, 48, 0.75), 0 0 10px rgba(4, 18, 48, 0.45); }
+.ocean-label.cur { font-size: 11px; font-weight: 600; letter-spacing: 0.01em; }
+.ocean-label.cur .meta { margin-left: 6px; font-weight: 500; opacity: 0.72; }
+.ocean-label.cur .arr { display: inline-block; font-weight: 700; }
+.ocean-label.cur .arr:first-child:not(:empty) { margin-right: 5px; }
+.ocean-label.cur .arr:last-child:not(:empty) { margin-left: 5px; }
+.ocean-label.ocean { font-size: 16px; font-weight: 600; letter-spacing: 0.32em; text-transform: uppercase; }
+
+/* stay out of the way of the UI; data lenses hide the whole layer (the lines too, in js/currents.js) */
+body.quiz-on .ocean-label.cur, body.comparing .ocean-label.cur, body.card-open .ocean-label.cur { visibility: hidden; }
+body.lens-on .ocean-labels { display: none; }
+
+@media (max-width: 720px) {
+  .ocean-label.cur { font-size: 9.5px; }
+  .ocean-label.cur .meta { margin-left: 4px; }
+  .ocean-label.ocean { font-size: 10.5px; letter-spacing: 0.2em; }
+}
+@media (prefers-reduced-motion: reduce) { .ocean-label { transition: none; } }
