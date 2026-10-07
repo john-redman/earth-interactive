@@ -29,7 +29,7 @@ const ICONS = {
 const SHORT = { un: 'UN', defacto: 'De facto', neutral: 'Neutral' };
 const KIND_LABEL = { country: 'Country', territory: 'Territory', limited: 'Limited recognition', breakaway: 'Breakaway region', disputed: 'Disputed area' };
 
-export function createUI({ data, initialView, onView, onCompareRequest, onCompareCancelPick, onCompareReset, onCompareEnd, onClosePopup, onNeighbour, onShare, onInfo, onSound, onCompareImage }) {
+export function createUI({ data, initialView, onView, onCompareRequest, onCompareCancelPick, onCompareReset, onCompareEnd, onClosePopup, onNeighbour, onShare, onInfo, onSound, onCompareImage, onSheet }) {
   // ---------- view switch ----------
   const vs = $('#view-switch');
   const order = ['un', 'defacto', 'neutral'];
@@ -132,14 +132,14 @@ export function createUI({ data, initialView, onView, onCompareRequest, onCompar
   }
   pop.addEventListener('click', e => {
     if (!pop.classList.contains('sheet')) return;
-    if (e.target.closest('.pop-grab')) setPeek(!pop.classList.contains('peek'));
-    else if (pop.classList.contains('peek') && e.target.closest('.pop-head')) setPeek(false);
+    if (e.target.closest('.pop-grab')) { setPeek(!pop.classList.contains('peek')); onSheet?.(); }
+    else if (pop.classList.contains('peek') && e.target.closest('.pop-head')) { setPeek(false); onSheet?.(); }
   });
   attachSheetDrag(pop, {
     enabled: () => pop.classList.contains('sheet'),
     states: () => ({ peek: 196, full: Math.min(pop.scrollHeight + 2, innerHeight * 0.7) }),
     current: () => pop.classList.contains('peek') ? 'peek' : 'full',
-    settle: state => { const was = pop.classList.contains('peek'); setPeek(state === 'peek'); if (was !== (state === 'peek')) onSound?.(was ? 'open' : 'close'); },
+    settle: state => { const was = pop.classList.contains('peek'); setPeek(state === 'peek'); if (was !== (state === 'peek')) { onSound?.(was ? 'open' : 'close'); onSheet?.(); } },
     dismiss: () => onClosePopup(),
   });
   // ---------- pin tag: flag + name + two choices, floating above the 3D pin ----------

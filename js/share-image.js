@@ -130,14 +130,21 @@ export async function renderCompareImage(pair, url) {
   return new Promise(res => cv.toBlob(res, 'image/png'));
 }
 
-/** Share the PNG with the system share sheet where files can be shared, else download it. */
+/**
+ * Share the PNG with the system share sheet where files can be shared, else download it.
+ * Phones only allow the share sheet shortly after the tap; drawing the image can take longer on a slow phone,
+ * so the last image is kept and, if the sheet is refused, 'retry' asks for a second tap that shares at once.
+ */
+let last = null; // { key, blob }
 export async function shareCompareImage(pair, url) {
-  const blob = await renderCompareImage(pair, url);
+  const key = pair.a.o.key + '|' + pair.b.o.key;
+  const blob = last?.key === key ? last.blob : await renderCompareImage(pair, url);
+  last = { key, blob };
   const name = `${pair.a.o.unit.n}-vs-${pair.b.o.unit.n}`.toLowerCase().replace(/[^a-z0-9]+/g, '-') + '.png';
   const file = new File([blob], name, { type: 'image/png' });
   if (navigator.canShare?.({ files: [file] })) {
     try { await navigator.share({ files: [file], title: `${pair.a.o.unit.n} vs ${pair.b.o.unit.n}`, text: url }); return 'shared'; }
-    catch (e) { if (e.name === 'AbortError') return 'cancelled'; }
+    catch (e) { if (e.name === 'AbortError') return 'cancelled'; if (e.name === 'NotAllowedError') return 'retry'; }
   }
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name;
   document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);

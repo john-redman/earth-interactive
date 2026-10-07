@@ -21,6 +21,7 @@ import { countryOfTheDay, factsFor, mountDailyChip } from './daily-country.js';
 import { flagImg } from './flags.js';
 import { shareCompareImage } from './share-image.js';
 import { track } from './analytics.js';
+import { TIER } from './perf.js';
 
 const data = await loadWorld();
 
@@ -82,7 +83,10 @@ let selected = null;          // country marked by the pin
 
 const ui = createUI({
   data, initialView: viewKey,
-  onView: k => switchView(k),
+  onView: k => {
+    if (mode === 'quiz') { ui.setViewSilently(viewKey); ui.showToast('Games use the UN map. Quit the game to switch.'); return; } // a view switch mid-round would lose its highlights
+    switchView(k);
+  },
   onCompareRequest: o => { mode = 'pick'; document.body.classList.add('picking'); pickFrom = o; closePopup(); compare.preview(o); sfx.play('snapOut'); ui.showPick(o); }, // it lifts out straight away
   onCompareCancelPick: () => cancelPick(),
   onCompareReset: () => compare.resetPositions(),
@@ -93,6 +97,7 @@ const ui = createUI({
   onNeighbour: key => { const o = layer.get(key); if (o) { openCountry(o, { fly: true }); openInfo(o); } },
   onShare: o => copyLink(o),
   onCompareImage: () => compareImage(),
+  onSheet: () => { if (ui.popFor) frameBesideCard(ui.popFor); }, // phone sheet grew or shrank: keep the country above it
 });
 let cmpState = null;
 /** Compare → Share image: a square post of the two countries at true size. */
@@ -103,6 +108,7 @@ async function compareImage() {
   try {
     const how = await shareCompareImage({ a: side(cmpState.a), b: side(cmpState.b) }, url.toString().replace(/%2C/gi, ','));
     if (how === 'downloaded') ui.showToast('Image saved');
+    else if (how === 'retry') ui.showToast('Image ready. Tap Share image again.');
     track('compare-image', `${cmpState.a.o.key},${cmpState.b.o.key}`);
   } catch (e) { console.warn(e); ui.showToast('Could not make the image'); }
 }
@@ -206,7 +212,7 @@ function frameBesideCard(o) {
   if (!W || !H || pop.hidden) return;
   const m = 16, inset = window.__adInset || 0, sheet = W < 720;
   const free = sheet
-    ? { l: 0, r: W, t: 70, b: H - 196 - 8 }                                 // above the sheet's peek
+    ? { l: 0, r: W, t: 70, b: H - (pop.classList.contains('peek') ? 196 : Math.min(pop.scrollHeight + 2, innerHeight * 0.7)) - 8 } // above the sheet
     : { l: inset + m, r: W - pop.offsetWidth - inset - m * 2, t: 70, b: H - 60 }; // left of the docked card
   const cx = (free.l + free.r) / 2, cy = (free.t + free.b) / 2, room = Math.max(60, Math.min(free.r - free.l, free.b - free.t) / 2);
   // exact perspective: a point `a` radians from the point under the camera, seen from distance d, lands this many px out
@@ -524,9 +530,15 @@ function frame(now) {
     ui.placeTag(ax, ay - pin.height, vis, W, H);
     ui.placePopup(ax, ay, vis, W, H);
   }
-  globe.renderer.render(globe.scene, globe.camera);
+  // phones: while nothing moves (reading a card, idle with auto-rotate paused) draw every other frame; the ocean and
+  // stars still animate at 30 fps and the battery lasts noticeably longer. Any movement goes straight back to full rate.
+  const calm = TIER === 'low' && !globe.flight && !globe.zoom && !spin.dragging && spin.momentum() < 0.02 && spin.auto < 0.01
+    && !compare.anim && !compare.drag && !pointers.size;
+  halfRate = calm && !halfRate;
+  if (!halfRate) globe.renderer.render(globe.scene, globe.camera);
   requestAnimationFrame(frame);
 }
+let halfRate = false;
 
 // Build the first view after the loader has painted, then warm the others in the background.
 requestAnimationFrame(() => setTimeout(async () => {
@@ -537,7 +549,7 @@ requestAnimationFrame(() => setTimeout(async () => {
   document.body.classList.add('ready');
   // deep links: ?c=FRA · ?compare=FRA,DEU · ?play=daily
   const c = params.get('c'), cmp = params.get('compare')?.split(','), play = params.get('play');
-  if (cmp?.length === 2 && layer.get(cmp[0]) && layer.get(cmp[1])) { mode = 'compare'; compare.start(layer.get(cmp[0]), layer.get(cmp[1])); }
+  if (cmp?.length === 2 && cmp[0] !== cmp[1] && layer.get(cmp[0]) && layer.get(cmp[1])) { mode = 'compare'; compare.start(layer.get(cmp[0]), layer.get(cmp[1])); }
   else if (play === 'daily' || play === 'classic') startGame(play);
   else if (c && layer.get(c)) openCountry(layer.get(c), { fly: true });
   const chip = layer.get(cotdKey) && mountDailyChip(document.getElementById('cotd'), { o: layer.get(cotdKey), onGo: goDaily });
@@ -552,5 +564,5 @@ window.EarthInteractive = {
   globe, layer, compare, ads, data, thrills, spin, quiz, search, native, sfx, music,
   setLens: k => { lensKey = LENSES[k] ? k : 'none'; applyLens(); },
   setView: k => { if (!data.views[k]) return false; ui.setViewSilently(k); switchView(k); return true; },
-  compareKeys: (a, b) => { const A = layer.get(a), B = layer.get(b); if (!A || !B) return false; closePopup(); cancelPick(); mode = 'compare'; compare.start(A, B); return true; },
+  compareKeys: (a, b) => { const A = layer.get(a), B = layer.get(b); if (!A || !B || A === B) return false; closePopup(); cancelPick(); mode = 'compare'; compare.start(A, B); return true; },
 };
