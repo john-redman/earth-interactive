@@ -5,6 +5,8 @@ All notable changes to EarthInteractive are documented here.
 ## [Unreleased]
 
 ### Added
+- **Card never covers its country**: the card docks on the right (bottom sheet on phones) and the globe turns and zooms so the country sits in the free space.
+- **Games use the UN map** automatically, and your view comes back afterwards.
 - **Games: miss line**: after a wrong answer, a line arcs from your guess to the right country with the distance on it, and the camera frames both.
 - **Games: right/wrong sounds** (the owner's recordings).
 - **Country of the day**: a chip at the top (once a day) and in the Play menu; flies there and opens the card with two facts.
@@ -13,6 +15,9 @@ All notable changes to EarthInteractive are documented here.
 - **Stars**: a light scatter of soft, slowly twinkling stars.
 
 ### Changed
+- **Day & night is clearer**: a darker, moonlit-blue night side, a sharper terminator and a slightly brighter day side.
+- **Switching views clears the pin** (a spot can belong to a different country in another view).
+- Pins and fly-tos aim at a country's main landmass (France no longer pins into Spain).
 - **Rollercoaster is screams only**: the wind, the low drone and the dread bed are gone.
 - **Zoom leaves rotation alone**: scrolling, pinching and +/- never stop a spin or the idle rotation; wheel and key zoom ease smoothly. The idle rotation eases in and out.
 - **Compare pieces float higher** with a soft shadow that falls away from the light, a light rim and a more solid top.

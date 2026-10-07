@@ -193,11 +193,9 @@ export function createUI({ data, initialView, onView, onCompareRequest, onCompar
     dot.style.opacity = visible ? 1 : 0;
     dot.style.transform = `translate(${x}px, ${y}px)`;
     if (mobile) { pop.style.transform = ''; return; }
-    const w = pop.offsetWidth, h = pop.offsetHeight, m = 16;
-    let px = x + 22, py = y - h / 2;
-    if (px + w > vw - m - (window.__adInset || 0)) px = x - 22 - w;
-    px = Math.max(m + (window.__adInset || 0), Math.min(px, vw - w - m - (window.__adInset || 0)));
-    py = Math.max(m + 84, Math.min(py, vh - h - m));
+    // docked on the right, below the dock; main.js turns the globe so the country sits in the space beside it
+    const w = pop.offsetWidth, h = pop.offsetHeight, m = 16, inset = window.__adInset || 0;
+    const px = vw - w - m - inset, py = Math.max(m + 68, Math.min((vh - h) / 2, vh - h - m));
     pop.style.transform = `translate(${Math.round(px)}px, ${Math.round(py)}px)`;
   }
 

@@ -5,7 +5,7 @@ import { lonLatToVec3 } from './geo.js';
 /** Shared shader uniforms (the ocean and every country read these). */
 export const SKY = {
   uSun: { value: new THREE.Vector3(0, 0, 1) },   // world-space direction to the Sun
-  uNight: { value: 0.42 },                         // how much the night side darkens (0 = off)
+  uNight: { value: 1 },                            // day & night strength (0 = off, 1 = on)
 };
 
 const rad = Math.PI / 180;

@@ -80,9 +80,10 @@ function oceanMaterial() {
         col += vec3(0.6, 0.85, 1.0) * sparkle;
         // real-time day & night, with a faint warm band along the terminator
         float sd = dot(normalize(vPos), uSun);
-        float day = smoothstep(-0.10, 0.16, sd);
-        col *= mix(1.0 - uNight * 1.1, 1.0, day);
-        col += vec3(1.0, 0.55, 0.25) * 0.045 * uNight * (1.0 - smoothstep(0.0, 0.14, abs(sd - 0.02)));
+        float day = smoothstep(-0.05, 0.10, sd);
+        vec3 lit = mix(col * vec3(0.22, 0.27, 0.45), col * 1.08, day);           // night sea: dark, moonlit
+        lit += vec3(1.0, 0.55, 0.25) * 0.06 * (1.0 - smoothstep(0.0, 0.09, abs(sd - 0.01))); // dusk glow
+        col = mix(col, lit, uNight);
         float rim = pow(1.0 - facing, 3.0);
         col += vec3(0.20, 0.45, 1.0) * rim * 0.55;              // limb glow
         gl_FragColor = vec4(col, 1.0);
