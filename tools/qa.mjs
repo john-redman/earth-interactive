@@ -1,8 +1,10 @@
 /**
- * Broad QA run: real taps on the globe, cards, compare (UI + drag + share image), lenses, search, keyboard, games
+ * Broad QA run: real taps on the globe, cards, compare (UI + drag + share image), free move (tag + hold), the
+ * world population counter, lenses, search, keyboard, games
  * (taps, Confirm/Enter, miss line, results, daily), toggles, deep links, resizes, overlaps and a leak check, on
  * desktop and phone. Slower and wider than tools/smoke.mjs (~20 min headless at ~1 fps).
  *   npm run dev   (or any static server), then   BASE=http://localhost:5173/ npm run qa [desktop|phone]
+ *   ONLY='move|population' runs just the sections whose names match.
  */
 const { chromium } = await import(process.env.PLAYWRIGHT || 'playwright');
 const BASE = process.env.BASE || 'http://localhost:5173/';
@@ -24,7 +26,7 @@ for (const [dev, vp, touch] of [['desktop', { width: 1280, height: 800 }, false]
     await p.waitForTimeout(600);
   };
   const vis = sel => E(s => { const el = document.querySelector(s); if (!el || el.hidden) return false; const cs = getComputedStyle(el); return cs.display !== 'none' && cs.visibility !== 'hidden' && el.getBoundingClientRect().width > 0; }, sel);
-  const t = async (name, fn) => { try { await fn(); } catch (e) { fails++; console.log(`FAIL ${dev} ${name} threw ${String(e.message).split('\n')[0]}`); } };
+  const t = async (name, fn) => { if (process.env.ONLY && !new RegExp(process.env.ONLY).test(name)) return; try { await fn(); } catch (e) { fails++; console.log(`FAIL ${dev} ${name} threw ${String(e.message).split('\n')[0]}`); } };
   // fly so a country faces the camera, then return its on-screen point
   const aim = async (key, dist = 2.2) => {
     await E(([k, d]) => { const X = window.EarthInteractive, o = X.layer.get(k); X.globe.autoRotate = false; X.spin.stop(); X.globe.flyTo(X.compare.anchorFor(o).clone(), d, 1); }, [key, dist]);
@@ -96,6 +98,85 @@ for (const [dev, vp, touch] of [['desktop', { width: 1280, height: 800 }, false]
       } else await E(() => document.querySelector('#compare-pill [data-act="done"]').click());
       ok(`r${round} done ends compare`, await until(() => !document.body.classList.contains('comparing')));
     }
+  });
+
+  await t('move a country', async () => {
+    await go();
+    const pieceAt = () => E(() => { const X = window.EarthInteractive, P = X.compare.previewPiece || X.compare.pieces[0], v = P.center.clone().multiplyScalar(1 + P.liftNow).project(X.globe.camera), r = document.getElementById('globe').getBoundingClientRect(); return { x: r.left + (v.x + 1) / 2 * r.width, y: r.top + (1 - v.y) / 2 * r.height }; });
+    const cdp = touch ? await ctx.newCDPSession(p) : null;
+    const touchTo = (type, pt) => cdp.send('Input.dispatchTouchEvent', { type, touchPoints: type === 'touchEnd' ? [] : [{ x: pt.x, y: pt.y }] });
+    // drag with a real pointer; `hold` waits for the press-and-hold lift before moving
+    const dragFrom = async (pt, dx, dy, hold = false) => {
+      if (touch) { await touchTo('touchStart', pt); } else { await p.mouse.move(pt.x, pt.y); await p.mouse.down(); }
+      const lifted = hold ? await until(() => !!window.EarthInteractive.compare.drag, null, 30000) : true; // headless frames are slow, so the hold timer fires late
+      for (let i = 1; i <= 6; i++) { const q = { x: pt.x + dx * i / 6, y: pt.y + dy * i / 6 }; if (touch) await touchTo('touchMove', q); else await p.mouse.move(q.x, q.y); }
+      if (touch) await touchTo('touchEnd'); else await p.mouse.up();
+      return lifted;
+    };
+    // Move from the tag, drag it, then tap another country: the same piece becomes half of a comparison
+    let pt = await aim('ESP'); await tap(pt);
+    await until(() => document.querySelector('#pin-tag b')?.textContent === 'Spain');
+    ok('tag offers Move', await vis('#pin-tag [data-act="move"]'));
+    await E(() => document.querySelector('#pin-tag [data-act="move"]').click());
+    ok('Move lifts Spain with a drag banner', await until(() => document.body.classList.contains('picking') && /Drag Spain anywhere/.test(document.getElementById('pick-banner').textContent) && window.EarthInteractive.compare.previewPiece?.o.key === 'ESP'));
+    ok('banner clear of the other controls', await E(() => {
+      const b = document.getElementById('pick-banner').getBoundingClientRect();
+      return [...document.querySelectorAll('.top-left .view-switch, .dock-btn, .corner-btn, .site-links, .brand')].every(el => { const r = el.getBoundingClientRect(); return !r.width || getComputedStyle(el).display === 'none' || r.right <= b.left || b.right <= r.left || r.bottom <= b.top || b.bottom <= r.top; }) && b.left >= 0 && b.right <= innerWidth;
+    }));
+    await p.waitForTimeout(1500);
+    const c0 = await E(() => (window.__piece = window.EarthInteractive.compare.previewPiece).center.toArray());
+    await dragFrom(await pieceAt(), -70, 50); await p.waitForTimeout(800);
+    const c1 = await E(() => window.EarthInteractive.compare.previewPiece.center.toArray());
+    ok('the lifted country drags freely', Math.hypot(c1[0] - c0[0], c1[1] - c0[1], c1[2] - c0[2]) > 0.01, { c0, c1 });
+    ok('still choosing after the drag (no accidental compare)', await E(() => document.body.classList.contains('picking') && !document.body.classList.contains('comparing')));
+    pt = await aim('DEU', 2.4); await tap(pt);
+    ok('tapping another country turns the move into a comparison', await until(() => document.body.classList.contains('comparing'), null, 20000)
+      && await E(() => { const C = window.EarthInteractive.compare; return C.pieces[0] === window.__piece && C.pieces[1].o.key === 'DEU' && document.getElementById('pick-banner').hidden; }));
+    await E(() => document.querySelector('#compare-pill [data-act="done"]').click());
+    ok('done ends it', await until(() => !document.body.classList.contains('comparing') && !window.EarthInteractive.compare.pieces.length, null, 20000));
+    // press and hold the pinned country: it lifts under the finger and follows it
+    pt = await aim('FRA'); await tap(pt);
+    await until(() => document.querySelector('#pin-tag b')?.textContent === 'France');
+    await p.waitForTimeout(600);
+    const lifted = await dragFrom(pt, 60, -40, true); await p.waitForTimeout(800);
+    const hs = await E(() => ({ key: window.EarthInteractive.compare.previewPiece?.o.key, banner: document.getElementById('pick-banner').textContent }));
+    ok('press and hold lifts the pinned country', lifted && hs.key === 'FRA' && /Drag France/.test(hs.banner), { lifted, ...hs });
+    const moved = await E(() => { const P = window.EarthInteractive.compare.previewPiece; return P ? P.center.distanceTo(P.shape.centroid) : 0; });
+    ok('…and carries it in the same gesture', moved > 0.01, moved);
+    await E(() => document.querySelector('#pick-banner button').click());
+    ok('Put back sinks it and leaves the mode', await until(() => !document.body.classList.contains('picking') && !window.EarthInteractive.compare.previewPiece, null, 20000));
+    // Compare then drag first: one state, the banner just leads differently
+    pt = await aim('PRT'); await tap(pt);
+    await until(() => document.querySelector('#pin-tag b')?.textContent === 'Portugal');
+    await E(() => document.querySelector('#pin-tag [data-act="compare"]').click());
+    ok('Compare banner offers dragging too', await until(() => /Tap a country to compare with Portugal/.test(document.getElementById('pick-banner').textContent) && /drag/i.test(document.querySelector('.pk-text small')?.textContent || '')));
+    await p.keyboard.press('Escape');
+    ok('Escape puts it back', await until(() => !document.body.classList.contains('picking'), null, 20000));
+    // holding an unpinned country (or the sea) only spins, as before
+    await E(() => { const X = window.EarthInteractive; X.globe.flyTo(X.globe.camera.position.clone().set(-0.296, -0.5, 0.814).normalize(), 2.6, 1); });
+    await until(() => !window.EarthInteractive.globe.flight); await p.waitForTimeout(400);
+    const mid = await E(() => { const r = document.getElementById('globe').getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; });
+    await dragFrom(mid, 40, 0, true);
+    ok('holding elsewhere does not lift anything', await E(() => !document.body.classList.contains('picking') && !window.EarthInteractive.compare.pieces.length));
+  });
+
+  await t('world population', async () => {
+    await go();
+    await E(() => document.getElementById('hint').classList.add('gone'));
+    ok('counter shows at globe view', await until(() => document.getElementById('popclock').classList.contains('on')));
+    const n0 = await E(() => +document.querySelector('#popclock .pc-n').textContent.replace(/,/g, ''));
+    await p.waitForTimeout(3000);
+    const n1 = await E(() => +document.querySelector('#popclock .pc-n').textContent.replace(/,/g, ''));
+    ok('a plausible estimate that ticks up', n0 > 8.2e9 && n0 < 8.6e9 && n1 > n0, { n0, n1 });
+    ok('births and deaths today shown', await E(() => /born today/.test(document.getElementById('popclock').textContent)));
+    await E(() => { const X = window.EarthInteractive; X.globe.flyTo(X.globe.camera.position.clone(), X.globe.fitDistance * 0.6, 1); });
+    ok('fades out zoomed in', await until(() => !window.EarthInteractive.globe.flight && !document.getElementById('popclock').classList.contains('on')));
+    await E(() => { const X = window.EarthInteractive; X.globe.flyTo(X.globe.camera.position.clone(), X.globe.fitDistance, 1); });
+    ok('comes back zoomed out', await until(() => !window.EarthInteractive.globe.flight && document.getElementById('popclock').classList.contains('on')));
+    await go('?c=BRA'); await E(() => document.getElementById('hint').classList.add('gone'));
+    await E(() => document.querySelector('#pin-tag [data-act="info"]').click());
+    await until(() => document.body.classList.contains('card-open')); await p.waitForTimeout(500);
+    ok('steps aside for the card', !(await E(() => document.getElementById('popclock').classList.contains('on'))));
   });
 
   await t('lenses', async () => {
@@ -209,8 +290,10 @@ for (const [dev, vp, touch] of [['desktop', { width: 1280, height: 800 }, false]
 
   await t('overlaps on screen', async () => {
     await go(); await p.waitForTimeout(2500);
+    await E(() => document.getElementById('hint').classList.add('gone'));
+    await until(() => document.getElementById('popclock').classList.contains('on')); await p.waitForTimeout(900);
     const o = await E(() => {
-      const sel = ['.top-left', '.dock', '.brand', '.site-links', '#recenter', '#daynight-toggle', '#music-toggle', '#sound-toggle', '#cotd'];
+      const sel = ['.top-left', '.dock', '.brand', '.site-links', '#recenter', '#daynight-toggle', '#music-toggle', '#sound-toggle', '#cotd', '#popclock', '.credit'];
       const rs = sel.map(s => [s, document.querySelector(s)]).filter(([, el]) => el && !el.hidden && getComputedStyle(el).display !== 'none').map(([s, el]) => [s, el.getBoundingClientRect()]);
       const hits = [];
       for (let i = 0; i < rs.length; i++) for (let j = i + 1; j < rs.length; j++) { const a = rs[i][1], b = rs[j][1]; if (a.width && b.width && a.left < b.right - 1 && b.left < a.right - 1 && a.top < b.bottom - 1 && b.top < a.bottom - 1) hits.push(rs[i][0] + ' × ' + rs[j][0]); }

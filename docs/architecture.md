@@ -23,7 +23,8 @@ Static site, no bundler. `index.html` loads `js/main.js` as an ES module; an imp
 | `pin.js` | 3D map pin for the selected country (drop-in animation, constant on-screen size, leans to screen-up) | `Pin` |
 | `load.js` | Streams `data/world.js` with loader progress, then evaluates it via a blob `import()` | `loadWorld`, `setLoader` |
 | `miss-line.js` | Games: arc from a wrong guess to the answer, drawn in, with a distance label | `MissLine` |
-| `currents.js` | Major ocean currents as dark lines with dashes running with the flow, labels (name, direction, strength) and ocean names; decluttered by zoom, hidden under data lenses | `Currents`, `CURRENTS`, `OCEANS` |
+| `currents.js` | Major ocean currents as a faint lighter sheen with soft trails drifting downstream, labels (name, direction, strength) and ocean names; decluttered by zoom, hidden under data lenses | `Currents`, `CURRENTS`, `OCEANS` |
+| `popclock.js` | World population, live (UN WPP 2024 estimate, births and deaths today); fades by zoom and around panels | `createPopClock`, `worldPopulation` |
 | `daily-country.js` | Country of the day (seeded by local date), its facts, the top chip | `countryOfTheDay`, `factsFor`, `mountDailyChip` |
 | `share-image.js` | Compare → 1080² share image (equal-area silhouettes on a 2D canvas), share sheet or download | `renderCompareImage`, `shareCompareImage` |
 | `sfx.js` | UI sounds: synthesised tones + recorded samples (`sounds/`), delegated button sounds | `createSfx` |

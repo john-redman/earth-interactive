@@ -29,7 +29,7 @@ const ICONS = {
 const SHORT = { un: 'UN', defacto: 'De facto', neutral: 'Neutral' };
 const KIND_LABEL = { country: 'Country', territory: 'Territory', limited: 'Limited recognition', breakaway: 'Breakaway region', disputed: 'Disputed area' };
 
-export function createUI({ data, initialView, onView, onCompareRequest, onCompareCancelPick, onCompareReset, onCompareEnd, onClosePopup, onNeighbour, onShare, onInfo, onSound, onCompareImage, onSheet }) {
+export function createUI({ data, initialView, onView, onCompareRequest, onMoveRequest, onCompareCancelPick, onCompareReset, onCompareEnd, onClosePopup, onNeighbour, onShare, onInfo, onSound, onCompareImage, onSheet }) {
   // ---------- view switch ----------
   const vs = $('#view-switch');
   const order = ['un', 'defacto', 'neutral'];
@@ -150,10 +150,12 @@ export function createUI({ data, initialView, onView, onCompareRequest, onCompar
     tag.innerHTML = `
       <div class="tag-name">${flagImg(o.info, 'tag-flag') || '<span class="tag-swatch"></span>'}<b>${esc(o.unit.n)}</b></div>
       <div class="tag-acts">
+        <button type="button" class="tag-btn" data-act="move" title="Lift it out and drag it anywhere (or press and hold the country)">${ICON_MOVE}<span>Move</span></button>
         <button type="button" class="tag-btn" data-act="compare">${ICON_COMPARE}<span>Compare</span></button>
         <button type="button" class="tag-btn primary" data-act="info">${ICON_INFO}<span>Info</span></button>
       </div>`;
     tag.style.setProperty('--c', o.color);
+    $('[data-act="move"]', tag).onclick = () => onMoveRequest(o);
     tag.hidden = false; tag.classList.remove('in'); void tag.offsetWidth; tag.classList.add('in');
     $('[data-act="compare"]', tag).onclick = () => onCompareRequest(o);
     $('[data-act="info"]', tag).onclick = () => onInfo?.(o);
@@ -201,9 +203,20 @@ export function createUI({ data, initialView, onView, onCompareRequest, onCompar
 
   // ---------- pick banner / compare bar ----------
   const pick = $('#pick-banner'), bar = $('#compare-bar');
-  function showPick(o) {
-    pick.innerHTML = `<span class="pulse"></span>Choose a country to compare with <b>${esc(o.unit.n)}</b><button type="button" class="btn small ghost">Cancel</button>`;
+  /**
+   * One banner for a lifted country, however it was lifted: Move leads with dragging, Compare with choosing the
+   * second country, and both can do either (dragging, then tapping another country, turns into a comparison).
+   */
+  function showPick(o, intent = 'compare') {
+    const n = `<b>${esc(o.unit.n)}</b>`;
+    const [main, sub] = intent === 'move'
+      ? [`Drag ${n} anywhere`, 'Tap another country to compare sizes']
+      : [`Tap a country to compare with ${n}`, `Or drag ${n} around first`];
+    const again = !pick.hidden && pick.dataset.key === o.key;
+    pick.dataset.key = o.key;
+    pick.innerHTML = `<span class="pulse"></span><span class="pk-text"><span>${main}</span><small>${sub}</small></span><button type="button" class="btn small ghost">Put back</button>`;
     pick.hidden = false; $('button', pick).onclick = () => onCompareCancelPick();
+    if (!again) { pick.classList.remove('in'); void pick.offsetWidth; pick.classList.add('in'); }
   }
   function hidePick() { pick.hidden = true; }
   let cmpOpen = false; // stats table expanded; kept while the same comparison stays up
@@ -328,5 +341,6 @@ export function createUI({ data, initialView, onView, onCompareRequest, onCompar
 
 const ICON_LINK = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 14a4 4 0 005.7 0l3-3a4 4 0 00-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 00-5.7 0l-3 3a4 4 0 005.7 5.7l1-1"/></svg>';
 const ICON_INFO = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 11v5.5M12 7.6v.4"/></svg>';
+const ICON_MOVE = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v18M3 12h18M9 5.5L12 2.5l3 3M9 18.5l3 3 3-3M5.5 9L2.5 12l3 3M18.5 9l3 3-3 3"/></svg>';
 const ICON_COMPARE = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="7" width="8" height="10" rx="2"/><rect x="13" y="4" width="8" height="16" rx="2"/></svg>';
 const ICON_IMAGE = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="4.5" width="17" height="15" rx="2.5"/><circle cx="9" cy="10" r="1.8"/><path d="M20.5 16l-5-5-8 8.5"/></svg>';

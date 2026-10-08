@@ -1,5 +1,5 @@
-// Major surface currents painted on the sea, like the type and markings on a real globe: soft, feathered ribbons
-// that meander a little, with faint streaks drifting along the flow, and their names (direction, typical speed)
+// Major surface currents painted on the sea, like the type and markings on a real globe: a faint lighter sheen
+// that meanders a little, with soft trails of light drifting slowly downstream, and their names (direction, typical speed)
 // laid on the surface beside them, curving with the current and the sphere. Ocean names in the same type, larger,
 // along their parallel. Everything is fixed to the Earth and turns with it. Decorative: nothing is clickable.
 import * as THREE from 'three';
@@ -75,8 +75,8 @@ export const OCEANS = [
 ];
 
 const R_LINE = 1.0016, R_TEXT = 1.0022;  // just above the sea, under the country fills
-const WIDTH = { strong: 0.0095, moderate: 0.0072, weak: 0.0056 }; // ribbon half-width (radians)
-const FLOW = { strong: 1.0, moderate: 0.6, weak: 0.4 };          // streak drift speed, relative
+const WIDTH = { strong: 0.0085, moderate: 0.0068, weak: 0.0054 }; // ribbon half-width (radians)
+const FLOW = { strong: 1.0, moderate: 0.6, weak: 0.4 };          // trail drift speed, relative
 const TEXT_H = { current: 0.0125, ocean: 0.03 };                  // cap height on the globe (radians)
 const reduced = matchMedia('(prefers-reduced-motion: reduce)');
 const smooth = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
@@ -153,36 +153,43 @@ export class Currents {
     this.visible = true;
     this.fade = { minor: 0, major: 0, ocean: 1, ui: 1 };
 
-    // ---- the currents: soft feathered ribbons, one merged mesh
-    const R = { pos: [], uv: [], idx: [], aLen: [], aFlow: [] };
+    // ---- the currents: a whisper of light along the flow (lighter than the sea, never a dark band), with soft
+    // trails drifting slowly downstream like flecks on the water; a faint warm or cool tint, as on a printed globe.
+    const R = { pos: [], uv: [], idx: [], aLen: [], aFlow: [], aWarm: [], aSeed: [] };
     CURRENTS.forEach((c, i) => {
       const p = makePath(c.path, i * 1.618);
       c._path = p;
       const n = Math.max(24, Math.round(p.len * 220));
-      strip(R, p.at, n, WIDTH[c.strength], R_LINE, [-1, 1], { aLen: p.len, aFlow: FLOW[c.strength] });
+      strip(R, p.at, n, WIDTH[c.strength], R_LINE, [-1, 1], { aLen: p.len, aFlow: FLOW[c.strength], aWarm: c.warm ? 1 : 0, aSeed: (i * 0.618) % 1 });
     });
     const rg = new THREE.BufferGeometry();
     rg.setAttribute('position', new THREE.Float32BufferAttribute(R.pos, 3));
     rg.setAttribute('uv', new THREE.Float32BufferAttribute(R.uv, 2));
-    rg.setAttribute('aLen', new THREE.Float32BufferAttribute(R.aLen, 1));
-    rg.setAttribute('aFlow', new THREE.Float32BufferAttribute(R.aFlow, 1));
+    for (const k of ['aLen', 'aFlow', 'aWarm', 'aSeed']) rg.setAttribute(k, new THREE.Float32BufferAttribute(R[k], 1));
     rg.setIndex(R.idx);
     this.ribbonMat = new THREE.ShaderMaterial({
       transparent: true, depthWrite: false,
-      uniforms: { uTime: { value: 0 }, uOpacity: { value: 1 } },
-      vertexShader: SHARED_VERT.replace('varying vec2 vUv;', 'attribute float aLen; attribute float aFlow; varying float vLen; varying float vFlow; varying vec2 vUv;')
-        .replace('vUv = uv;', 'vUv = uv; vLen = aLen; vFlow = aFlow;'),
+      uniforms: { uTime: { value: 0 }, uOpacity: { value: 0 } },
+      vertexShader: SHARED_VERT.replace('varying vec2 vUv;', 'attribute float aLen; attribute float aFlow; attribute float aWarm; attribute float aSeed; varying float vLen; varying float vFlow; varying float vWarm; varying float vSeed; varying vec2 vUv;')
+        .replace('vUv = uv;', 'vUv = uv; vLen = aLen; vFlow = aFlow; vWarm = aWarm; vSeed = aSeed;'),
       fragmentShader: /* glsl */`
         uniform float uTime; uniform float uOpacity;
-        varying vec2 vUv; varying float vFace; varying float vLen; varying float vFlow;
+        varying vec2 vUv; varying float vFace; varying float vLen; varying float vFlow; varying float vWarm; varying float vSeed;
         void main(){
           if (vFace < 0.0) discard;
-          float across = 1.0 - vUv.y * vUv.y;                       // feathered edges
-          float ends = smoothstep(0.0, 0.08, vUv.x) * smoothstep(1.0, 0.85, vUv.x);
-          float s = vUv.x * vLen * 140.0 - uTime * vFlow * 0.35;      // faint streaks drifting with the flow
-          float streak = 0.75 + 0.25 * sin(s) * sin(s * 0.37 + 1.3);
-          float a = across * across * ends * streak * 0.26 * uOpacity * smoothstep(0.0, 0.2, vFace);
-          gl_FragColor = vec4(0.02, 0.08, 0.2, a);
+          float y = vUv.y;
+          float ends = smoothstep(0.0, 0.1, vUv.x) * smoothstep(1.0, 0.82, vUv.x);
+          float sheen = (1.0 - y * y); sheen *= sheen;                      // the faintest lift of the water
+          // trails: one every ~0.07 rad, drifting downstream, bright at the head and fading behind it
+          float s = vUv.x * vLen * 14.0 - uTime * vFlow * 0.05 + vSeed * 7.0;
+          s += 0.18 * sin(s * 0.61 + vSeed * 6.0);                          // uneven spacing, not a dashed rule
+          float f = fract(s);
+          float trail = pow(f, 2.2) * smoothstep(1.0, 0.9, f);
+          float w = 0.12 + 0.3 * trail;                                      // narrows towards the tail
+          float core = exp(-y * y / (w * w));
+          vec3 tint = mix(vec3(0.72, 0.87, 1.0), vec3(1.0, 0.87, 0.76), vWarm);
+          float a = (sheen * 0.05 + core * trail * 0.42) * ends * uOpacity * smoothstep(0.0, 0.25, vFace);
+          gl_FragColor = vec4(tint, a);
         }`,
     });
     const ribbons = new THREE.Mesh(rg, this.ribbonMat);
@@ -316,15 +323,18 @@ export class Currents {
   /** Show or hide the whole layer. */
   setVisible(on) { this.visible = on; }
 
-  /** Every frame: drift the streaks; fade the type by zoom and around the UI. */
+  /** Every frame: drift the trails, fade them by zoom; fade the type by zoom and around the UI. */
   tick(now) {
     const body = document.body.classList;
     this.group.visible = this.visible && !body.contains('lens-on');
     if (!this.group.visible) return;
-    this.ribbonMat.uniforms.uTime.value = reduced.matches ? 0 : now / 1000;
-    if (!this.labelMat) return;
     const g = this.globe, d = g.camera.position.length() / g.fitDistance;
     const busy = body.contains('quiz-on') || body.contains('comparing') || body.contains('card-open');
+    // the flow is barely there from afar and comes up as you lean in; it steps back while you are busy elsewhere
+    const ru = this.ribbonMat.uniforms;
+    ru.uTime.value = reduced.matches ? 0 : now / 1000;
+    ru.uOpacity.value += ((busy ? 0.5 : 1) * (0.45 + 0.55 * smooth(1.0, 0.7, d)) - ru.uOpacity.value) * 0.08;
+    if (!this.labelMat) return;
     const target = {
       major: busy ? 0 : smooth(0.92, 0.72, d),   // the big currents' names come in first as you zoom
       minor: busy ? 0 : smooth(0.7, 0.55, d),
