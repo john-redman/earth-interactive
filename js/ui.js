@@ -209,9 +209,10 @@ export function createUI({ data, initialView, onView, onCompareRequest, onMoveRe
    */
   function showPick(o, intent = 'compare') {
     const n = `<b>${esc(o.unit.n)}</b>`;
+    const keys = !matchMedia('(pointer: coarse)').matches; // keyboards: the arrow keys move it too
     const [main, sub] = intent === 'move'
-      ? [`Drag ${n} anywhere`, 'Tap another country to compare sizes']
-      : [`Tap a country to compare with ${n}`, `Or drag ${n} around first`];
+      ? [`Drag ${n} anywhere`, keys ? 'Or use the arrow keys. Click another country to compare sizes' : 'Tap another country to compare sizes']
+      : [`${keys ? 'Click' : 'Tap'} a country to compare with ${n}`, keys ? `Or drag ${n} around first, or move it with the arrow keys` : `Or drag ${n} around first`];
     const again = !pick.hidden && pick.dataset.key === o.key;
     pick.dataset.key = o.key;
     pick.innerHTML = `<span class="pulse"></span><span class="pk-text"><span>${main}</span><small>${sub}</small></span><button type="button" class="btn small ghost">Put back</button>`;

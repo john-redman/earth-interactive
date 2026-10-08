@@ -445,7 +445,7 @@ stage.addEventListener('pointerdown', e => {
     const hit = compare.hitPiece(rayAt(e.clientX, e.clientY));
     if (hit) {
       globe.controls.enabled = false;
-      compare.beginDrag(hit);
+      compare.beginDrag(hit); keyPiece = hit.piece;
       canvas.setPointerCapture(e.pointerId);
       stage.classList.add('dragging-piece');
     }
@@ -543,6 +543,11 @@ window.addEventListener('keydown', e => {
   // preventDefault: answering moves focus to "Next country", and the same Enter would otherwise press it too
   if (e.key === 'Enter' && guess && !e.target.closest?.('button')) { e.preventDefault(); confirmGuess(); return; }
   if (e.key === 'Enter' && quiz.canAdvance && !e.target.closest?.('button')) { e.preventDefault(); quiz.next(); return; }
+  // a lifted country (Move, Compare): the arrow keys carry it instead of spinning the globe; 1 / 2 pick a piece
+  if (e.key.startsWith('Arrow') && arrowPiece() && !e.metaKey && !e.ctrlKey && !e.altKey && !e.target.closest?.('[role="menu"], [role="radiogroup"]')) {
+    heldArrows.add(e.key); e.preventDefault(); return;
+  }
+  if ((e.key === '1' || e.key === '2') && mode === 'compare' && compare.pieces[+e.key - 1]) { keyPiece = compare.pieces[+e.key - 1]; compare.raise(keyPiece); return; }
   // keyboard spinning & zoom
   const step = 0.12;
   if (e.key === 'ArrowLeft') { spin.pending.t += step; } else if (e.key === 'ArrowRight') { spin.pending.t -= step; }
@@ -553,6 +558,38 @@ window.addEventListener('keydown', e => {
   if (e.key.startsWith('Arrow')) globe.pauseAuto(); // zooming leaves the rotation alone
   e.preventDefault();
 });
+
+// ---------- arrow keys move a lifted country ----------
+const heldArrows = new Set();
+let keyPiece = null; // the piece the arrow keys move in a comparison (the last one dragged, or 1 / 2)
+function arrowPiece() {
+  if (mode === 'pick') return compare.previewPiece;
+  if (mode === 'compare') return compare.pieces.includes(keyPiece) ? keyPiece : compare.pieces[0];
+  return null;
+}
+let keyShift = false;
+window.addEventListener('keyup', e => { heldArrows.delete(e.key); keyShift = e.shiftKey; });
+window.addEventListener('keydown', e => { keyShift = e.shiftKey; });
+window.addEventListener('blur', () => heldArrows.clear());
+const _kv = new THREE.Vector3(), _kr = new THREE.Vector3(), _ku = new THREE.Vector3(), _kq = new THREE.Quaternion();
+/** Every frame while an arrow is held: glide the piece across the globe, up/down/left/right as seen on screen. */
+function moveByKeys(dt, shift) {
+  const p = arrowPiece();
+  if (!p || compare.drag) { heldArrows.clear(); return; }
+  const dx = heldArrows.has('ArrowRight') - heldArrows.has('ArrowLeft'), dy = heldArrows.has('ArrowUp') - heldArrows.has('ArrowDown');
+  if (!dx && !dy) return;
+  const cam = globe.camera, inv = _kq.copy(globe.world.quaternion).invert();
+  _kr.set(1, 0, 0).applyQuaternion(cam.quaternion).applyQuaternion(inv);   // screen right and up, in globe space
+  _ku.set(0, 1, 0).applyQuaternion(cam.quaternion).applyQuaternion(inv);
+  const c = p.center.clone().normalize();
+  _kv.copy(_kr).multiplyScalar(dx).addScaledVector(_ku, dy).projectOnPlane(c);
+  if (_kv.lengthSq() < 1e-9) return;
+  // about 180 px a second at any zoom (Shift: faster)
+  const speed = 0.25 * Math.max(0.08, cam.position.length() - 1) * (shift ? 2.5 : 1);
+  const axis = c.clone().cross(_kv).normalize();
+  c.applyAxisAngle(axis, speed * Math.min(dt, 0.05));
+  compare.place(p, c, p.liftNow);
+}
 
 // ---------- resize & loop ----------
 globe.onResize = () => layer.resizeLines();
@@ -570,6 +607,7 @@ function frame(now) {
   tickGlobe(globe, t);
   layer.tick(now);
   compare.tick(now);
+  if (heldArrows.size) moveByKeys(dt, keyShift);
   missLine.tick(now);
   currents.tick(now);
   popClock.tick();
@@ -591,7 +629,7 @@ function frame(now) {
   // phones: while nothing moves (reading a card, idle with auto-rotate paused) draw every other frame; the ocean and
   // stars still animate at 30 fps and the battery lasts noticeably longer. Any movement goes straight back to full rate.
   const calm = TIER === 'low' && !globe.flight && !globe.zoom && !spin.dragging && spin.momentum() < 0.02 && spin.auto < 0.01
-    && !compare.anim && !compare.drag && !pointers.size;
+    && !compare.anim && !compare.drag && !pointers.size && !heldArrows.size;
   halfRate = calm && !halfRate;
   if (!halfRate) globe.renderer.render(globe.scene, globe.camera);
   requestAnimationFrame(frame);

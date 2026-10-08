@@ -128,6 +128,15 @@ for (const [dev, vp, touch] of [['desktop', { width: 1280, height: 800 }, false]
     await dragFrom(await pieceAt(), -70, 50); await p.waitForTimeout(800);
     const c1 = await E(() => window.EarthInteractive.compare.previewPiece.center.toArray());
     ok('the lifted country drags freely', Math.hypot(c1[0] - c0[0], c1[1] - c0[1], c1[2] - c0[2]) > 0.01, { c0, c1 });
+    if (!touch) { // the arrow keys carry the lifted piece (and don't spin the globe)
+      const k0 = await E(() => window.EarthInteractive.compare.previewPiece.center.toArray());
+      const cam0 = await E(() => window.EarthInteractive.globe.camera.position.toArray());
+      await p.keyboard.down('ArrowRight');
+      const moved = await until(k => window.EarthInteractive.compare.previewPiece.center.distanceTo(new window.EarthInteractive.globe.camera.position.constructor(...k)) > 0.02, k0, 30000);
+      await p.keyboard.up('ArrowRight');
+      const cam1 = await E(() => window.EarthInteractive.globe.camera.position.toArray());
+      ok('arrow keys move the lifted country, not the globe', moved && Math.hypot(...cam1.map((v, i) => v - cam0[i])) < 1e-3, { cam0, cam1 });
+    }
     ok('still choosing after the drag (no accidental compare)', await E(() => document.body.classList.contains('picking') && !document.body.classList.contains('comparing')));
     pt = await aim('DEU', 2.4); await tap(pt);
     ok('tapping another country turns the move into a comparison', await until(() => document.body.classList.contains('comparing'), null, 20000)
@@ -149,7 +158,7 @@ for (const [dev, vp, touch] of [['desktop', { width: 1280, height: 800 }, false]
     pt = await aim('PRT'); await tap(pt);
     await until(() => document.querySelector('#pin-tag b')?.textContent === 'Portugal');
     await E(() => document.querySelector('#pin-tag [data-act="compare"]').click());
-    ok('Compare banner offers dragging too', await until(() => /Tap a country to compare with Portugal/.test(document.getElementById('pick-banner').textContent) && /drag/i.test(document.querySelector('.pk-text small')?.textContent || '')));
+    ok('Compare banner offers dragging too', await until(() => /(Tap|Click) a country to compare with Portugal/.test(document.getElementById('pick-banner').textContent) && /drag/i.test(document.querySelector('.pk-text small')?.textContent || '')));
     await p.keyboard.press('Escape');
     ok('Escape puts it back', await until(() => !document.body.classList.contains('picking'), null, 20000));
     // holding an unpinned country (or the sea) only spins, as before
