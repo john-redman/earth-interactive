@@ -28,7 +28,9 @@ All notable changes to EarthInteractive are documented here.
 - Escape (and the app's back button) closes search from anywhere; the screams pause when the tab is hidden; reduced motion freezes the water patches and the star twinkle; links accept lower-case country codes (`?c=fra`, `?compare=fra,esp`).
 
 ### Changed
+- **Phone footer**: the site links fold into a small menu that opens from the EarthInteractive name (a down arrow marks it), so the footer is one tidy row.
 - **Ships**: smaller from afar and bigger up close (they grow with the globe), and a softer wake: a fan of foam that fades behind each ship, shown once ships are big enough to read.
+- **Faster globe, especially on phones**: all countries of a border view now draw in 3 draw calls instead of about 400 (fills and borders merged, styled per country on the GPU). Nothing looks different.
 - **No more waves**: the white crests are gone from the ocean on every device; the sea is calm and still.
 - **Current lines no longer look like scars**: the dark bands are gone. Each current is now a faint lighter sheen with soft trails of light drifting slowly downstream, tinted a touch warm or cool. They are barely there at globe view and come up as you zoom in.
 - **Phone: the pick banner sits at the top**, under the view switch, so it no longer covers the footer buttons.

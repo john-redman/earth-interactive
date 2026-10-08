@@ -259,6 +259,9 @@ body.quiz-on .site-links, body.comparing .site-links, :root[data-platform="nativ
 body .app-links:not(.inline) { bottom: 62px; }
 .noscript { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 60; width: min(560px, calc(100% - 32px)); padding: 20px 22px; border-radius: var(--radius); background: rgb(14, 16, 38); border: 1px solid var(--glass-border); font-size: 15px; line-height: 1.6; }
 .noscript a { color: var(--accent-2); }
+/* the brand is a button only on phones, where it opens the site links (js/site-menu.js); on desktop it is plain text */
+.brand-btn { display: flex; align-items: center; gap: 8px; margin: 0; padding: 0; border: 0; background: none; color: inherit; font: inherit; letter-spacing: inherit; text-shadow: inherit; cursor: default; }
+.brand-caret { display: none; width: 12px; height: 12px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; opacity: 0.75; transition: rotate 0.2s ease; }
 .brand-mark { width: 16px; height: 16px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #c8e6ff, #4f8dff 45%, #6a2bd8 100%); box-shadow: 0 0 12px rgba(120,140,255,0.6); }
 /* World population, live (js/popclock.js): a quiet strip above the footer row, only while the whole globe is in view */
 .popclock { position: absolute; left: 50%; bottom: 44px; z-index: 10; display: flex; align-items: baseline; gap: 8px; padding: 7px 14px 9px; border-radius: 999px;
@@ -493,14 +496,26 @@ html { -webkit-tap-highlight-color: transparent; text-rendering: optimizeLegibil
   .quiz { top: auto; bottom: max(76px, calc(var(--links-h, 33px) + 44px)); } /* above the brand and the corner buttons */
   .legend { bottom: max(76px, calc(var(--links-h, 33px) + 44px)); width: calc(100% - 90px); left: 16px; transform: none; }
   .clock { display: none; }
-  .popclock { left: 14px; transform: none; bottom: calc(var(--links-h, 33px) + 44px); max-width: calc(100% - 84px); gap: 6px; padding: 6px 12px 8px; font-size: 10.5px; }
+  .popclock { left: 14px; transform: none; bottom: 56px; max-width: calc(100% - 84px); gap: 6px; padding: 6px 12px 8px; font-size: 10.5px; }
   .popclock { display: grid; grid-template-columns: auto auto auto; width: max-content; column-gap: 6px; row-gap: 1px; border-radius: 14px; padding: 6px 12px 9px; }
   .pc-day { grid-column: 2 / -1; }
   .pc-n { font-size: 13px; }
   .qz-ask b { font-size: 22px; }
-  .brand { left: 14px; bottom: calc(17px + var(--links-h, 33px)); font-size: 13px; } /* sits just above the links, however many lines they wrap to */
-  .site-links { left: 14px; bottom: 10px; gap: 0 10px; font-size: 11px; max-width: calc(100% - 192px); } /* same links as desktop, wrapped */
-  .site-links .sl-narrow { display: inline; }
+  /* the brand opens the site links as a small menu above it (same links as desktop) */
+  .brand { left: 8px; bottom: 12px; font-size: 13px; pointer-events: auto; }
+  .brand-btn { height: 34px; padding: 0 10px 0 6px; border-radius: 999px; cursor: pointer; transition: background 0.18s; }
+  .brand-btn[aria-expanded="true"] { background: rgba(255,255,255,0.1); }
+  .brand-btn:focus-visible { outline: 2px solid var(--accent-2); outline-offset: 2px; }
+  .brand-caret { display: block; }
+  .brand-btn[aria-expanded="true"] .brand-caret { rotate: 180deg; }
+  .site-links { display: none; left: 8px; bottom: 54px; z-index: 35; flex-direction: column; flex-wrap: nowrap; gap: 0; min-width: 200px; max-width: calc(100% - 96px); padding: 6px;
+    border-radius: 16px; background: rgb(14, 16, 38); border: 1px solid var(--glass-border); box-shadow: 0 12px 32px rgba(0,0,0,0.45); font-size: 14px; text-shadow: none; }
+  .site-links.open { display: flex; animation: riseIn 0.22s ease; }
+  .site-links a { display: block; padding: 9px 12px; border-radius: 10px; color: rgba(255,255,255,0.86); }
+  .site-links a:hover, .site-links a:active { background: rgba(255,255,255,0.08); text-decoration: none; }
+  .site-links a[hidden] { display: none; }
+  .site-links .sl-narrow { display: block; }
+  .site-links .sl-long { display: inline; } .site-links .sl-short { display: none; }
   body.card-open .site-links { display: none; }
   body .app-links:not(.inline) { bottom: 54px; }
   .compare-pill { bottom: 58px; }

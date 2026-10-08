@@ -44,6 +44,7 @@ for (const [dev, vp, touch] of [['desktop', { width: 1280, height: 800 }, false]
   });
 
   await t('click a country', async () => {
+    if (!(await E(() => !!window.EarthInteractive))) await go(); // when ONLY= skipped the load section
     for (const k of ['BRA', 'FRA', 'JPN', 'EGY']) {
       const pt = await aim(k); await tap(pt);
       const got = await until(n => document.querySelector('#pin-tag b')?.textContent === n, await E(k => window.EarthInteractive.layer.get(k).unit.n, k), 15000);
@@ -191,8 +192,9 @@ for (const [dev, vp, touch] of [['desktop', { width: 1280, height: 800 }, false]
   await t('ships, clouds and the song link', async () => {
     await go();
     const at = () => E(() => { const m = window.EarthInteractive.ships.mesh, a = m.instanceMatrix.array; return { n: m.count, x: a[12], y: a[13], z: a[14] }; });
-    const s0 = await at(); await p.waitForTimeout(3000); const s1 = await at();
-    ok('ships sail (one instanced mesh)', s0.n > 50 && Math.hypot(s1.x - s0.x, s1.y - s0.y, s1.z - s0.z) > 1e-5, { s0, s1 });
+    const s0 = await at();
+    const sailed = await until(a => { const m = window.EarthInteractive.ships.mesh.instanceMatrix.array; return Math.hypot(m[12] - a.x, m[13] - a.y, m[14] - a.z) > 1e-5; }, s0, 60000); // wait on frames, not time
+    ok('ships sail (one instanced mesh)', s0.n > 50 && sailed, s0);
     ok(touch ? 'no clouds on phones' : 'clouds on desktop', await E(() => !!window.EarthInteractive.clouds) === !touch);
     ok('no wave crests left in the ocean shader', await E(() => { let src = ''; window.EarthInteractive.globe.scene.traverse(o => { if (o.material?.fragmentShader?.includes('the tone of the water')) src = o.material.fragmentShader; }); return !!src && !/crest/i.test(src); }));
     await E(() => window.EarthInteractive.setLens('pop'));
@@ -200,6 +202,29 @@ for (const [dev, vp, touch] of [['desktop', { width: 1280, height: 800 }, false]
     await E(() => window.EarthInteractive.setLens('none'));
     ok('…and brings them back', await until(() => window.EarthInteractive.ships.mesh.visible));
     ok('"We love the Earth" links to the video', await E(() => [...document.querySelectorAll('.site-links a')].some(a => /youtube\.com\/watch\?v=pvuN_WvF1to/.test(a.href) && a.target === '_blank' && /love the Earth/.test(a.textContent))));
+  });
+
+  await t('site links menu', async () => {
+    await go();
+    if (!touch) {
+      ok('desktop: links in a row, brand is plain text', await vis('#site-links') && await E(() => { const b = document.getElementById('brand-btn'); return b.tabIndex === -1 && !b.hasAttribute('aria-expanded'); }));
+      return;
+    }
+    ok('phone: links folded away, brand shows a caret', !(await vis('#site-links')) && await vis('.brand-caret') && await E(() => document.getElementById('brand-btn').getAttribute('aria-expanded') === 'false'));
+    const brand = await E(() => { const r = document.getElementById('brand-btn').getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; });
+    await tap(brand);
+    await until(() => document.getElementById('site-links').classList.contains('open'));
+    await E(() => Promise.all(document.getElementById('site-links').getAnimations().map(a => a.finished))); // it rises into place
+    ok('tapping the brand opens the menu above it', await E(() => {
+      const n = document.getElementById('site-links'), r = n.getBoundingClientRect(), b = document.getElementById('brand-btn').getBoundingClientRect();
+      return n.querySelectorAll('a:not([hidden])').length >= 8 && r.bottom <= b.top && r.left >= 0 && r.right <= innerWidth && r.top > 0 && document.getElementById('brand-btn').getAttribute('aria-expanded') === 'true';
+    }));
+    await p.keyboard.press('Escape');
+    ok('Escape closes it', await until(() => !document.getElementById('site-links').classList.contains('open')));
+    await tap(brand); await until(() => document.getElementById('site-links').classList.contains('open'));
+    const sea = await E(() => { const r = document.getElementById('globe').getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height * 0.3 }; });
+    await tap(sea);
+    ok('tapping elsewhere closes it', await until(() => !document.getElementById('site-links').classList.contains('open')));
   });
 
   await t('lenses', async () => {
@@ -347,13 +372,12 @@ for (const [dev, vp, touch] of [['desktop', { width: 1280, height: 800 }, false]
         for (const v of ['un', 'neutral', 'defacto']) { X.setView(v); await frames(); }
       });
     };
-    // draw every country of every view once (culling hides the far side), so geometry counts don't depend on where
-    // the random game rounds happened to fly the camera
+    // draw every view once, so geometry counts don't depend on where the random game rounds happened to fly the
+    // camera (each view's countries are a few merged draws, uploaded whole; culling only hides parts of them)
     const uploadAll = () => E(async () => {
       const X = window.EarthInteractive, frame = () => new Promise(r => requestAnimationFrame(r));
       for (const v of ['un', 'neutral', 'defacto']) {
         X.setView(v); await frame();
-        for (const o of X.layer.view.objects) { o.fill.visible = true; o.border.visible = true; }
         X.globe.renderer.render(X.globe.scene, X.globe.camera);
       }
     });

@@ -21,6 +21,7 @@ import { Currents } from './currents.js';
 import { createPopClock } from './popclock.js';
 import { Ships } from './ships.js';
 import { Clouds } from './clouds.js';
+import { mountSiteMenu } from './site-menu.js';
 import { countryOfTheDay, factsFor, mountDailyChip } from './daily-country.js';
 import { flagImg } from './flags.js';
 import { shareCompareImage } from './share-image.js';
@@ -82,7 +83,11 @@ function ripple(x, y, strong) {
 
 // the brand sits above the footer links, which wrap to more lines on narrow phones
 const siteLinks = document.querySelector('.site-links');
-if (siteLinks && window.ResizeObserver) new ResizeObserver(() => document.documentElement.style.setProperty('--links-h', siteLinks.offsetHeight + 'px')).observe(siteLinks);
+// phones fold the links into the brand's menu, so nothing needs lifting there (--links-h 0)
+const linksPhone = matchMedia('(max-width: 720px)');
+const setLinksH = () => document.documentElement.style.setProperty('--links-h', (linksPhone.matches ? 0 : siteLinks.offsetHeight) + 'px');
+if (siteLinks && window.ResizeObserver) new ResizeObserver(setLinksH).observe(siteLinks);
+if (siteLinks) { linksPhone.addEventListener('change', setLinksH); setLinksH(); mountSiteMenu(document.getElementById('brand-btn'), siteLinks); }
 
 // sound toggle (bottom-right)
 const soundBtn = document.getElementById('sound-toggle');
