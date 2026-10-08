@@ -324,12 +324,22 @@ for (const [dev, vp, touch] of [['desktop', { width: 1280, height: 800 }, false]
         for (const v of ['un', 'neutral', 'defacto']) { X.setView(v); await frames(); }
       });
     };
+    // draw every country of every view once (culling hides the far side), so geometry counts don't depend on where
+    // the random game rounds happened to fly the camera
+    const uploadAll = () => E(async () => {
+      const X = window.EarthInteractive, frame = () => new Promise(r => requestAnimationFrame(r));
+      for (const v of ['un', 'neutral', 'defacto']) {
+        X.setView(v); await frame();
+        for (const o of X.layer.view.objects) { o.fill.visible = true; o.border.visible = true; }
+        X.globe.renderer.render(X.globe.scene, X.globe.camera);
+      }
+    });
     const stats = () => E(() => { const X = window.EarthInteractive; let n = 0; X.globe.scene.traverse(() => n++); const m = X.globe.renderer.info.memory; return { objects: n, geometries: m.geometries, textures: m.textures, lineMats: X.layer.lineMaterials.size, dom: document.querySelectorAll('*').length }; });
     const settle = async () => { await until(() => !window.EarthInteractive.layer.raised?.size, null, 120000); await p.waitForTimeout(1500); };
     await go(); await until(() => window.EarthInteractive.layer.viewCache.size >= 3, null, 120000); // all views built first
-    await round(); await round(); await settle(); const s1 = await stats();   // two warm-up rounds
+    await round(); await round(); await settle(); await uploadAll(); const s1 = await stats();   // two warm-up rounds
     for (let i = 0; i < 3; i++) await round();
-    await settle(); const s2 = await stats();
+    await settle(); await uploadAll(); const s2 = await stats();
     ok('no leaks over repeated card/compare/game/lens/view rounds', Object.keys(s1).every(k => s2[k] <= s1[k]), { s1, s2 });
   });
 
