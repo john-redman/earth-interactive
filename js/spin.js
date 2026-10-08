@@ -16,7 +16,7 @@ export const SPIN = {
   maxSpeed: 24,          // rad/s
   tiltDamping: 6,        // up/down momentum fades quickly (the globe spins around its axis, like a real one)
   holdStopMs: 140,       // a finger resting this long on a spinning globe stops it (a grab, not a push)
-  quickStop: 9,          // friction (per second) after a short arrow-key press: settles at once instead of coasting
+  quickStop: 6,          // friction (per second) after a short arrow-key press: settles quickly (a tap turns it ~6°)
   keyCoastAfter: 0.9,    // s: arrow keys held at least this long leave momentum behind on release
 };
 

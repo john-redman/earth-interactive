@@ -185,8 +185,8 @@ for (const [dev, vp, touch] of [['desktop', { width: 1280, height: 800 }, false]
     ok('comes back zoomed out', await until(() => !window.EarthInteractive.globe.flight && document.getElementById('popclock').classList.contains('on')));
     await go('?c=BRA'); await E(() => document.getElementById('hint').classList.add('gone'));
     await E(() => document.querySelector('#pin-tag [data-act="info"]').click());
-    await until(() => document.body.classList.contains('card-open')); await p.waitForTimeout(500);
-    ok('steps aside for the card', !(await E(() => document.getElementById('popclock').classList.contains('on'))));
+    await until(() => document.body.classList.contains('card-open'));
+    ok('steps aside for the card', await until(() => !document.getElementById('popclock').classList.contains('on')));
   });
 
   await t('ships, clouds and the song link', async () => {
@@ -230,7 +230,7 @@ for (const [dev, vp, touch] of [['desktop', { width: 1280, height: 800 }, false]
   await t('first visit, keyboard select, game auto-advance', async () => {
     await go(); await E(() => { try { localStorage.removeItem('ei-intro'); localStorage.removeItem('ei-music'); localStorage.removeItem('ei-tip-tag'); } catch {} });
     await go();
-    ok('first visit: the finger shows how to spin', await vis('.intro-hand'));
+    ok('first visit: the finger shows how to spin', await until(() => !!document.querySelector('.intro-hand:not(.out) .intro-finger'))); // a point-sized anchor, so not vis()
     ok('first visit: music is on (starts with the first tap)', await E(() => document.getElementById('music-toggle').getAttribute('aria-pressed') === 'true'));
     if (!touch) {
       await E(() => { const X = window.EarthInteractive; X.globe.autoRotate = false; X.spin.stop(); X.globe.flyTo(X.compare.anchorFor(X.layer.get('BRA')).clone(), 2.4, 1); });
@@ -279,12 +279,14 @@ for (const [dev, vp, touch] of [['desktop', { width: 1280, height: 800 }, false]
     if (touch) return;
     await go(); await p.mouse.click(5, 300).catch(() => {});
     const d0 = await E(() => window.EarthInteractive.globe.camera.position.length());
-    await p.keyboard.press('Equal'); await p.waitForTimeout(3000);
+    await p.keyboard.press('Equal');
+    const zoomed = await until(d => window.EarthInteractive.globe.camera.position.length() < d - 0.05, d0, 60000); // frames, not the clock
     const d1 = await E(() => window.EarthInteractive.globe.camera.position.length());
-    ok('+ zooms in', d1 < d0 - 0.05, { d0, d1 });
+    ok('+ zooms in', zoomed, { d0, d1 });
     const a0 = await E(() => window.EarthInteractive.spin.angle);
-    await p.keyboard.press('ArrowLeft'); await p.waitForTimeout(3000);
-    ok('arrow keys spin', Math.abs((await E(() => window.EarthInteractive.spin.angle)) - a0) > 0.05);
+    await p.keyboard.press('ArrowLeft');
+    // a tap turns it a few degrees and settles; wait on the spin (headless frames are slow), not on the clock
+    ok('arrow keys spin', await until(a => Math.abs(window.EarthInteractive.spin.angle - a) > 0.05, a0, 60000) && await until(() => window.EarthInteractive.spin.v === 0, null, 60000));
     await p.keyboard.press('r'); await p.waitForTimeout(2000);
     ok('R recenters + resumes auto-rotate', await E(() => window.EarthInteractive.globe.autoRotate));
   });
