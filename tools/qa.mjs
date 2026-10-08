@@ -340,6 +340,9 @@ for (const [dev, vp, touch] of [['desktop', { width: 1280, height: 800 }, false]
     await round(); await round(); await settle(); await uploadAll(); const s1 = await stats();   // two warm-up rounds
     for (let i = 0; i < 3; i++) await round();
     await settle(); await uploadAll(); const s2 = await stats();
+    for (let i = 0; i < 3; i++) await round();
+    await settle(); await uploadAll(); const s3 = await stats();
+    console.log('leak samples', JSON.stringify({ s1, s2, s3 }));
     ok('no leaks over repeated card/compare/game/lens/view rounds', Object.keys(s1).every(k => s2[k] <= s1[k]), { s1, s2 });
   });
 
