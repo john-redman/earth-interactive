@@ -334,6 +334,7 @@ export function createGlobe(canvas) {
 
 const reducedMotionQuery = matchMedia('(prefers-reduced-motion: reduce)');
 export function tickGlobe(globe, t) {
+  if (reducedMotionQuery.matches) t = 0;          // reduced motion: still water, steady stars
   globe.ocean.material.uniforms.uTime.value = t;
   globe.scene.children.forEach(c => c.material?.uniforms?.uTime && (c.material.uniforms.uTime.value = t));
   if (globe.zoom) {

@@ -9,7 +9,8 @@
     "check": "node tools/check.mjs",
     "build:pages": "node tools/build-pages.mjs dist-pages --with-app",
     "preview:pages": "npm run build:pages && npx serve dist-pages -p 5174",
-    "smoke": "node tools/smoke.mjs"
+    "smoke": "node tools/smoke.mjs",
+    "qa": "node tools/qa.mjs"
   },
   "devDependencies": {
     "d3-geo": "^3.1.1",

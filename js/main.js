@@ -167,11 +167,11 @@ function extras(o) {
 function flyToCountry(o, minDist = 1.6) {
   const r = Math.sqrt(o.unit.area / Math.PI) / 6371;
   const dist = THREE.MathUtils.clamp(1 + r * 6, minDist, Math.max(minDist, globe.fitDistance));
-  spin.stop(); globe.flyTo(compare.shapeFor(o).centroid, dist, 1200); // the main landmass, not a centroid pulled out to sea by overseas parts
+  spin.stop(); globe.flyTo(compare.anchorFor(o), dist, 1200); // on the main landmass, not a centre pulled out to sea
 }
 /** Frame a wrong guess and the right country together (the miss line runs between them). */
 function flyToBoth(point, o) {
-  const a = point.clone().normalize(), b = o.g.centroid.clone().normalize();
+  const a = point.clone().normalize(), b = compare.anchorFor(o).clone();
   const r = Math.sqrt(o.unit.area / Math.PI) / 6371, half = a.angleTo(b) / 2 + r;
   const mid = a.clone().add(b); if (mid.lengthSq() < 1e-6) mid.copy(b);
   const dist = THREE.MathUtils.clamp(1 + half * 3.2, 2.1, Math.max(2.1, globe.fitDistance));
@@ -200,7 +200,7 @@ function openCountry(o, { fly = false, point = null } = {}) {
   if (mode === 'pick') cancelPick();
   selected = o;
   layer.setSelected(o);
-  anchor = (point || compare.shapeFor(o).centroid).clone().normalize(); // main landmass: France's pin belongs in France, not between it and Guiana
+  anchor = (point || compare.anchorFor(o)).clone().normalize(); // on land: France's pin belongs in France, Japan's on Honshu
   ui.hidePopup(); ui.showTag(o); ui.dismissHint();
   pin.show();
   if (fly) flyToCountry(o); else spin.brake();
@@ -284,7 +284,7 @@ let viewBeforeGame = null;
 function startGame(m) { track(`play/${m}`); quiz.start(m); }
 const search = createSearch({ getObjects: () => layer.view?.objects || [], onPick: o => { if (mode === 'quiz') return; if (mode === 'compare') endCompare(true); openCountry(o, { fly: true }); } });
 const quiz = createQuiz({
-  data, layer, globe,
+  data, layer, globe, anchorOf: o => compare.anchorFor(o),
   flyTo: (o, from) => from ? flyToBoth(from, o) : flyToCountry(o, 2.1),
   onMiss: (from, to, km) => (from ? missLine.show(from, to, km) : missLine.hide()),
   onResult: ok => sfx.play(ok ? 'correct' : 'wrong'),
@@ -491,7 +491,8 @@ function onClick(x, y) {
 }
 
 window.addEventListener('keydown', e => {
-  if (search.isOpen || e.target.closest?.('input, textarea')) return;
+  if (search.isOpen) { if (e.key === 'Escape') search.close(); return; } // Escape from outside the box, or the app's back button
+  if (e.target.closest?.('input, textarea')) return;
   if ((e.key === '/' || (e.key.toLowerCase() === 'k' && (e.metaKey || e.ctrlKey))) && mode !== 'quiz') { e.preventDefault(); closeMenus(); search.open(); return; }
   if (e.key === 'Escape') {
     if (!Object.values(menus).every(m => m.hidden)) closeMenus();
@@ -499,8 +500,9 @@ window.addEventListener('keydown', e => {
     return;
   }
   if ((e.key === 'Home' || e.key.toLowerCase() === 'r') && !e.metaKey && !e.ctrlKey && !e.altKey && mode !== 'quiz') { e.preventDefault(); recenter(); return; }
-  if (e.key === 'Enter' && guess && !e.target.closest?.('button')) { confirmGuess(); return; }
-  if (e.key === 'Enter' && quiz.canAdvance && !e.target.closest?.('button')) { quiz.next(); return; }
+  // preventDefault: answering moves focus to "Next country", and the same Enter would otherwise press it too
+  if (e.key === 'Enter' && guess && !e.target.closest?.('button')) { e.preventDefault(); confirmGuess(); return; }
+  if (e.key === 'Enter' && quiz.canAdvance && !e.target.closest?.('button')) { e.preventDefault(); quiz.next(); return; }
   // keyboard spinning & zoom
   const step = 0.12;
   if (e.key === 'ArrowLeft') { spin.pending.t += step; } else if (e.key === 'ArrowRight') { spin.pending.t -= step; }
@@ -561,7 +563,7 @@ requestAnimationFrame(() => setTimeout(async () => {
   applyLens();
   document.body.classList.add('ready');
   // deep links: ?c=FRA · ?compare=FRA,DEU · ?play=daily
-  const c = params.get('c'), cmp = params.get('compare')?.split(','), play = params.get('play');
+  const c = params.get('c')?.toUpperCase(), cmp = params.get('compare')?.toUpperCase().split(','), play = params.get('play')?.toLowerCase();
   if (cmp?.length === 2 && cmp[0] !== cmp[1] && layer.get(cmp[0]) && layer.get(cmp[1])) { mode = 'compare'; compare.start(layer.get(cmp[0]), layer.get(cmp[1])); }
   else if (play === 'daily' || play === 'classic') startGame(play);
   else if (c && layer.get(c)) openCountry(layer.get(c), { fly: true });

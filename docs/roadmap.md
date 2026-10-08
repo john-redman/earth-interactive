@@ -20,5 +20,6 @@
 - [ ] Flag and capital game modes; teacher mode (custom rounds by region)
 - [ ] Accounts + daily streaks (needs a backend)
 - [ ] Historical borders time slider (1914 / 1945 / 1991)
-- [ ] Unit tests (geo math, quiz scoring, lens breaks) + Playwright smoke test in CI
+- [ ] Unit tests (geo math, quiz scoring, lens breaks) + Playwright smoke test in CI (`tools/qa.mjs` exists for a full local run)
+- [ ] Fewer draw calls on phones (~400 per frame now): batch country fills/borders into a few merged meshes
 - [ ] Measured wave climatology (NOAA WAVEWATCH III) if the ocean ever shows wave data

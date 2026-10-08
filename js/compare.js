@@ -43,6 +43,30 @@ export class Compare {
     return o._shape;
   }
 
+  /**
+   * A point on land that stands for the country: its main landmass's centre when that lies on the land, else the
+   * nearest point that does (Honshu curves, so Japan's centre is in the sea). Used for pins, fly-tos and game distances.
+   */
+  anchorFor(o) {
+    const shape = this.shapeFor(o);
+    if (shape.anchor) return shape.anchor;
+    const c = shape.centroid, [lon, lat] = vec3ToLonLat(c);
+    if (pointInMulti(lon, lat, shape.multi)) return (shape.anchor = c.clone());
+    // otherwise the centre of the nearest sizeable triangle (always inside the land)
+    const t = shape.tri, A = new THREE.Vector3(), B = new THREE.Vector3(), C = new THREE.Vector3(), m = new THREE.Vector3();
+    let best = null, bestD = Infinity;
+    for (let pass = 0; pass < 2 && !best; pass++) {
+      for (let i = 0; i < t.index.length; i += 3) {
+        A.fromArray(t.positions, t.index[i] * 3); B.fromArray(t.positions, t.index[i + 1] * 3); C.fromArray(t.positions, t.index[i + 2] * 3);
+        const area = B.clone().sub(A).cross(C.clone().sub(A)).length();
+        if (pass === 0 && area < 1e-6) continue;                     // skip slivers first
+        m.copy(A).add(B).add(C).normalize();
+        const d = m.angleTo(c); if (d < bestD) { bestD = d; best = m.clone(); }
+      }
+    }
+    return (shape.anchor = best || c.clone());
+  }
+
   /** Angular east-west extent of a shape around its own centroid (radians). */
   extent(shape) {
     const c = shape.centroid, F = frameAt(c), e = new THREE.Vector3(), n = new THREE.Vector3(), u = new THREE.Vector3();
