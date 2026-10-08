@@ -259,10 +259,35 @@ body.quiz-on .site-links, body.comparing .site-links, :root[data-platform="nativ
 body .app-links:not(.inline) { bottom: 62px; }
 .noscript { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 60; width: min(560px, calc(100% - 32px)); padding: 20px 22px; border-radius: var(--radius); background: rgb(14, 16, 38); border: 1px solid var(--glass-border); font-size: 15px; line-height: 1.6; }
 .noscript a { color: var(--accent-2); }
+.no-3d .n3-lost { display: none; } .no-3d.lost .n3-lost { display: block; } .no-3d.lost .n3-none { display: none; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+/* keyboard focus on the globe: a ring marks the middle, where Enter selects */
+#stage:has(#globe:focus-visible)::after { content: ''; position: absolute; left: 50%; top: 50%; z-index: 9; width: 22px; height: 22px; margin: -11px 0 0 -11px; border: 2px solid var(--accent-2); border-radius: 50%; box-shadow: 0 0 0 3px rgba(3, 4, 11, 0.4); pointer-events: none; }
 /* the brand is a button only on phones, where it opens the site links (js/site-menu.js); on desktop it is plain text */
 .brand-btn { display: flex; align-items: center; gap: 8px; margin: 0; padding: 0; border: 0; background: none; color: inherit; font: inherit; letter-spacing: inherit; text-shadow: inherit; cursor: default; }
 .brand-caret { display: none; width: 12px; height: 12px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; opacity: 0.75; transition: rotate 0.2s ease; }
 .brand-mark { width: 16px; height: 16px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #c8e6ff, #4f8dff 45%, #6a2bd8 100%); box-shadow: 0 0 12px rgba(120,140,255,0.6); }
+/* First visit: a finger swipes across the globe (js/intro.js); the tip of the finger sits on the element's origin */
+.intro-hand { position: absolute; left: 50%; top: 54%; z-index: 12; width: 0; height: 0; pointer-events: none; transition: opacity 0.4s ease; }
+.intro-hand.out { opacity: 0; }
+.intro-finger { position: absolute; left: -21px; top: -9px; width: 46px; height: 46px; animation: introSwipe 2.4s ease-in-out 3 both; }
+.intro-finger svg { width: 100%; height: 100%; fill: #fff; stroke: rgba(14, 16, 38, 0.55); stroke-width: 1.4; filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.45)); }
+.intro-trail { position: absolute; left: -84px; top: -4px; width: 168px; height: 8px; border-radius: 4px; background: linear-gradient(90deg, rgba(185, 138, 255, 0), rgba(185, 138, 255, 0.55) 70%, rgba(255, 255, 255, 0.9));
+  transform-origin: left center; animation: introTrail 2.4s ease-in-out 3 both; }
+@keyframes introSwipe {
+  0% { opacity: 0; transform: translate(-84px, 8px) scale(1); }
+  12% { opacity: 1; transform: translate(-84px, 0) scale(1); }
+  22% { transform: translate(-84px, 0) scale(0.86); }
+  68% { transform: translate(84px, 0) scale(0.86); }
+  80% { opacity: 1; transform: translate(88px, -6px) scale(1); }
+  100% { opacity: 0; transform: translate(88px, -6px) scale(1); }
+}
+@keyframes introTrail { 0%, 22% { opacity: 0.9; transform: scaleX(0); } 68% { opacity: 0.9; transform: scaleX(1); } 100% { opacity: 0; transform: scaleX(1); } }
+.intro-hand.still .intro-finger { animation: none; transform: translate(-30px, 0) scale(0.9); }
+.intro-hand.still .intro-trail { animation: none; opacity: 0.7; transform: scaleX(0.36); }
+/* the one-time tip under the first country tag */
+.tag-tip { margin: 8px 2px 0; max-width: 260px; font-size: 11.5px; line-height: 1.4; color: var(--muted); }
+.tag-tip b { color: #fff; font-weight: 700; }
 /* World population, live (js/popclock.js): a quiet strip above the footer row, only while the whole globe is in view */
 .popclock { position: absolute; left: 50%; bottom: 44px; z-index: 10; display: flex; align-items: baseline; gap: 8px; padding: 7px 14px 9px; border-radius: 999px;
   transform: translateX(-50%); translate: 0 8px; opacity: 0; visibility: hidden; pointer-events: none; white-space: nowrap;
@@ -389,6 +414,11 @@ body.quiz-on .recenter { display: none; }
 .qz-ok { color: #8ff0bf; font-weight: 800; } .qz-no { color: #ffb0b0; font-weight: 800; }
 .qz-act { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }
 .qz-act .btn:disabled { opacity: 0.45; cursor: default; }
+/* after an answer: the Next button fills up, then the game moves on (pointing at the panel holds it) */
+.qz-next { position: relative; overflow: hidden; isolation: isolate; }
+.qz-next .qz-fill { position: absolute; inset: 0; z-index: -1; background: rgba(255,255,255,0.22); transform-origin: left; transform: scaleX(0); animation: qzFill var(--auto, 3s) linear forwards; }
+.quiz:hover .qz-fill { animation-play-state: paused; }
+@keyframes qzFill { to { transform: scaleX(1); } }
 .qz-end { display: flex; align-items: baseline; gap: 10px; margin: 10px 0 4px; }
 .qz-end b { font-size: 40px; font-weight: 800; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
 .qz-end span { color: var(--muted); font-size: 14px; }
@@ -549,3 +579,5 @@ html { -webkit-tap-highlight-color: transparent; text-rendering: optimizeLegibil
 @keyframes tapRipple { from { scale: 0.2; opacity: 0.9; } to { scale: 1.25; opacity: 0; } }
 
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; } }
+/* the game's Next fill is a timer, not decoration: keep its real length */
+@media (prefers-reduced-motion: reduce) { .qz-next .qz-fill { animation-duration: var(--auto, 3s) !important; } }

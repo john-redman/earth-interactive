@@ -155,7 +155,8 @@ for (const u of pageUnits) {
 const ranked = defView.units.filter(u => (u.t === 'country' || u.t === 'limited') && u.k !== 'ATA' && info[u.k]).map(u => u.k);
 const rankBy = get => { const list = ranked.filter(k => get(k) > 0).sort((a, b) => get(b) - get(a)); return { n: list.length, list, at: new Map(list.map((k, i) => [k, i + 1])) }; };
 const R = { area: rankBy(areaOf), pop: rankBy(k => info[k].pop || 0) };
-const worldPop = ranked.reduce((s, k) => s + (info[k].pop || 0), 0);
+const popOf = k => (info[k].within ? 0 : info[k].pop || 0); // for totals: Northern Cyprus and Somaliland are inside their parents' figures
+const worldPop = ranked.reduce((s, k) => s + popOf(k), 0);
 const worldArea = ranked.reduce((s, k) => s + areaOf(k), 0);
 const worldDensity = worldPop / worldArea;
 
@@ -679,7 +680,7 @@ for (const r of regions.values()) {
   const keys = [...r.keys].sort((a, b) => areaOf(b) - areaOf(a));
   const ranked = keys.filter(k => R.area.at.has(k));
   const totArea = keys.reduce((s, k) => s + areaOf(k), 0);
-  const totPop = keys.reduce((s, k) => s + (k === 'ATA' ? 0 : info[k].pop || 0), 0);
+  const totPop = keys.reduce((s, k) => s + (k === 'ATA' ? 0 : popOf(k)), 0);
   const byPop = [...ranked].filter(k => info[k].pop).sort((a, b) => info[b].pop - info[a].pop);
   const byDen = [...ranked].filter(k => densityOf(k) > 0 && areaOf(k) > 50).sort((a, b) => densityOf(b) - densityOf(a));
   const what = whatOf(keys), nC = ranked.length;

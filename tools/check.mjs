@@ -2,6 +2,7 @@
  * Fast sanity checks — run locally with `npm run check`, and in CI.
  *  1. every JS module parses
  *  2. the generated data loads and is internally consistent
+ *  3. index.html modulepreloads every module the app imports (so the browser fetches them all at once)
  */
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
@@ -34,5 +35,20 @@ if (!data.views[data.defaultView]) fail(`default view "${data.defaultView}" miss
 const keys = new Set(Object.keys(data.info));
 for (const [k, i] of Object.entries(data.info)) for (const b of i.borders || []) if (!keys.has(b)) fail(`${k} borders unknown ${b}`);
 console.log(`✓ data: ${Object.keys(data.views).length} views, ${data.geoms.length} geometries, ${keys.size} info records`);
+
+// 3. modulepreload list = the static import graph of js/main.js
+const graph = new Set();
+const resolve = (from, s) => (s === 'three' ? 'vendor/three/three.module.min.js' : s.startsWith('three/addons/') ? 'vendor/three/' + s.slice(13) : path.posix.normalize(path.posix.join(path.posix.dirname(from), s)));
+(function walk(f) {
+  if (graph.has(f)) return; graph.add(f);
+  const src = fs.readFileSync(path.join(root, f), 'utf8'), re = /^\s*(?:import|export)\s[^'"]*?from\s*['"]([^'"]+)['"]|^\s*import\s*['"]([^'"]+)['"]/gm;
+  for (let m; (m = re.exec(src));) walk(resolve(f, m[1] || m[2]));
+})('js/main.js');
+graph.delete('js/main.js');
+const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
+const preloaded = new Set([...html.matchAll(/<link rel="modulepreload" href="([^"]+)">/g)].map(m => m[1]));
+for (const f of graph) if (!preloaded.has(f)) fail(`index.html: add <link rel="modulepreload" href="${f}">`);
+for (const f of preloaded) if (!graph.has(f)) fail(`index.html: ${f} is preloaded but no longer imported`);
+console.log(`✓ ${graph.size} modules preloaded`);
 
 if (failed) { console.error(`\n${failed} problem(s)`); process.exit(1); }

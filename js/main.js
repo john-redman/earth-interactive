@@ -22,6 +22,7 @@ import { createPopClock } from './popclock.js';
 import { Ships } from './ships.js';
 import { Clouds } from './clouds.js';
 import { mountSiteMenu } from './site-menu.js';
+import { showIntro } from './intro.js';
 import { countryOfTheDay, factsFor, mountDailyChip } from './daily-country.js';
 import { flagImg } from './flags.js';
 import { shareCompareImage } from './share-image.js';
@@ -48,7 +49,19 @@ if ('serviceWorker' in navigator && !/^(localhost|127\.0\.0\.1)$/.test(location.
 
 const canvas = document.getElementById('globe');
 const stage = document.getElementById('stage');
-const globe = createGlobe(canvas);
+/** No WebGL (switched off, very old device) or the GPU took it back: show the plain pages instead of a blank screen. */
+function showNo3D(lost) {
+  const box = document.getElementById('no-3d');
+  box.hidden = false; box.classList.toggle('lost', lost);
+  document.querySelector('.loader')?.remove();
+}
+const webgl = (() => { try { const c = document.createElement('canvas'); return !!(c.getContext('webgl2') || c.getContext('webgl')); } catch { return false; } })();
+if (!webgl) { showNo3D(false); throw new Error('WebGL unavailable'); }
+const globe = (() => { try { return createGlobe(canvas); } catch (e) { showNo3D(false); throw e; } })();
+canvas.addEventListener('webglcontextlost', e => { e.preventDefault(); showNo3D(true); track('error/webgl-lost'); });
+/** Screen readers: a polite status line for what just happened on the globe. */
+const srLive = document.getElementById('sr-live');
+function announce(text) { srLive.textContent = ''; setTimeout(() => { srLive.textContent = text; }, 60); }
 const ads = mountAds(globe);
 // Native app only (Capacitor): AdMob, consent, haptics, back button. The website never loads js/native.js.
 const native = window.Capacitor?.isNativePlatform?.()
@@ -140,7 +153,11 @@ async function compareImage() {
 let trackedPair = '';
 compare.onChange = state => {
   const pair = state ? `${state.a.o.key},${state.b.o.key}` : '';
-  if (pair && pair !== trackedPair) track('compare', pair); // counted once per pair, not on every drag
+  if (pair && pair !== trackedPair) {
+    track('compare', pair); // counted once per pair, not on every drag
+    const [big, small] = state.a.area >= state.b.area ? [state.a, state.b] : [state.b, state.a], r = big.area / Math.max(1, small.area);
+    announce(`${big.o.unit.n} is ${r >= 10 ? Math.round(r) : r.toFixed(1)} times the size of ${small.o.unit.n}.`);
+  }
   trackedPair = pair; cmpState = state;
   ui.showCompare(state); document.body.classList.toggle('comparing', !!state); setParam('compare', state ? `${state.a.o.key},${state.b.o.key}` : null); };
 thrills.onFirstScream = () => setTimeout(() => ui.showToast('Hold on tight! Sound can be muted bottom-right.'), 900);
@@ -220,6 +237,7 @@ function openCountry(o, { fly = false, point = null } = {}) {
   globe.pauseAuto();
   setParam('c', o.key);
   track(`country/${o.key}`, o.unit.n);
+  announce(`${o.unit.n} selected.${o.info.capital ? ` Capital: ${o.info.capital}.` : ''} Tab to Move, Compare and Info.`);
 }
 function openInfo(o) {
   if (selected !== o) openCountry(o);
@@ -548,24 +566,32 @@ window.addEventListener('keydown', e => {
   // preventDefault: answering moves focus to "Next country", and the same Enter would otherwise press it too
   if (e.key === 'Enter' && guess && !e.target.closest?.('button')) { e.preventDefault(); confirmGuess(); return; }
   if (e.key === 'Enter' && quiz.canAdvance && !e.target.closest?.('button')) { e.preventDefault(); quiz.next(); return; }
-  // a lifted country (Move, Compare): the arrow keys carry it instead of spinning the globe; 1 / 2 pick a piece
-  if (e.key.startsWith('Arrow') && arrowPiece() && !e.metaKey && !e.ctrlKey && !e.altKey && !e.target.closest?.('[role="menu"], [role="radiogroup"]')) {
-    heldArrows.add(e.key); e.preventDefault(); return;
+  // Enter on the globe itself: as if you clicked the middle of the view (select, choose, or guess)
+  if (e.key === 'Enter' && e.target === canvas) { e.preventDefault(); const r = canvas.getBoundingClientRect(); onClick(r.left + r.width / 2, r.top + r.height / 2); return; }
+  // arrow keys, while held: they carry a lifted country (Move, Compare) or else turn the globe, smoothly, every frame
+  if (e.key.startsWith('Arrow') && !e.metaKey && !e.ctrlKey && !e.altKey && !e.target.closest?.('[role="menu"], [role="radiogroup"]')) {
+    if (!heldArrows.size) arrowsSince = performance.now();
+    heldArrows.add(e.key); e.preventDefault();
+    if (!e.repeat) spinByKeys(performance.now()); // react to the press itself, even if it is let go before the next frame
+    return;
   }
   if ((e.key === '1' || e.key === '2') && mode === 'compare' && compare.pieces[+e.key - 1]) { keyPiece = compare.pieces[+e.key - 1]; compare.raise(keyPiece); return; }
-  // keyboard spinning & zoom
-  const step = 0.12;
-  if (e.key === 'ArrowLeft') { spin.pending.t += step; } else if (e.key === 'ArrowRight') { spin.pending.t -= step; }
-  else if (e.key === 'ArrowUp') { spin.pending.p -= step; } else if (e.key === 'ArrowDown') { spin.pending.p += step; }
-  else if (e.key === '+' || e.key === '=') { globe.zoomBy(0.8); }
-  else if (e.key === '-' || e.key === '_') { globe.zoomBy(1.25); }
+  // keyboard zoom (leaves the rotation alone)
+  if (e.key === '+' || e.key === '=') globe.zoomBy(0.8);
+  else if (e.key === '-' || e.key === '_') globe.zoomBy(1.25);
   else return;
-  if (e.key.startsWith('Arrow')) globe.pauseAuto(); // zooming leaves the rotation alone
   e.preventDefault();
 });
 
-// ---------- arrow keys move a lifted country ----------
+// ---------- arrow keys: move a lifted country, or turn the globe ----------
 const heldArrows = new Set();
+let arrowsSince = 0;
+/** Every frame: hand the held arrows to the spin (smooth, builds momentum only when held), unless a piece is lifted. */
+function spinByKeys(now) {
+  if (!heldArrows.size || arrowPiece()) { spin.keys(null, now); return; }
+  const x = heldArrows.has('ArrowRight') - heldArrows.has('ArrowLeft'), y = heldArrows.has('ArrowUp') - heldArrows.has('ArrowDown');
+  spin.keys({ x, y, held: (now - arrowsSince) / 1000, fast: keyShift }, now);
+}
 let keyPiece = null; // the piece the arrow keys move in a comparison (the last one dragged, or 1 / 2)
 function arrowPiece() {
   if (mode === 'pick') return compare.previewPiece;
@@ -580,7 +606,7 @@ const _kv = new THREE.Vector3(), _kr = new THREE.Vector3(), _ku = new THREE.Vect
 /** Every frame while an arrow is held: glide the piece across the globe, up/down/left/right as seen on screen. */
 function moveByKeys(dt, shift) {
   const p = arrowPiece();
-  if (!p || compare.drag) { heldArrows.clear(); return; }
+  if (!p || compare.drag) return;
   const dx = heldArrows.has('ArrowRight') - heldArrows.has('ArrowLeft'), dy = heldArrows.has('ArrowUp') - heldArrows.has('ArrowDown');
   if (!dx && !dy) return;
   const cam = globe.camera, inv = _kq.copy(globe.world.quaternion).invert();
@@ -607,12 +633,13 @@ function frame(now) {
   const dt = Math.max(0, (now - prevNow) / 1000); prevNow = now;
   globe.governor.frame(dt * 1000);
   globe.flight?.(now);
+  spinByKeys(now);
   spin.update(now, dt);
   globe.controls.update();
   tickGlobe(globe, t);
   layer.tick(now);
   compare.tick(now);
-  if (heldArrows.size) moveByKeys(dt, keyShift);
+  if (heldArrows.size && arrowPiece()) moveByKeys(dt, keyShift);
   missLine.tick(now);
   currents.tick(now);
   popClock.tick();
@@ -648,6 +675,7 @@ requestAnimationFrame(() => setTimeout(async () => {
   layer.setView(viewKey);
   applyLens();
   document.body.classList.add('ready');
+  showIntro(stage); // first visit: a finger shows the globe can be spun
   // deep links: ?c=FRA · ?compare=FRA,DEU · ?play=daily
   const c = params.get('c')?.toUpperCase(), cmp = params.get('compare')?.toUpperCase().split(','), play = params.get('play')?.toLowerCase();
   if (cmp?.length === 2 && cmp[0] !== cmp[1] && layer.get(cmp[0]) && layer.get(cmp[1])) { mode = 'compare'; compare.start(layer.get(cmp[0]), layer.get(cmp[1])); }

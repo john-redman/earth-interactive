@@ -47,13 +47,58 @@
   <link rel="stylesheet" href="css/style.css">
   <script type="importmap">{ "imports": { "three": "./vendor/three/three.module.min.js", "three/addons/": "./vendor/three/" } }</script>
   <!-- start the big downloads in parallel with the module graph (js/load.js fetches data/world.js after every import) -->
-  <link rel="modulepreload" href="vendor/three/three.module.min.js">
   <link rel="preload" href="data/world.js" as="fetch" crossorigin>
+  <!-- the whole module graph at once, instead of one import level at a time (tools/check.mjs keeps this list complete) -->
+  <link rel="modulepreload" href="vendor/three/three.module.min.js">
+  <link rel="modulepreload" href="js/load.js">
+  <link rel="modulepreload" href="vendor/three/controls/OrbitControls.js">
+  <link rel="modulepreload" href="js/geo.js">
+  <link rel="modulepreload" href="js/sun.js">
+  <link rel="modulepreload" href="js/perf.js">
+  <link rel="modulepreload" href="js/globe.js">
+  <link rel="modulepreload" href="vendor/three/lines/LineSegmentsGeometry.js">
+  <link rel="modulepreload" href="vendor/three/lines/LineMaterial.js">
+  <link rel="modulepreload" href="vendor/three/lines/LineSegments2.js">
+  <link rel="modulepreload" href="js/countries.js">
+  <link rel="modulepreload" href="js/compare.js">
+  <link rel="modulepreload" href="js/flags.js">
+  <link rel="modulepreload" href="js/sheet-drag.js">
+  <link rel="modulepreload" href="js/ui.js">
+  <link rel="modulepreload" href="js/ads.js">
+  <link rel="modulepreload" href="js/thrills.js">
+  <link rel="modulepreload" href="js/spin.js">
+  <link rel="modulepreload" href="js/lens.js">
+  <link rel="modulepreload" href="js/search.js">
+  <link rel="modulepreload" href="js/net/profanity.js">
+  <link rel="modulepreload" href="js/net/api.js">
+  <link rel="modulepreload" href="js/net/names.js">
+  <link rel="modulepreload" href="js/leaderboard.js">
+  <link rel="modulepreload" href="js/site.js">
+  <link rel="modulepreload" href="js/quiz.js">
+  <link rel="modulepreload" href="js/pin.js">
+  <link rel="modulepreload" href="js/sfx.js">
+  <link rel="modulepreload" href="js/music.js">
+  <link rel="modulepreload" href="js/miss-line.js">
+  <link rel="modulepreload" href="js/currents.js">
+  <link rel="modulepreload" href="js/popclock.js">
+  <link rel="modulepreload" href="js/ships.js">
+  <link rel="modulepreload" href="js/clouds.js">
+  <link rel="modulepreload" href="js/site-menu.js">
+  <link rel="modulepreload" href="js/intro.js">
+  <link rel="modulepreload" href="js/daily-country.js">
+  <link rel="modulepreload" href="js/share-image.js">
+  <link rel="modulepreload" href="js/analytics.js">
 </head>
 <body>
   <!--APP-->
   <main id="stage" class="stage">
-    <canvas id="globe" aria-label="Interactive 3D globe. Drag to spin, click a country for details."></canvas>
+    <canvas id="globe" tabindex="0" aria-label="Interactive 3D globe. Drag or use the arrow keys to turn it. Click a country, or press Enter to select the one in the middle. Press slash to search."></canvas>
+    <div id="sr-live" class="sr-only" role="status" aria-live="polite"></div>
+    <div id="no-3d" class="noscript no-3d" role="alert" hidden>
+      <p class="n3-none"><b>Your browser can't draw the 3D globe</b> (WebGL is switched off or not supported here).</p>
+      <p class="n3-lost"><b>The 3D view stopped.</b> Your device needed the graphics memory back. <button type="button" class="btn small primary" onclick="location.reload()">Reload</button></p>
+      <p>You can still read about <a href="countries/">every country</a>, browse <a href="compare/">country size comparisons</a>, see the <a href="countries/ranking/largest-countries/">largest countries</a>, or learn <a href="why-maps-lie.html">why flat maps distort size</a>.</p>
+    </div>
 
     <div class="top-left">
       <div id="view-switch" class="view-switch" role="radiogroup" aria-label="Border view"></div>

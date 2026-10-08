@@ -154,6 +154,9 @@ export function createUI({ data, initialView, onView, onCompareRequest, onMoveRe
         <button type="button" class="tag-btn" data-act="compare">${ICON_COMPARE}<span>Compare</span></button>
         <button type="button" class="tag-btn primary" data-act="info">${ICON_INFO}<span>Info</span></button>
       </div>`;
+    // once ever, after the first country: what the buttons do
+    let tipped = true; try { tipped = localStorage.getItem('ei-tip-tag') === '1'; localStorage.setItem('ei-tip-tag', '1'); } catch { /* storage unavailable */ }
+    if (!tipped) tag.insertAdjacentHTML('beforeend', '<p class="tag-tip"><b>Move</b> lifts it out to drag anywhere. <b>Compare</b> puts it beside another country at true size.</p>');
     tag.style.setProperty('--c', o.color);
     $('[data-act="move"]', tag).onclick = () => onMoveRequest(o);
     tag.hidden = false; tag.classList.remove('in'); void tag.offsetWidth; tag.classList.add('in');

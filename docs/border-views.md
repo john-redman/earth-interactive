@@ -26,3 +26,12 @@ Overlays: Natural Earth 1:50m breakaway & disputed areas, re-assigned per view w
 | Date | Change | By |
 |---|---|---|
 | 2026-10-02 | Initial rules | John / Claude |
+
+## Population double counts (Cyprus, Somalia)
+
+Population and GDP sources count the whole island of Cyprus and the whole of Somalia, so in the De Facto and Neutral
+views, where Northern Cyprus and Somaliland stand apart with their own estimates, those people would be counted twice.
+The figures are left as published (subtracting would mix sources and years). Instead, each of the four cards carries a
+note saying so, and `COUNTED_WITHIN` in `tools/views.config.mjs` (→ `info[k].within` in `data/world.js`) keeps totals,
+such as the world and region figures on the text pages, from counting them twice.
+
