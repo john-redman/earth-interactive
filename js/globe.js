@@ -9,7 +9,7 @@ export const PINCH_MS = 280;
 
 export const LIGHT_DIR_VIEW = new THREE.Vector3(-0.45, 0.55, 0.7).normalize(); // light fixed relative to the viewer
 
-const NOISE = /* glsl */`
+export const NOISE = /* glsl */`
 vec3 mod289(vec3 x){return x-floor(x*(1.0/289.0))*289.0;}
 vec4 mod289(vec4 x){return x-floor(x*(1.0/289.0))*289.0;}
 vec4 permute(vec4 x){return mod289(((x*34.0)+1.0)*x);}
@@ -35,7 +35,7 @@ float snoise(vec3 v){
 }`;
 
 /**
- * The baked ocean map (tools/build-ocean.mjs): R closeness to the coast, G unused, B land. Until it arrives the
+ * The baked ocean map (tools/build-ocean.mjs): R closeness to the coast, G room for clouds, B land. Until it arrives the
  * shader sees open sea everywhere.
  */
 function oceanMap() {
@@ -50,18 +50,18 @@ function oceanMap() {
   return uniform;
 }
 
+/** Shared by the ocean and the clouds (js/clouds.js). */
+export const OCEAN_MAP = oceanMap();
+
 /**
  * The sea as seen from orbit, calm and still: a medium ocean blue with a broad, gentle tone variation and a touch of
  * teal over the coastal shallows. Here and there, in slowly wandering patches, the light on the water shifts a little.
- * Scattered over it are a few crusty white crests, each placed, turned, sized and frayed at random (hashed on a 3D
- * grid, so they never line up or repeat a pattern), lit on one side with a soft shadow on the other so they read as
- * raised. The baked map (G) sets how many: a few everywhere, more along the storm tracks. Crests too small for the
- * pixels fade out instead of shimmering.
+ * No waves or crests (the owner asked for none on any device).
  */
 function oceanMaterial() {
   return new THREE.ShaderMaterial({
     defines: { OCTAVES: QUALITY.oceanOctaves },
-    uniforms: { uTime: { value: 0 }, uLight: { value: LIGHT_DIR_VIEW }, uSun: SKY.uSun, uNight: SKY.uNight, uMap: oceanMap() },
+    uniforms: { uTime: { value: 0 }, uLight: { value: LIGHT_DIR_VIEW }, uSun: SKY.uSun, uNight: SKY.uNight, uMap: OCEAN_MAP },
     vertexShader: /* glsl */`
       varying vec3 vPos; varying vec3 vN; varying vec3 vView;
       void main(){
@@ -75,13 +75,11 @@ function oceanMaterial() {
       uniform float uTime; uniform vec3 uLight; uniform vec3 uSun; uniform float uNight; uniform sampler2D uMap;
       varying vec3 vPos; varying vec3 vN; varying vec3 vView;
       ${NOISE}
-      float hash3(vec3 p){ return fract(sin(dot(p, vec3(127.1, 311.7, 74.7))) * 43758.5453); }
       void main(){
         vec3 N = normalize(vN), P = normalize(vPos);
         float t = uTime;
         float lon = atan(P.x, P.z), lat = asin(clamp(P.y, -1.0, 1.0));
-        vec2 map = texture2D(uMap, vec2(lon / 6.2831853 + 0.5, lat / 3.1415927 + 0.5)).rg;
-        float shelf = map.r, storm = map.g;
+        float shelf = texture2D(uMap, vec2(lon / 6.2831853 + 0.5, lat / 3.1415927 + 0.5)).r;
         float n1 = snoise(P * 2.3);                  // broad, still: the tone of the water
         float n2 = snoise(P * 9.0 + n1 * 0.4);       // finer, still
         #if OCTAVES > 2
@@ -98,40 +96,6 @@ function oceanMaterial() {
         float flow = smoothstep(0.62, 0.95, 0.5 + 0.5 * sin(dot(P, vec3(2.7, 1.9, 2.3)) * 3.0 + n1 * 4.0 + t * 0.02));
         col *= 1.0 + flow * 0.018 * sin(n2 * 5.0 + t * 0.2);
 
-        // crusty white crests, scattered at random: one possible crest per cell of a 3D grid through the sphere
-        float open = (1.0 - 0.85 * shelf) * (1.0 - smoothstep(1.13, 1.30, abs(lat)));  // calm shallows and pack ice
-        vec3 q = P * 48.0, ci = floor(q), cf = fract(q);
-        float h0 = hash3(ci), h1 = hash3(ci + 17.31), h2 = hash3(ci + 41.97), h3 = hash3(ci + 73.13);
-        float dens = mix(0.014, 0.12, storm) * (0.35 + 1.3 * smoothstep(-0.5, 0.7, n1)) * open;
-        float fwCell = length(fwidth(q));
-        float crest = 0.0, shadow = 0.0;
-        if (h0 < dens && fwCell < 0.6) {
-          vec3 E = normalize(vec3(cos(lon), 0.0, -sin(lon)) + 1e-5), Nn = cross(P, E);
-          vec3 d = cf - (0.3 + 0.4 * vec3(h1, h2, h3));                           // its centre, somewhere in the cell
-          vec2 xy = vec2(dot(d, E), dot(d, Nn));                                  // on the surface
-          float ang = h1 * 6.2832, ca = cos(ang), sa = sin(ang);
-          float A = 0.14 + 0.15 * h2, B = A * (0.42 + 0.38 * h3);                  // own size and shape
-          vec2 uv = vec2(ca * xy.x + sa * xy.y, -sa * xy.x + ca * xy.y);
-          float rad = dot(d, P) / A;                                              // a small ellipsoid inside the cell, so the
-          float r = length(vec3(uv / vec2(A, B), rad));                           // cell's faces never slice a crest
-          float grain = hash3(floor(q * 40.0)), grain2 = hash3(floor(q * 95.0) + 5.1);
-          float th = atan(uv.y / B, uv.x / A);
-          float edge = 0.92 - 0.12 * sin(th * 3.0 + h2 * 9.0) - 0.07 * sin(th * 7.0 + h3 * 13.0) - 0.16 * grain; // crumbly
-          float aa = fwidth(r) + 0.02;
-          float m = 1.0 - smoothstep(edge - aa, edge + aa, r);
-          vec2 Ld = normalize(vec2(-0.55, 0.83));                                 // light from the upper left
-          float lit = 0.72 + 0.32 * dot(normalize(xy + 1e-4), Ld) * smoothstep(0.2, 0.9, r);
-          vec2 xs = xy + Ld * A * 0.45;                                           // the shadow falls away from the light
-          vec2 us = vec2(ca * xs.x + sa * xs.y, -sa * xs.x + ca * xs.y);
-          float ms = 1.0 - smoothstep(edge - aa, edge + aa * 3.0, length(vec3(us / vec2(A, B), rad)));
-          float snow = mix(0.62, 1.0, smoothstep(0.25, 0.75, grain2)) * (0.7 + 0.3 * smoothstep(edge, 0.15, r)); // snowy speckle
-          crest = m * lit * snow;
-          shadow = ms * (1.0 - m);
-          float near = smoothstep(0.6, 0.25, fwCell);                             // too small to draw → fade out
-          crest *= near; shadow *= near;
-        }
-        col = mix(col, col * 0.6, shadow * 0.45);
-        col = mix(col, vec3(0.90, 0.94, 0.985), clamp(crest, 0.0, 1.0) * 0.85);
 
         vec3 Np = normalize(N + vec3(n2, n3, n1) * 0.04);
         float diff = clamp(dot(Np, uLight), 0.0, 1.0);

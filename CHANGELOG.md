@@ -5,6 +5,9 @@ All notable changes to EarthInteractive are documented here.
 ## [Unreleased]
 
 ### Added
+- **Ships**: tiny cartoon boats (with containers, a white bridge, a red funnel and a little wake) sail the main sea lanes between the big ports: Asia to Europe through Suez and round the Cape, across the Pacific and the Atlantic, through Panama, out of the Gulf and more. One instanced draw call for all of them, on every device.
+- **Clouds** (desktop): very light clouds drift slowly over the open ocean with the prevailing winds and thin out before they reach land; they pass over small islands instead of swerving round them.
+- **"We love the Earth"**: a link to Lil Dicky's *Earth* video on YouTube in the footer (globe and text pages).
 - **World population, live**: a quiet strip at the bottom with an estimate that ticks up in real time (UN World Population Prospects 2024) and today's births and deaths. It fades out as you zoom in and comes back as you zoom out, and steps aside for cards, games, comparisons and data lenses.
 - **Move a country freely**: the pin's tag has a **Move** button, or press and hold the pinned country, and it lifts out and follows your finger or mouse anywhere on the globe. Tap another country while it is lifted and the same piece becomes a size comparison; Compare works the same way round (drag first, then choose). One banner, one Put back button for both.
 - **A satellite-style ocean with its currents**: a medium ocean blue with fine swell lines in long, gently curving rows that drift over all open water (no more white crests bunched in the storm belts), and about 20 major surface currents drawn as dark lines whose dashes run with the flow, each labelled with its name, direction and typical speed. Ocean names sit on the water in the same type, larger. Labels thin out when zoomed out and step aside for data lenses, games, compare and country cards.
@@ -24,6 +27,7 @@ All notable changes to EarthInteractive are documented here.
 - Escape (and the app's back button) closes search from anywhere; the screams pause when the tab is hidden; reduced motion freezes the water patches and the star twinkle; links accept lower-case country codes (`?c=fra`, `?compare=fra,esp`).
 
 ### Changed
+- **No more waves**: the white crests are gone from the ocean on every device; the sea is calm and still.
 - **Current lines no longer look like scars**: the dark bands are gone. Each current is now a faint lighter sheen with soft trails of light drifting slowly downstream, tinted a touch warm or cool. They are barely there at globe view and come up as you zoom in.
 - **Phone: the pick banner sits at the top**, under the view switch, so it no longer covers the footer buttons.
 - **Ocean**: the swell lines are gone. A few crusty, snowy white crests are scattered at random (each its own shape, size and angle, lit with a soft shadow), more along the stormy tracks.

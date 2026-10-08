@@ -19,6 +19,8 @@ import { createMusic } from './music.js';
 import { MissLine } from './miss-line.js';
 import { Currents } from './currents.js';
 import { createPopClock } from './popclock.js';
+import { Ships } from './ships.js';
+import { Clouds } from './clouds.js';
 import { countryOfTheDay, factsFor, mountDailyChip } from './daily-country.js';
 import { flagImg } from './flags.js';
 import { shareCompareImage } from './share-image.js';
@@ -64,6 +66,8 @@ const music = createMusic(document.getElementById('music-toggle'));
 const missLine = new MissLine(globe, layer, stage);
 const currents = new Currents(globe);
 const popClock = createPopClock(document.getElementById('popclock'), globe);
+const ships = new Ships(globe);
+const clouds = TIER === 'high' ? new Clouds(globe) : null; // desktop only: a full-globe noise shader is too much for phones
 const cotdKey = countryOfTheDay(data);
 /** Fly to today's country and open its card (from the chip or the Play menu). */
 function goDaily() { const o = layer.get(cotdKey); if (!o || mode === 'quiz') return; if (mode === 'compare') endCompare(true); openCountry(o, { fly: true }); openInfo(o); }
@@ -569,6 +573,8 @@ function frame(now) {
   missLine.tick(now);
   currents.tick(now);
   popClock.tick();
+  ships.tick(now);
+  clouds?.tick(now);
   tickNight(dt);
   if (guess && !quiz.waiting) cancelGuess(); // the round moved on (hint, Show me, next)
   thrills.tick(now);
@@ -613,7 +619,7 @@ requestAnimationFrame(() => setTimeout(async () => {
 
 // Small public API for later integrations / debugging
 window.EarthInteractive = {
-  globe, layer, compare, ads, data, thrills, spin, quiz, search, native, sfx, music, currents,
+  globe, layer, compare, ads, data, thrills, spin, quiz, search, native, sfx, music, currents, ships, clouds,
   setLens: k => { lensKey = LENSES[k] ? k : 'none'; applyLens(); },
   setView: k => { if (!data.views[k]) return false; ui.setViewSilently(k); switchView(k); return true; },
   compareKeys: (a, b) => { const A = layer.get(a), B = layer.get(b); if (!A || !B || A === B) return false; closePopup(); cancelPick(); mode = 'compare'; compare.start(A, B); return true; },
