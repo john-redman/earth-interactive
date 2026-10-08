@@ -24,3 +24,6 @@ build/
 tmp/
 temp/
 .cache
+
+# agent worktrees
+.claude/worktrees/
