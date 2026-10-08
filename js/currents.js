@@ -71,7 +71,7 @@ export const OCEANS = [
   { name: 'Southern Ocean', at: [0, -62], group: 'southern' },
   { name: 'Southern Ocean', at: [120, -62], group: 'southern' },
   { name: 'Southern Ocean', at: [-120, -66], group: 'southern' },
-  { name: 'Arctic Ocean', at: [-20, 84] },
+  { name: 'Arctic Ocean', at: [-168, 82] },
 ];
 
 const R_LINE = 1.0016, R_TEXT = 1.0022;  // just above the sea, under the country fills
@@ -96,7 +96,8 @@ function makePath(path, seed) {
     const m = Math.sin(u * waves * 6.2832 + seed) * 0.7 + Math.sin(u * waves * 2.3 * 6.2832 + seed * 1.7) * 0.3;
     return p.addScaledVector(side, amp * m * Math.sin(Math.PI * u)).normalize(); // still at the ends
   };
-  return { at, len };
+  const base = u => curve.getPointAt(Math.min(1, Math.max(0, u))).normalize();
+  return { at, base, len };
 }
 
 /** Left-of-direction vector at p for a path heading along d (both on the unit sphere). */
@@ -106,7 +107,8 @@ const leftOf = (p, d) => new THREE.Vector3().crossVectors(p, d).normalize();
  * A strip laid on the sphere along centre(t), t 0…1, `half` radians either side. Pushes positions, uv (x along, y
  * across −1…1 or 0…1) and per-vertex extras into the given arrays.
  */
-function strip(out, centre, n, half, r, uvy, extra) {
+function strip(out, centre, n, half, r, uvy, extra, even = false) {
+  if (even) centre = evenly(centre);
   const base = out.pos.length / 3;
   for (let i = 0; i <= n; i++) {
     const t = i / n, c = centre(t), d = centre(Math.min(1, t + 1 / n)).sub(centre(Math.max(0, t - 1 / n)));
@@ -119,6 +121,20 @@ function strip(out, centre, n, half, r, uvy, extra) {
     }
     if (i < n) { const a = base + i * 2; out.idx.push(a, a + 2, a + 1, a + 1, a + 2, a + 3); }
   }
+}
+
+/** Re-parameterise centre(t) by arc length, so equal steps of t are equal distances (text keeps its proportions). */
+function evenly(centre) {
+  const K = 160, pts = [], acc = [0];
+  for (let i = 0; i <= K; i++) pts.push(centre(i / K));
+  for (let i = 1; i <= K; i++) acc.push(acc[i - 1] + pts[i].distanceTo(pts[i - 1]));
+  const total = acc[K] || 1;
+  return t => {
+    const target = Math.min(1, Math.max(0, t)) * total;
+    let i = 1; while (i < K && acc[i] < target) i++;
+    const k = (target - acc[i - 1]) / Math.max(1e-9, acc[i] - acc[i - 1]);
+    return pts[i - 1].clone().lerp(pts[i], k).normalize();
+  };
 }
 
 const SHARED_VERT = /* glsl */`
@@ -165,7 +181,7 @@ export class Currents {
           float ends = smoothstep(0.0, 0.08, vUv.x) * smoothstep(1.0, 0.85, vUv.x);
           float s = vUv.x * vLen * 140.0 - uTime * vFlow * 0.35;      // faint streaks drifting with the flow
           float streak = 0.75 + 0.25 * sin(s) * sin(s * 0.37 + 1.3);
-          float a = across * across * ends * streak * 0.34 * uOpacity * smoothstep(0.0, 0.2, vFace);
+          float a = across * across * ends * streak * 0.26 * uOpacity * smoothstep(0.0, 0.2, vFace);
           gl_FragColor = vec4(0.02, 0.08, 0.2, a);
         }`,
     });
@@ -184,7 +200,7 @@ export class Currents {
     const items = [];
     for (const c of CURRENTS) if (c.label !== false) items.push({ kind: 'current', c, text: null });
     for (const o of OCEANS) items.push({ kind: 'ocean', o, text: o.name.toUpperCase() });
-    const PX = { current: 44, ocean: 60 }, PAD = 8, W = 2048;
+    const PX = { current: 44, ocean: 60 }, PAD = 16, W = 2048;
     const cv = document.createElement('canvas'), ctx = cv.getContext('2d');
     const font = k => k === 'ocean' ? `600 ${PX.ocean}px "Plus Jakarta Sans", sans-serif` : `600 ${PX.current}px "Plus Jakarta Sans", sans-serif`;
     // decide each current's reading direction now: the text must read upright when north is up
@@ -193,14 +209,15 @@ export class Currents {
       const { c } = it, at = c.at ?? 0.5, p = c._path.at(at), d = c._path.at(at + 0.01).sub(c._path.at(at - 0.01));
       it.forward = leftOf(p, d).dot(NORTH) >= 0;   // the text's "up" (left of reading) must point north-ish
       const meta = `${c.strength} · ${fmtSpeed(c.speed)}`;
-      it.text = it.forward ? `${c.name}   ${meta}  →` : `←  ${c.name}   ${meta}`;
+      it.text = `${c.name}   ${meta}`;
+      it.arrow = it.forward ? 'end' : 'start';   // drawn as a shape: the font has no arrow glyph
     }
     // measure and pack into rows
     let x = 0, y = 0, rowH = 0;
     for (const it of items) {
       ctx.font = font(it.kind);
       const spacing = it.kind === 'ocean' ? 0.3 * PX.ocean : 0;
-      it.w = Math.ceil(ctx.measureText(it.text).width + spacing * it.text.length) + PAD * 2;
+      it.w = Math.ceil(ctx.measureText(it.text).width + spacing * it.text.length) + PAD * 2 + (it.arrow ? Math.round(PX.current * 1.3) : 0);
       it.h = Math.ceil(PX[it.kind] * 1.35) + PAD * 2;
       if (x + it.w > W) { x = 0; y += rowH; rowH = 0; }
       it.x = x; it.y = y; x += it.w; rowH = Math.max(rowH, it.h);
@@ -209,9 +226,19 @@ export class Currents {
     cv.width = W; cv.height = H;
     for (const it of items) {
       ctx.font = font(it.kind); ctx.textBaseline = 'middle'; ctx.fillStyle = '#fff';
+      ctx.shadowColor = 'rgba(2, 12, 36, 0.85)'; ctx.shadowBlur = it.kind === 'ocean' ? 10 : 8;   // a soft dark halo
       if (it.kind === 'ocean') ctx.letterSpacing = `${0.3 * PX.ocean}px`;
       else ctx.letterSpacing = '0px';
-      ctx.fillText(it.text, it.x + PAD, it.y + it.h / 2);
+      const aw = it.arrow ? Math.round(PX.current * 1.3) : 0, cy = it.y + it.h / 2;
+      ctx.fillText(it.text, it.x + PAD + (it.arrow === 'start' ? aw : 0), cy);
+      if (it.arrow) {                       // a slim arrow pointing with the flow
+        const s = PX.current, x0 = it.arrow === 'start' ? it.x + PAD + s * 0.95 : it.x + it.w - PAD - aw + s * 0.3, x1 = x0 + (it.arrow === 'start' ? -s * 0.8 : s * 0.8);
+        const dir = Math.sign(x1 - x0);
+        ctx.strokeStyle = '#fff'; ctx.lineWidth = s * 0.09; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+        ctx.beginPath(); ctx.moveTo(x0, cy); ctx.lineTo(x1, cy);
+        ctx.moveTo(x1 - dir * s * 0.28, cy - s * 0.24); ctx.lineTo(x1, cy); ctx.lineTo(x1 - dir * s * 0.28, cy + s * 0.24);
+        ctx.stroke();
+      }
     }
     const tex = new THREE.CanvasTexture(cv);
     tex.anisotropy = Math.min(8, globe.renderer.capabilities.getMaxAnisotropy());
@@ -219,9 +246,11 @@ export class Currents {
 
     // lay every label on the sphere as a curved strip
     const L = { pos: [], uv: [], idx: [], aRect: [], aKind: [] };
+    this.spots = [];
     const push = (it, centre, half, kind) => {
+      this.spots.push({ text: it.text, kind: it.kind, at: centre(0.5).clone() });
       const before = L.pos.length / 3;
-      strip(L, centre, 28, half, R_TEXT, [1, 0], {});
+      strip(L, centre, 40, half, R_TEXT, [1, 0], {}, true);
       // map uv into the atlas rect; aKind: 0 minor current, 1 major current, 2 ocean
       for (let v = before; v < L.pos.length / 3; v++) {
         const u = L.uv[v * 2], w = L.uv[v * 2 + 1];
@@ -233,18 +262,26 @@ export class Currents {
       const hRad = TEXT_H[it.kind] * (it.h / (PX[it.kind] * 1.35)); // whole row height incl. padding
       const wRad = hRad * it.w / it.h;
       if (it.kind === 'ocean') {
-        const [lon, lat] = it.o.at, halfDeg = (wRad / 2) / Math.max(0.2, Math.cos(lat * Math.PI / 180)) * 180 / Math.PI;
-        push(it, t => lonLatToVec3(lon - halfDeg + 2 * halfDeg * t, lat), hRad / 2, 2);
+        const [lon, lat] = it.o.at;
+        if (Math.abs(lat) < 55) {                                         // along its parallel: a gentle arc
+          const halfDeg = (wRad / 2) / Math.cos(lat * Math.PI / 180) * 180 / Math.PI;
+          push(it, t => lonLatToVec3(lon - halfDeg + 2 * halfDeg * t, lat), hRad / 2, 2);
+        } else {                                                          // near the poles a parallel bends too tightly:
+          const c0 = lonLatToVec3(lon, lat), e0 = new THREE.Vector3().crossVectors(NORTH, c0).normalize(); // run straight
+          push(it, t => c0.clone().multiplyScalar(Math.cos((t - 0.5) * wRad)).addScaledVector(e0, Math.sin((t - 0.5) * wRad)), hRad / 2, 2);
+        }
       } else {
         const { c } = it, p = c._path, at = c.at ?? 0.5, du = Math.min(0.48, (wRad / p.len) / 2);
         const u0 = Math.max(0, Math.min(1 - 2 * du, at - du)), u1 = u0 + 2 * du;
         const sideSign = c.side === 'right' ? -1 : 1;                      // left of the flow by default
         const off = (WIDTH[c.strength] + hRad * 0.55) * sideSign;
-        const centre = t => {
-          const u = it.forward ? u0 + (u1 - u0) * t : u1 - (u1 - u0) * t;
-          const q = p.at(u), d = p.at(u + 0.004).sub(p.at(u - 0.004));
-          return q.addScaledVector(leftOf(q, d), off).normalize();
-        };
+        // one smooth bow (no wiggles): a quadratic arc through the start, middle and end of the label's stretch
+        const side = u => { const q = p.base(u), d = p.base(u + 0.004).sub(p.base(u - 0.004)); return q.addScaledVector(leftOf(q, d), off).normalize(); };
+        const A = side(u0), M = side((u0 + u1) / 2), B = side(u1);
+        const C = A.clone().add(B).multiplyScalar(0.5);
+        C.lerp(M.clone().multiplyScalar(2).sub(C), 0.6);                     // a softer bow than the current itself
+        const bow = t => A.clone().multiplyScalar((1 - t) * (1 - t)).addScaledVector(C, 2 * t * (1 - t)).addScaledVector(B, t * t).normalize();
+        const centre = t => bow(it.forward ? t : 1 - t);
         push(it, centre, hRad / 2, c.major ? 1 : 0);
       }
     }
@@ -263,10 +300,11 @@ export class Currents {
         varying vec2 vUv; varying float vFace; varying float vKind;
         void main(){
           if (vFace < 0.0) discard;
-          float a = texture2D(uMap, vUv).a;
+          vec4 tx = texture2D(uMap, vUv);
+          float a = tx.a;
           float k = vKind < 0.5 ? uMinor : vKind < 1.5 ? uMajor : uOcean;
           a *= k * smoothstep(0.05, 0.35, vFace);                     // printed on the globe: fades towards the rim
-          vec3 col = vKind > 1.5 ? vec3(0.80, 0.88, 1.0) : vec3(0.84, 0.91, 1.0);
+          vec3 col = tx.rgb * (vKind > 1.5 ? vec3(0.80, 0.88, 1.0) : vec3(0.86, 0.92, 1.0));
           gl_FragColor = vec4(col, a * (vKind > 1.5 ? 0.55 : 0.88));
         }`,
     });

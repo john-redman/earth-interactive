@@ -51,22 +51,16 @@ function oceanMap() {
 }
 
 /**
- * The sea as seen from orbit, calm and mostly still: a medium ocean blue with fine, slightly lighter swell lines in
- * long, gently curving rows (bent by a broad noise that also shades the water; a second noise breaks them into
- * trains; desktop adds a finer crossing set). Only here and there, in slowly wandering patches, does the swell sway a
- * little. Still white crests sit on the swell rows, a bright top with a soft shadow below so they read as raised; the
- * baked map (G) sets how many: a few everywhere, more along the storm tracks. Everything fades to its average tone
- * once it is too fine for the pixels, so nothing shimmers.
+ * The sea as seen from orbit, calm and still: a medium ocean blue with a broad, gentle tone variation and a touch of
+ * teal over the coastal shallows. Here and there, in slowly wandering patches, the light on the water shifts a little.
+ * Scattered over it are a few crusty white crests, each placed, turned, sized and frayed at random (hashed on a 3D
+ * grid, so they never line up or repeat a pattern), lit on one side with a soft shadow on the other so they read as
+ * raised. The baked map (G) sets how many: a few everywhere, more along the storm tracks. Crests too small for the
+ * pixels fade out instead of shimmering.
  */
-/**
- * Swell-line styles to compare (owner review): ?ocean=0 current · 1 whisper · 2 patches · 3 calm glass · 4 long swell.
- * Pick one, then make it the default and drop the others.
- */
-const OCEAN_STYLE = Math.min(4, Math.max(0, parseInt(new URLSearchParams(location.search).get('ocean'), 10) || 0));
-
 function oceanMaterial() {
   return new THREE.ShaderMaterial({
-    defines: { OCTAVES: QUALITY.oceanOctaves, OCEAN_STYLE },
+    defines: { OCTAVES: QUALITY.oceanOctaves },
     uniforms: { uTime: { value: 0 }, uLight: { value: LIGHT_DIR_VIEW }, uSun: SKY.uSun, uNight: SKY.uNight, uMap: oceanMap() },
     vertexShader: /* glsl */`
       varying vec3 vPos; varying vec3 vN; varying vec3 vView;
@@ -81,71 +75,63 @@ function oceanMaterial() {
       uniform float uTime; uniform vec3 uLight; uniform vec3 uSun; uniform float uNight; uniform sampler2D uMap;
       varying vec3 vPos; varying vec3 vN; varying vec3 vView;
       ${NOISE}
-      // thin lines on the crests of a phase field; fades to the average coverage when the rows get too fine
-      // (about px pixels wide, never more than a fraction w of the row spacing)
-      float rows(float ph, float w, float px){
-        float fw = fwidth(ph) / 6.2831853;
-        float f = fract(ph / 6.2831853), d = min(f, 1.0 - f);
-        float hw = min(w, fw * px * 0.5);
-        float l = 1.0 - smoothstep(hw, hw + fw * 1.2, d);
-        return mix(min(2.0 * hw + fw, 0.2), l, smoothstep(0.2, 0.06, fw));
-      }
-      float hash2(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+      float hash3(vec3 p){ return fract(sin(dot(p, vec3(127.1, 311.7, 74.7))) * 43758.5453); }
       void main(){
         vec3 N = normalize(vN), P = normalize(vPos);
         float t = uTime;
         float lon = atan(P.x, P.z), lat = asin(clamp(P.y, -1.0, 1.0));
         vec2 map = texture2D(uMap, vec2(lon / 6.2831853 + 0.5, lat / 3.1415927 + 0.5)).rg;
         float shelf = map.r, storm = map.g;
-        float n1 = snoise(P * 2.3);                  // broad: tone and the bend of the rows (still)
-        float n2 = snoise(P * 9.0 + n1 * 0.4);       // swell trains (still)
-        // the water moves only here and there: slowly wandering patches where the swell sways back and forth
-        float flow = smoothstep(0.62, 0.95, 0.5 + 0.5 * sin(dot(P, vec3(2.7, 1.9, 2.3)) * 3.0 + n1 * 4.0 + t * 0.02));
-        float sway = flow * 1.1 * sin(t * 0.15 + n2 * 3.0);
+        float n1 = snoise(P * 2.3);                  // broad, still: the tone of the water
+        float n2 = snoise(P * 9.0 + n1 * 0.4);       // finer, still
+        #if OCTAVES > 2
+        float n3 = snoise(P * 34.0);
+        #else
+        float n3 = n2 * 0.6;
+        #endif
         float facing = clamp(dot(N, vView), 0.0, 1.0);
         // medium ocean blue, deeper towards the limb, a touch of teal over the coastal shallows
         vec3 col = mix(vec3(0.060, 0.170, 0.400), vec3(0.120, 0.300, 0.610), pow(facing, 1.1));
         col *= 0.95 + 0.07 * n1 + 0.03 * n2;
         col = mix(col, vec3(0.110, 0.380, 0.600), pow(shelf, 1.8) * 0.32);
+        // the water moves only here and there: slowly wandering patches where the light shifts a little
+        float flow = smoothstep(0.62, 0.95, 0.5 + 0.5 * sin(dot(P, vec3(2.7, 1.9, 2.3)) * 3.0 + n1 * 4.0 + t * 0.02));
+        col *= 1.0 + flow * 0.018 * sin(n2 * 5.0 + t * 0.2);
 
-        // swell: long rows along the parallels, bent by the broad noise; still, except where the water sways
-        float open = (1.0 - 0.75 * shelf) * (1.0 - smoothstep(1.13, 1.30, abs(lat)));  // calmer near coasts and the pack ice
-        float phStill = lat * 400.0 + n1 * 16.0 + n2 * 2.0, ph = phStill + sway;
-        #if OCEAN_STYLE == 4
-        float phL = lat * 140.0 + n1 * 7.0 + n2 * 1.2 + sway * 0.4;           // long swell: few, broad, soft bands
-        float sw = rows(phL, 0.22, 4.0) * smoothstep(-0.6, 0.5, n2) * 0.45;
-        #else
-        float sw = rows(ph, 0.08, 1.2) * smoothstep(-0.5, 0.6, n2);
-        #endif
-        #if OCTAVES > 2 && OCEAN_STYLE != 4
-        float n3 = snoise(P * 34.0);
-        float ph2 = lat * 1100.0 - n1 * 44.0 + n2 * 6.0 + n3 * 1.5 + sway * 2.0;  // a finer set, crossing at a slight angle
-        sw = max(sw, rows(ph2, 0.1, 1.0) * smoothstep(-0.3, 0.7, n3 + n2 * 0.5) * 0.75);
-        #else
-        float n3 = n2 * 0.6;
-        #endif
-        #if OCEAN_STYLE == 1
-        sw *= 0.35;                                                         // whisper: same lines, barely there
-        #elif OCEAN_STYLE == 2
-        sw *= smoothstep(0.15, 0.55, n1) * 0.8;                             // patches: lines only here and there
-        #elif OCEAN_STYLE == 3
-        sw = 0.0;                                                           // calm glass: no lines at all
-        #endif
-        col += vec3(0.080, 0.135, 0.210) * sw * open;
-
-        // still white crests on the swell rows: short strokes (hashed per row and cell, so no extra noise), a bright
-        // top with a soft shadow on the lee side; a few everywhere, more along the storm tracks
-        float rowId = floor(phStill / 6.2831853 + 0.5);                        // crests stay put, even where the water sways
-        float along = lon * cos(lat) * 150.0 + rowId * 3.7;
-        float cell = floor(along), fa = fract(along);
-        float dens = mix(0.035, 0.3, storm), len = 0.3 + 0.55 * hash2(vec2(cell, rowId + 17.0));
-        float bright = 0.55 + 0.45 * hash2(vec2(rowId - 5.0, cell));
-        float u = clamp(fa / len, 0.0, 1.0);
-        float dash = step(hash2(vec2(rowId, cell)), dens) * step(fa, len) * pow(sin(3.1415927 * u), 0.7) * bright; // tapered ends
-        dash = mix(dens * len * 0.45, dash, smoothstep(0.6, 0.15, fwidth(along)));   // far away: an even, faint tone
-        float top = rows(phStill, 0.03, 1.2) * dash, under = rows(phStill + 0.5, 0.045, 1.5) * dash;
-        col = mix(col, col * 0.64, under * 0.45 * open);
-        col = mix(col, vec3(0.86, 0.92, 0.98), top * 0.7 * open);
+        // crusty white crests, scattered at random: one possible crest per cell of a 3D grid through the sphere
+        float open = (1.0 - 0.85 * shelf) * (1.0 - smoothstep(1.13, 1.30, abs(lat)));  // calm shallows and pack ice
+        vec3 q = P * 48.0, ci = floor(q), cf = fract(q);
+        float h0 = hash3(ci), h1 = hash3(ci + 17.31), h2 = hash3(ci + 41.97), h3 = hash3(ci + 73.13);
+        float dens = mix(0.014, 0.12, storm) * (0.35 + 1.3 * smoothstep(-0.5, 0.7, n1)) * open;
+        float fwCell = length(fwidth(q));
+        float crest = 0.0, shadow = 0.0;
+        if (h0 < dens && fwCell < 0.6) {
+          vec3 E = normalize(vec3(cos(lon), 0.0, -sin(lon)) + 1e-5), Nn = cross(P, E);
+          vec3 d = cf - (0.3 + 0.4 * vec3(h1, h2, h3));                           // its centre, somewhere in the cell
+          vec2 xy = vec2(dot(d, E), dot(d, Nn));                                  // on the surface
+          float ang = h1 * 6.2832, ca = cos(ang), sa = sin(ang);
+          float A = 0.14 + 0.15 * h2, B = A * (0.42 + 0.38 * h3);                  // own size and shape
+          vec2 uv = vec2(ca * xy.x + sa * xy.y, -sa * xy.x + ca * xy.y);
+          float rad = dot(d, P) / A;                                              // a small ellipsoid inside the cell, so the
+          float r = length(vec3(uv / vec2(A, B), rad));                           // cell's faces never slice a crest
+          float grain = hash3(floor(q * 40.0)), grain2 = hash3(floor(q * 95.0) + 5.1);
+          float th = atan(uv.y / B, uv.x / A);
+          float edge = 0.92 - 0.12 * sin(th * 3.0 + h2 * 9.0) - 0.07 * sin(th * 7.0 + h3 * 13.0) - 0.16 * grain; // crumbly
+          float aa = fwidth(r) + 0.02;
+          float m = 1.0 - smoothstep(edge - aa, edge + aa, r);
+          vec2 Ld = normalize(vec2(-0.55, 0.83));                                 // light from the upper left
+          float lit = 0.72 + 0.32 * dot(normalize(xy + 1e-4), Ld) * smoothstep(0.2, 0.9, r);
+          vec2 xs = xy + Ld * A * 0.45;                                           // the shadow falls away from the light
+          vec2 us = vec2(ca * xs.x + sa * xs.y, -sa * xs.x + ca * xs.y);
+          float ms = 1.0 - smoothstep(edge - aa, edge + aa * 3.0, length(vec3(us / vec2(A, B), rad)));
+          float snow = mix(0.62, 1.0, smoothstep(0.25, 0.75, grain2)) * (0.7 + 0.3 * smoothstep(edge, 0.15, r)); // snowy speckle
+          crest = m * lit * snow;
+          shadow = ms * (1.0 - m);
+          float near = smoothstep(0.6, 0.25, fwCell);                             // too small to draw → fade out
+          crest *= near; shadow *= near;
+        }
+        col = mix(col, col * 0.6, shadow * 0.45);
+        col = mix(col, vec3(0.90, 0.94, 0.985), clamp(crest, 0.0, 1.0) * 0.85);
 
         vec3 Np = normalize(N + vec3(n2, n3, n1) * 0.04);
         float diff = clamp(dot(Np, uLight), 0.0, 1.0);
