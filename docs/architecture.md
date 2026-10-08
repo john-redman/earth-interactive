@@ -26,6 +26,7 @@ Static site, no bundler. `index.html` loads `js/main.js` as an ES module; an imp
 | `currents.js` | Major ocean currents as a faint lighter sheen with soft trails drifting downstream, labels (name, direction, strength) and ocean names; decluttered by zoom, hidden under data lenses | `Currents`, `CURRENTS`, `OCEANS` |
 | `ships.js` | Low-poly cartoon ships on sea lanes between big ports, one instanced draw call | `Ships`, `ROUTES` |
 | `clouds.js` | Light clouds over the open ocean, desktop only, masked away from big landmasses | `Clouds` |
+| `intro.js` | First visit: the animated finger that shows the globe can be spun | `showIntro` |
 | `site-menu.js` | Phones: the brand opens the site links as a small menu | `mountSiteMenu` |
 | `popclock.js` | World population, live (UN WPP 2024 estimate, births and deaths today); fades by zoom and around panels | `createPopClock`, `worldPopulation` |
 | `daily-country.js` | Country of the day (seeded by local date), its facts, the top chip | `countryOfTheDay`, `factsFor`, `mountDailyChip` |

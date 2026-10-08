@@ -31,3 +31,19 @@ export function track(name, title = '') {
   const e = { path: name, title: title || name, event: true };
   if (window.goatcounter?.count) send(e); else if (queue.length < 50) queue.push(e);
 }
+
+/**
+ * Errors from visitors' devices, so bugs on real phones show up: each distinct message once per visit, at most 10,
+ * as an event path like `error/TypeError: x is undefined @ main.js:120`. No personal data, only the message and file.
+ */
+const reported = new Set();
+function reportError(msg, file, line) {
+  const key = `${String(msg).slice(0, 120)}${file ? ` @ ${String(file).split('/').pop()}:${line || 0}` : ''}`;
+  if (reported.has(key) || reported.size >= 10) return;
+  reported.add(key);
+  track(`error/${key}`, 'JavaScript error');
+}
+if (enabled) {
+  addEventListener('error', e => reportError(e.message || e.error?.message || 'error', e.filename, e.lineno));
+  addEventListener('unhandledrejection', e => reportError(`promise: ${e.reason?.message || e.reason}`));
+}

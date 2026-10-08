@@ -1,6 +1,6 @@
 // Tiny cartoon ships sailing the main sea lanes between the big ports. Purely decorative and cheap: one low-poly
-// boat (hull, deck, a few containers, a white bridge, a funnel) drawn for every ship in a single instanced draw
-// call, with flat baked shading, plus one more for their soft foam wakes. Ships are small from afar and grow a
+// cargo ship (container ship or tanker: hull, cargo, white bridge, funnel) drawn for every ship in a single
+// instanced draw call, with flat baked shading, plus one more for their foam wakes. Ships are small from afar and grow a
 // little as you zoom in, sail on the right of their lane, shrink into port at each end and turn round. Fixed to the
 // Earth; nothing is clickable.
 import * as THREE from 'three';
@@ -62,13 +62,19 @@ export const ROUTES = [
 const SHIP_PX = { base: 6, radius: 335, power: 1, min: 4, max: 40 };
 const SPEED = 0.0062;          // radians a second (cosmetic: a lane crosses the globe in a few minutes)
 const LANE = 0.0012;           // ships keep right of the lane's centre (radians; narrow straits leave little room)
-const HULLS = ['#c8423b', '#2f5f9e', '#2e7d5b', '#d9822b', '#3a3f58', '#8a3e8f'];
+const HULLS = ['#22344f', '#5a1f22', '#1f3d33', '#2b2d35', '#1d2b5c', '#4a2a1c']; // dark working-ship hulls
+const TANKER_HULLS = ['#1c1d22', '#3a1f1b', '#22262e'];
 const reduced = matchMedia('(prefers-reduced-motion: reduce)');
 
-/** One boat, about 2 units long along +x, deck at y 0.12, keel under the water. Flat faces, colours per vertex. */
+/**
+ * One cargo ship, about 2 units long along +x: a long, narrow dark hull with a raised bow, a white bridge block and
+ * funnel at the stern. Two kinds share the geometry (aPart 1 = container stacks, 2 = tanker deck; the shader hides the
+ * parts the ship's kind doesn't have). Flat faces, colours per vertex; aHull marks the faces tinted per ship.
+ */
 function boatGeometry() {
-  const pos = [], col = [], hull = [];
-  const tri = (a, b, c, rgb, h = 0) => { pos.push(...a, ...b, ...c); for (let i = 0; i < 3; i++) { col.push(...rgb); hull.push(h); } };
+  const pos = [], col = [], hull = [], part = [];
+  let P = 0; // part being built
+  const tri = (a, b, c, rgb, h = 0) => { pos.push(...a, ...b, ...c); for (let i = 0; i < 3; i++) { col.push(...rgb); hull.push(h); part.push(P); } };
   const quad = (a, b, c, d, rgb, h) => { tri(a, b, c, rgb, h); tri(a, c, d, rgb, h); };
   const box = (x0, x1, y0, y1, z0, z1, rgb) => {
     const p = (x, y, z) => [x, y, z];
@@ -78,25 +84,47 @@ function boatGeometry() {
     quad(p(x1, y0, z1), p(x1, y0, z0), p(x1, y1, z0), p(x1, y1, z1), rgb);       // front
     quad(p(x0, y0, z0), p(x0, y0, z1), p(x0, y1, z1), p(x0, y1, z0), rgb);       // back
   };
-  const T = 0.12, K = -0.2;
-  const S0 = [-1, T, -0.27], S1 = [-1, T, 0.27], M0 = [0.42, T, -0.27], M1 = [0.42, T, 0.27], B = [1.08, T + 0.04, 0];
-  const s0 = [-0.94, K, -0.2], s1 = [-0.94, K, 0.2], m0 = [0.38, K, -0.2], m1 = [0.38, K, 0.2], b = [0.86, K, 0];
-  quad(S0, M0, m0, s0, [1, 1, 1], 1); quad(S1, s1, m1, M1, [1, 1, 1], 1);            // hull sides (instance colour)
-  tri(M0, B, b, [1, 1, 1], 1); tri(M0, b, m0, [1, 1, 1], 1);                          // the bow
-  tri(M1, m1, b, [1, 1, 1], 1); tri(M1, b, B, [1, 1, 1], 1);
-  quad(S0, s0, s1, S1, [1, 1, 1], 1);                                                  // stern
-  const deck = [0.82, 0.8, 0.74];
+  // hull: flat sides, a transom stern, a bow that narrows and rises a little
+  const T = 0.11, K = -0.16, Wd = 0.2, BOW = 0.72;
+  const S0 = [-1, T, -Wd], S1 = [-1, T, Wd], M0 = [BOW, T, -Wd], M1 = [BOW, T, Wd], B = [1.1, T + 0.07, 0];
+  const s0 = [-0.97, K, -Wd * 0.85], s1 = [-0.97, K, Wd * 0.85], m0 = [BOW - 0.05, K, -Wd * 0.85], m1 = [BOW - 0.05, K, Wd * 0.85], b = [0.98, K, 0];
+  const W = [1, 1, 1];
+  quad(S0, M0, m0, s0, W, 1); quad(S1, s1, m1, M1, W, 1);                        // sides (tinted per ship)
+  tri(M0, B, b, W, 1); tri(M0, b, m0, W, 1); tri(M1, m1, b, W, 1); tri(M1, b, B, W, 1); // bow
+  quad(S0, s0, s1, S1, W, 1);                                                    // transom
+  const stripe = [0.82, 0.22, 0.2], y0 = T - 0.035;                              // a red boot-top along the waterline line
+  quad([-1, y0, -Wd - 0.002], [BOW, y0, -Wd - 0.002], [BOW, y0 + 0.018, -Wd - 0.002], [-1, y0 + 0.018, -Wd - 0.002], stripe);
+  quad([BOW, y0, Wd + 0.002], [-1, y0, Wd + 0.002], [-1, y0 + 0.018, Wd + 0.002], [BOW, y0 + 0.018, Wd + 0.002], stripe);
+  const deck = [0.42, 0.44, 0.46];
   quad(S0, S1, M1, M0, deck); tri(M0, M1, B, deck);
-  box(-0.4, -0.1, T, 0.3, -0.21, 0.21, [0.95, 0.56, 0.22]);                           // containers
-  box(-0.06, 0.24, T, 0.3, -0.21, 0.21, [0.27, 0.57, 0.86]);
-  box(0.28, 0.5, T, 0.26, -0.19, 0.19, [0.96, 0.8, 0.3]);
-  box(-0.96, -0.52, T, 0.5, -0.22, 0.22, [0.97, 0.97, 0.97]);                         // bridge
-  box(-0.9, -0.62, 0.5, 0.56, -0.24, 0.24, [0.36, 0.42, 0.55]);                        // its roof and windows' shade
-  box(-0.84, -0.68, 0.56, 0.78, -0.08, 0.08, [0.92, 0.32, 0.27]);                     // funnel
+  box(-0.95, -0.62, T, 0.5, -0.17, 0.17, [0.96, 0.96, 0.94]);                    // bridge block
+  box(-0.97, -0.6, 0.5, 0.54, -0.2, 0.2, [0.9, 0.91, 0.9]);                       // bridge roof and wings (seen from above)
+  box(-0.62, -0.6, 0.38, 0.47, -0.17, 0.17, [0.18, 0.24, 0.34]);                  // bridge windows
+  box(-0.99, -0.88, 0.4, 0.66, -0.06, 0.06, [0.92, 0.3, 0.24]);                  // funnel
+  box(-0.99, -0.88, 0.66, 0.7, -0.06, 0.06, [0.12, 0.12, 0.14]);                 // its sooty top
+  // container ship: bays of stacked boxes, two rows across, uneven heights so it reads as cargo at a glance
+  P = 1;
+  const BOXES = [[0.93, 0.5, 0.2], [0.25, 0.52, 0.82], [0.85, 0.24, 0.22], [0.3, 0.68, 0.42], [0.96, 0.8, 0.28], [0.75, 0.77, 0.8], [0.55, 0.33, 0.6]];
+  let r = 7;
+  const rnd = () => (r = (r * 16807) % 2147483647) / 2147483647;
+  for (let x = -0.56; x < 0.66; x += 0.17) {
+    for (const [z0, z1] of [[-0.18, -0.005], [0.005, 0.18]]) {
+      const tiers = 1 + Math.floor(rnd() * 3);
+      for (let t = 0; t < tiers; t++) box(x, x + 0.155, T + t * 0.075, T + (t + 1) * 0.075 - 0.006, z0, z1, BOXES[Math.floor(rnd() * BOXES.length)]);
+    }
+  }
+  // tanker: a red-brown deck, a pipe run down the middle and a few manifolds
+  P = 2;
+  const tdeck = [0.55, 0.22, 0.18];
+  quad([-0.6, T + 0.004, -Wd + 0.01], [-0.6, T + 0.004, Wd - 0.01], [BOW, T + 0.004, Wd - 0.01], [BOW, T + 0.004, -Wd + 0.01], tdeck);
+  box(-0.58, 0.95, T, T + 0.04, -0.025, 0.025, [0.8, 0.8, 0.76]);
+  for (const x of [-0.3, 0.05, 0.4]) box(x, x + 0.08, T, T + 0.09, -0.12, 0.12, [0.82, 0.82, 0.78]);
+  box(0.62, 0.8, T, T + 0.08, -0.14, 0.14, [0.96, 0.96, 0.94]);                   // forecastle
   const g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
   g.setAttribute('aCol', new THREE.Float32BufferAttribute(col, 3));
   g.setAttribute('aHull', new THREE.Float32BufferAttribute(hull, 1));
+  g.setAttribute('aPart', new THREE.Float32BufferAttribute(part, 1));
   g.computeVertexNormals(); // non-indexed: flat, per face
   return g;
 }
@@ -105,7 +133,7 @@ function boatGeometry() {
 function wakeGeometry() {
   const pos = [], t = [], sd = [], idx = [], N = 10, Y = 0.02;
   for (let i = 0; i <= N; i++) {
-    const k = i / N, x = -0.9 - k * 2.6, half = 0.18 + 0.42 * Math.sqrt(k); // widens as it spreads out behind
+    const k = i / N, x = -0.95 - k * 3.4, half = 0.13 + 0.3 * Math.sqrt(k); // a long, narrow wake, widening slowly
     for (const s of [-1, 0, 1]) { pos.push(x, Y, s * half); t.push(k); sd.push(s); }
     if (i < N) for (const c of [0, 1]) { const a = i * 3 + c; idx.push(a, a + 3, a + 1, a + 1, a + 3, a + 4); }
   }
@@ -132,13 +160,14 @@ export class Ships {
     ROUTES.forEach((r, ri) => {
       for (let i = 0; i < r.ships; i++) {
         const k = (ri * 7 + i * 3) % 997;
-        this.ships.push({ lane: this.lanes[ri], u0: (i + 0.5 * ((k * 0.618) % 1)) / r.ships, dir: i % 2 ? -1 : 1, speed: SPEED * (0.85 + 0.3 * ((k * 0.377) % 1)) });
+        const tankers = /Gulf/.test(r.name) ? 0.8 : 0.25; // oil leaves the Gulf by tanker; elsewhere mostly containers
+        this.ships.push({ lane: this.lanes[ri], u0: (i + 0.5 * ((k * 0.618) % 1)) / r.ships, dir: i % 2 ? -1 : 1, speed: SPEED * (0.85 + 0.3 * ((k * 0.377) % 1)), tanker: ((k * 0.7071) % 1) < tankers });
       }
     });
     const mat = new THREE.ShaderMaterial({
       uniforms: { uScale: { value: 0.01 }, uLight: { value: LIGHT_DIR_VIEW }, uSun: SKY.uSun, uNight: SKY.uNight },
       vertexShader: /* glsl */`
-        attribute vec3 aCol; attribute float aHull;
+        attribute vec3 aCol; attribute float aHull; attribute float aPart; attribute float aKind;
         uniform float uScale; uniform vec3 uLight; uniform vec3 uSun; uniform float uNight;
         varying vec3 vCol;
         void main(){
@@ -146,6 +175,8 @@ export class Ships {
           vec3 c = (modelViewMatrix * vec4(at, 1.0)).xyz;
           float face = dot(normalize(normalMatrix * at), normalize(-c));
           if (face < 0.0) { gl_Position = vec4(2.0, 2.0, 2.0, 1.0); return; } // round the back of the globe: skip
+          // containers only on container ships (aKind 0), the tanker deck only on tankers (aKind 1)
+          if ((aPart > 0.5 && aPart < 1.5 && aKind > 0.5) || (aPart > 1.5 && aKind < 0.5)) { gl_Position = vec4(2.0, 2.0, 2.0, 1.0); return; }
           vec4 mv = modelViewMatrix * instanceMatrix * vec4(position * uScale, 1.0);
           vec3 n = normalize(normalMatrix * mat3(instanceMatrix) * normal);
           vec3 rgb = mix(aCol, instanceColor, aHull) * (0.6 + 0.48 * max(dot(n, uLight), 0.0));
@@ -157,11 +188,13 @@ export class Ships {
         varying vec3 vCol;
         void main(){ gl_FragColor = vec4(vCol, 1.0); }`,
     });
-    this.mesh = new THREE.InstancedMesh(boatGeometry(), mat, this.ships.length);
+    const geo = boatGeometry();
+    geo.setAttribute('aKind', new THREE.InstancedBufferAttribute(new Float32Array(this.ships.map(s => (s.tanker ? 1 : 0))), 1));
+    this.mesh = new THREE.InstancedMesh(geo, mat, this.ships.length);
     this.mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
     const c = new THREE.Color();
     // the shader writes colours as they are (no output conversion), so hand it sRGB values
-    this.ships.forEach((s, i) => this.mesh.setColorAt(i, c.set(HULLS[i % HULLS.length]).convertLinearToSRGB()));
+    this.ships.forEach((s, i) => { const list = s.tanker ? TANKER_HULLS : HULLS; this.mesh.setColorAt(i, c.set(list[i % list.length]).convertLinearToSRGB()); });
     this.mesh.frustumCulled = false;
     this.mesh.renderOrder = 2.5;       // over the sea and the fills, under highlights
     // the wakes: soft foam fanning out behind each ship and fading away (shares the ships' matrices; one more draw)
@@ -188,9 +221,9 @@ export class Ships {
         void main(){
           float s = abs(vS);
           float arms = exp(-pow((s - 0.78) / 0.2, 2.0));                     // the two spreading wake lines
-          float churn = exp(-s * s * 7.0) * (1.0 - smoothstep(0.0, 0.55, vT));  // white water right behind the stern
+          float churn = exp(-s * s * 9.0) * (1.0 - smoothstep(0.0, 0.8, vT));   // the propeller's white water, straight behind
           float fleck = 0.75 + 0.25 * sin(vT * 26.0 - uTime * 3.0 + vSeed * 40.0 + vS * 3.0); // foam drifting back
-          float a = (0.5 * arms + 0.7 * churn) * fleck * pow(1.0 - vT, 1.6) * smoothstep(0.0, 0.08, vT) * vDim;
+          float a = (0.35 * arms + 0.75 * churn) * fleck * pow(1.0 - vT, 1.6) * smoothstep(0.0, 0.08, vT) * vDim;
           gl_FragColor = vec4(0.92, 0.97, 1.0, a * 0.75 * uShow);
         }`,
     });

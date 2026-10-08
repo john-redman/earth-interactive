@@ -14,7 +14,7 @@ const CORE = [
   'js/pin.js', 'js/leaderboard.js', 'js/net/api.js', 'js/net/profanity.js', 'js/net/names.js', 'js/sheet-drag.js', 'js/app-links.js', 'js/site.js', 'js/analytics.js',
   'css/leaderboard.css', 'css/app-links.css',
   'vendor/fonts/plus-jakarta-sans/plus-jakarta-sans-latin.woff2', 'vendor/fonts/plus-jakarta-sans/plus-jakarta-sans-latin-ext.woff2',
-  'js/music.js', 'js/sfx.js', 'js/miss-line.js', 'js/currents.js', 'js/popclock.js', 'js/ships.js', 'js/clouds.js', 'js/site-menu.js', 'js/daily-country.js', 'js/share-image.js',
+  'js/music.js', 'js/sfx.js', 'js/miss-line.js', 'js/currents.js', 'js/popclock.js', 'js/ships.js', 'js/clouds.js', 'js/site-menu.js', 'js/intro.js', 'js/daily-country.js', 'js/share-image.js',
   'data/world.js', 'data/ocean.png',
   'vendor/three/three.module.min.js', 'vendor/three/controls/OrbitControls.js',
   'vendor/three/lines/LineMaterial.js', 'vendor/three/lines/LineSegments2.js', 'vendor/three/lines/LineSegmentsGeometry.js',

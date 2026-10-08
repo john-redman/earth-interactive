@@ -1,11 +1,11 @@
-// Optional background music ("Celestial Drift"), off by default. The choice is remembered; because browsers
-// only start audio after a tap, a remembered "on" resumes with the first touch of the page.
+// Background music ("Celestial Drift"), on by default for a first visit. The choice is remembered; because
+// browsers only start audio after a tap or key press, "on" starts with the first one on the page.
 const SRC = new URL('../sounds/celestial-drift.mp3', import.meta.url).href;
 const VOLUME = 0.32;
 const KEY = 'ei-music';
 
 const store = {
-  get() { try { return localStorage.getItem(KEY) === '1'; } catch { return false; } },
+  get() { try { const v = localStorage.getItem(KEY); return v === null ? true : v === '1'; } catch { return true; } }, // nothing stored yet: on
   set(on) { try { localStorage.setItem(KEY, on ? '1' : '0'); } catch { /* storage unavailable */ } },
 };
 
@@ -36,8 +36,11 @@ export function createMusic(button) {
   }
   button.addEventListener('click', () => { on = !on; store.set(on); paint(); if (on) play(); else stop(); });
   paint();
-  // remembered "on": start with the first tap anywhere (autoplay rules)
-  if (on) addEventListener('pointerdown', () => { if (on) play(); }, { once: true, capture: true });
+  // "on": start with the first tap or key press anywhere (autoplay rules)
+  if (on) {
+    const start = () => { removeEventListener('pointerdown', start, true); removeEventListener('keydown', start, true); if (on) play(); };
+    addEventListener('pointerdown', start, true); addEventListener('keydown', start, true);
+  }
   // pause in background tabs, pick up again on return
   document.addEventListener('visibilitychange', () => {
     if (!audio || !on) return;

@@ -70,7 +70,12 @@ export const VIEWS = {
       RUS: { note: 'Shown with Crimea and parts of Donetsk & Luhansk. ⚠️ Source polygons follow the pre-2022 line — the current line of control extends further.' },
       SAH: { name: 'Western Sahara (Polisario-held)', kind: 'limited', note: 'Area east of the Moroccan berm, held by the Polisario Front / SADR.' },
       MAR: { note: 'Shown with the part of Western Sahara it administers.' },
-      KOS: { kind: 'limited' }, TWN: { kind: 'limited' }, CYN: { kind: 'limited' }, SOL: { kind: 'limited' },
+      KOS: { kind: 'limited' }, TWN: { kind: 'limited' },
+      // population sources count Northern Cyprus and Somaliland twice when they stand apart: say so (COUNTED_WITHIN)
+      CYN: { kind: 'limited', note: 'Its population (a separate estimate) is also part of the figure for Cyprus, which covers the whole island.' },
+      SOL: { kind: 'limited', note: 'Its population (a separate estimate) is also part of the figure for Somalia, which covers the whole country.' },
+      CYP: { note: 'Population and GDP figures cover the whole island, including Northern Cyprus, which is shown separately here.' },
+      SOM: { note: 'Population and GDP figures cover all of Somalia, including Somaliland, which is shown separately here.' },
       PSX: { kind: 'limited' },
     },
   },
@@ -82,10 +87,20 @@ export const VIEWS = {
     merge: {},
     overlays: 'ALL_DISPUTED', // every overlay becomes its own neutral "disputed" unit
     units: {
-      KOS: { kind: 'limited' }, TWN: { kind: 'limited' }, CYN: { kind: 'limited' }, SOL: { kind: 'limited' },
+      KOS: { kind: 'limited' }, TWN: { kind: 'limited' },
+      CYN: { kind: 'limited', note: 'Its population (a separate estimate) is also part of the figure for Cyprus, which covers the whole island.' },
+      SOL: { kind: 'limited', note: 'Its population (a separate estimate) is also part of the figure for Somalia, which covers the whole country.' },
+      CYP: { note: 'Population and GDP figures cover the whole island, including Northern Cyprus, which is shown separately here.' },
+      SOM: { note: 'Population and GDP figures cover all of Somalia, including Somaliland, which is shown separately here.' },
       PSX: { kind: 'limited' }, SAH: { kind: 'limited', name: 'Western Sahara (Polisario-held)' }, KAS: { kind: 'disputed' },
     },
   },
 };
 
 export const DEFAULT_VIEW = 'defacto';
+
+/**
+ * Units whose population and GDP figures are already part of another unit's (the sources count the whole island /
+ * country). Totals skip them so nobody is counted twice; their cards say so (notes above).
+ */
+export const COUNTED_WITHIN = { CYN: 'CYP', SOL: 'SOM' };

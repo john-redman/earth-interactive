@@ -19,6 +19,10 @@ const MODES = {
   daily:   { label: 'Daily Challenge', count: 5, tiers: [400e3, 150e3, 50e3, 15e3, 2e3] },
 };
 
+/** How long a result stays up before the game moves on (ms): a miss has a line to follow and a distance to read. */
+const TAP = matchMedia('(pointer: coarse)').matches ? 'Tap' : 'Click';
+export const AUTO_MS = { right: 2600, miss: 5200, shown: 4200 };
+
 /** Points for a miss fall off with distance; a hint halves the maximum. */
 const pointsFor = (km, hinted) => Math.round((hinted ? 500 : 1000) * Math.exp(-km / 1500));
 const square = pts => (pts >= 1000 ? 'perfect' : pts >= 500 ? 'close' : pts >= 100 ? 'near' : 'miss');
@@ -67,7 +71,7 @@ export function createQuiz({ data, layer, globe, flyTo, onExit, onMode, onMiss, 
         <button class="qz-x" type="button" aria-label="Quit game">✕</button></div>
       <div class="qz-ask"><span>Find</span><b>${esc(t.unit.n)}</b></div>
       <div class="qz-dots">${S.qs.map((_, i) => `<i class="${i < S.results.length ? square(S.results[i].pts) : i === S.i ? 'now' : ''}"></i>`).join('')}</div>
-      <p class="qz-msg" aria-live="polite">Click it on the globe. You can spin and zoom first.</p>
+      <p class="qz-msg" aria-live="polite">${TAP} it on the globe. You can spin and zoom first.</p>
       <div class="qz-act"><button class="btn small ghost" type="button" data-a="hint">Hint (½ points)</button><button class="btn small ghost" type="button" data-a="skip">Show me</button></div>`;
     el.hidden = false; el.classList.remove('in'); void el.offsetWidth; el.classList.add('in');
     el.querySelector('.qz-x').onclick = exit;
@@ -114,9 +118,14 @@ export function createQuiz({ data, layer, globe, flyTo, onExit, onMode, onMiss, 
     el.querySelector('.qz-score').textContent = int.format(total()) + ' pts';
     const dots = el.querySelectorAll('.qz-dots i'); dots[S.i].className = square(pts);
     const last = S.i === S.qs.length - 1;
-    el.querySelector('.qz-act').innerHTML = `<button class="btn small primary" type="button" data-a="next">${last ? 'See results' : 'Next country'} →</button>`;
-    el.querySelector('[data-a="next"]').onclick = next;
-    el.querySelector('[data-a="next"]').focus({ preventScroll: true });
+    // the result shows for a moment, then the game moves on by itself; the button fills up as the timer, can be
+    // pressed to go on at once, and pointing at the panel holds it (CSS pauses the fill)
+    const ms = o?.key === t.key ? AUTO_MS.right : point ? AUTO_MS.miss : AUTO_MS.shown;
+    el.querySelector('.qz-act').innerHTML = `<button class="btn small primary qz-next" type="button" data-a="next" style="--auto:${ms}ms"><span class="qz-fill" aria-hidden="true"></span><span>${last ? 'See results' : 'Next country'} →</span></button>`;
+    const btn = el.querySelector('[data-a="next"]');
+    btn.onclick = next;
+    btn.querySelector('.qz-fill').addEventListener('animationend', () => { if (S?.answered && !S.finished) next(); });
+    btn.focus({ preventScroll: true });
   }
 
   function next() {

@@ -227,6 +227,28 @@ for (const [dev, vp, touch] of [['desktop', { width: 1280, height: 800 }, false]
     ok('tapping elsewhere closes it', await until(() => !document.getElementById('site-links').classList.contains('open')));
   });
 
+  await t('first visit, keyboard select, game auto-advance', async () => {
+    await go(); await E(() => { try { localStorage.removeItem('ei-intro'); localStorage.removeItem('ei-music'); localStorage.removeItem('ei-tip-tag'); } catch {} });
+    await go();
+    ok('first visit: the finger shows how to spin', await vis('.intro-hand'));
+    ok('first visit: music is on (starts with the first tap)', await E(() => document.getElementById('music-toggle').getAttribute('aria-pressed') === 'true'));
+    if (!touch) {
+      await E(() => { const X = window.EarthInteractive; X.globe.autoRotate = false; X.spin.stop(); X.globe.flyTo(X.compare.anchorFor(X.layer.get('BRA')).clone(), 2.4, 1); });
+      await until(() => !window.EarthInteractive.globe.flight);
+      await E(() => document.getElementById('globe').focus()); await p.keyboard.press('Enter');
+      ok('Enter on the globe selects the country in the middle', await until(() => document.querySelector('#pin-tag b')?.textContent === 'Brazil'));
+      ok('…announced for screen readers, with a one-time tip', await until(() => /Brazil selected/.test(document.getElementById('sr-live').textContent)) && await vis('.tag-tip'));
+      ok('the finger has gone after the first key press', await until(() => !document.querySelector('.intro-hand:not(.out)')));
+    }
+    await E(() => window.EarthInteractive.quiz.start('classic'));
+    await until(() => document.querySelector('.qz-prog')?.textContent === '1 / 10');
+    await E(() => { const X = window.EarthInteractive, w = X.layer.view.objects.find(o => o.unit.t === 'country'); X.quiz.answer(w, X.compare.anchorFor(w).clone()); });
+    ok('a result shows a filling Next button', await until(() => !!document.querySelector('.qz-next .qz-fill')));
+    if (!touch) await p.mouse.move(2, 2); // not over the panel (pointing at it holds the timer)
+    ok('…and the game moves on by itself', await until(() => document.querySelector('.qz-prog')?.textContent === '2 / 10', null, 60000));
+    await E(() => window.EarthInteractive.quiz.exit());
+  });
+
   await t('lenses', async () => {
     await go('?c=IND');
     for (const k of ['pop', 'density', 'gdppc', 'area']) {

@@ -6,6 +6,7 @@ export function mountSiteMenu(btn, nav) {
   const isOpen = () => nav.classList.contains('open');
   function set(open, { focus = false } = {}) {
     nav.classList.toggle('open', open);
+    document.body.classList.toggle('menu-open', open); // the population strip steps aside
     btn.setAttribute('aria-expanded', String(open));
     if (open && focus) nav.querySelector('a:not([hidden])')?.focus({ preventScroll: true });
   }

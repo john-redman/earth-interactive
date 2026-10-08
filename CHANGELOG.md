@@ -5,6 +5,10 @@ All notable changes to EarthInteractive are documented here.
 ## [Unreleased]
 
 ### Added
+- **First visit**: a finger shows how to spin the globe, music starts on (with your first tap), and after your first country a one-line tip explains Move and Compare.
+- **Games move on by themselves**: the result shows for a moment while the Next button fills up, then the next country comes; press Next to go on at once, or point at the panel to hold it.
+- **Keyboard and screen readers**: press Enter on the globe to select the country in the middle of the view; selections and comparison results are announced.
+- **No 3D? Still useful**: if the browser can't draw the globe (or the graphics memory is taken back), you get links to the country pages and comparisons instead of a blank screen.
 - **Arrow keys move a lifted country** (Move or Compare): it glides up, down, left and right as seen on screen; hold Shift to go faster. In a comparison, 1 and 2 choose which piece.
 - **Ships**: tiny cartoon boats (with containers, a white bridge, a red funnel and a little wake) sail the main sea lanes between the big ports: Asia to Europe through Suez and round the Cape, across the Pacific and the Atlantic, through Panama, out of the Gulf and more. One instanced draw call for all of them, on every device.
 - **Clouds** (desktop): very light clouds drift slowly over the open ocean with the prevailing winds and thin out before they reach land; they pass over small islands instead of swerving round them.
@@ -28,6 +32,11 @@ All notable changes to EarthInteractive are documented here.
 - Escape (and the app's back button) closes search from anywhere; the screams pause when the tab is hidden; reduced motion freezes the water patches and the star twinkle; links accept lower-case country codes (`?c=fra`, `?compare=fra,esp`).
 
 ### Changed
+- **Spinning feels like a real desk globe**: a swipe on a spinning globe speeds it up instead of stopping and re-throwing it; resting a finger, tapping, or dragging the other way still stops it. Arrow keys now turn it smoothly, build momentum only when held, and stop quickly after a short press.
+- **Ships are proper cargo ships**: container ships with stacked boxes and tankers with a pipe deck, a white bridge and funnel at the stern, and a long straight wake.
+- **Ocean and current names stay readable**: they print over ships and clouds (never over land).
+- **Cyprus and Somalia**: in the De Facto and Neutral views, the cards explain that the population figures for Cyprus and Somalia include Northern Cyprus and Somaliland, which are shown separately; totals no longer count those people twice.
+- **Faster start**: all scripts are requested at once instead of one level at a time.
 - **Phone footer**: the site links fold into a small menu that opens from the EarthInteractive name (a down arrow marks it), so the footer is one tidy row.
 - **Ships**: smaller from afar and bigger up close (they grow with the globe), and a softer wake: a fan of foam that fades behind each ship, shown once ships are big enough to read.
 - **Faster globe, especially on phones**: all countries of a border view now draw in 3 draw calls instead of about 400 (fills and borders merged, styled per country on the GPU). Nothing looks different.

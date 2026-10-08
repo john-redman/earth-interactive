@@ -298,7 +298,11 @@ export class Currents {
     lg.setAttribute('aKind', new THREE.Float32BufferAttribute(L.aKind, 1));
     lg.setIndex(L.idx);
     this.labelMat = new THREE.ShaderMaterial({
-      transparent: true, depthWrite: false,
+      // drawn after the ships and clouds so the type stays readable, but only where no country fill has marked the
+      // stencil (fills write 1 on land, compare pieces 100+), so names never print over land or a lifted piece
+      transparent: true, depthWrite: false, depthTest: false,
+      stencilWrite: true, stencilRef: 0, stencilFunc: THREE.EqualStencilFunc,
+      stencilFail: THREE.KeepStencilOp, stencilZFail: THREE.KeepStencilOp, stencilZPass: THREE.KeepStencilOp,
       uniforms: { uMap: { value: tex }, uMinor: { value: 0 }, uMajor: { value: 0 }, uOcean: { value: 1 } },
       vertexShader: SHARED_VERT.replace('varying vec2 vUv;', 'attribute float aKind; varying float vKind; varying vec2 vUv;')
         .replace('vUv = uv;', 'vUv = uv; vKind = aKind;'),
@@ -316,7 +320,7 @@ export class Currents {
         }`,
     });
     const labels = new THREE.Mesh(lg, this.labelMat);
-    labels.renderOrder = -4;
+    labels.renderOrder = 2.95;       // over ships (2.5) and clouds (2.9), under highlights (3); the stencil keeps it off land
     this.group.add(labels);
   }
 

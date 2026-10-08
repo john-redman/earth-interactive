@@ -9,7 +9,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { geoArea } from 'd3-geo';
 import pc from 'polygon-clipping';
-import { VIEWS, DEFAULT_VIEW } from './views.config.mjs';
+import { VIEWS, DEFAULT_VIEW, COUNTED_WITHIN } from './views.config.mjs';
 const here = path.dirname(fileURLToPath(import.meta.url));
 const read = f => JSON.parse(fs.readFileSync(path.join(here, 'sources', f), 'utf8'));
 
@@ -209,6 +209,9 @@ for (const [vk, view] of Object.entries(VIEWS)) {
   out.views[vk] = { label: view.label, blurb: view.blurb, units: list };
   console.log(`${vk}: ${list.length} units`);
 }
+
+// population/GDP already counted in another unit's figure (totals skip these)
+for (const [k, parent] of Object.entries(COUNTED_WITHIN)) if (info[k]) info[k].within = parent;
 
 // ---------- encode geometry (delta-encoded integers) ----------
 function encRing(ring) {
