@@ -56,6 +56,8 @@ export class Thrills {
     this.globe = globe; this.spin = spin;
     this.ctx = null; this.ride = null; this.screamed = false; this.onFirstScream = null; this.silentSince = 0;
     try { this.muted = localStorage.getItem('ei-muted') === '1'; } catch { this.muted = false; }
+    // a hidden tab stops the render loop that fades the screams out: pause the audio rather than scream on unseen
+    document.addEventListener('visibilitychange', () => { if (document.hidden && this.ctx?.state === 'running') this.ctx.suspend(); });
   }
 
   /** Browsers only allow audio after a user gesture — call this from pointerdown. */

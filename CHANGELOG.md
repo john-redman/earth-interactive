@@ -15,6 +15,12 @@ All notable changes to EarthInteractive are documented here.
 - **Compare → Share image**: a square image of both countries at true size with the ratio, population and link, shared via the share sheet or downloaded.
 - **Stars**: a light scatter of soft, slowly twinkling stars.
 
+### Fixed
+- **Pins and game distances land on the country's own land**: 34 countries (e.g. Japan, whose main island curves round the sea) had their pin, fly-to point and "N km away" distance in the sea or a neighbour.
+- **Enter to confirm a guess** no longer skips straight past the result to the next question.
+- **Phone app build** now includes the sounds.
+- Escape (and the app's back button) closes search from anywhere; the screams pause when the tab is hidden; reduced motion freezes the water patches and the star twinkle; links accept lower-case country codes (`?c=fra`, `?compare=fra,esp`).
+
 ### Changed
 - **Ocean**: the swell lines are gone. A few crusty, snowy white crests are scattered at random (each its own shape, size and angle, lit with a soft shadow), more along the stormy tracks.
 - **Labels**: current names sit on one smooth arc with a proper arrow and a soft halo; Arctic and Southern Ocean names run straight across open water instead of bending round the pole.

@@ -18,7 +18,7 @@ const www = path.join(appDir, 'www');
 
 // Keep in step with .github/workflows/pages.yml (minus sw.js).
 const FILES = ['index.html', 'manifest.webmanifest', 'og-image.png', 'LICENSE', 'THIRD_PARTY_NOTICES.md'];
-const DIRS = ['css', 'js', 'data', 'vendor', 'icons'];
+const DIRS = ['css', 'js', 'data', 'vendor', 'icons', 'sounds'];
 
 fs.rmSync(www, { recursive: true, force: true });
 fs.mkdirSync(www, { recursive: true });

@@ -23,7 +23,7 @@ const MODES = {
 const pointsFor = (km, hinted) => Math.round((hinted ? 500 : 1000) * Math.exp(-km / 1500));
 const square = pts => (pts >= 1000 ? 'perfect' : pts >= 500 ? 'close' : pts >= 100 ? 'near' : 'miss');
 
-export function createQuiz({ data, layer, globe, flyTo, onExit, onMode, onMiss, onResult }) {
+export function createQuiz({ data, layer, globe, flyTo, onExit, onMode, onMiss, onResult, anchorOf = o => o.g.centroid }) {
   const el = document.getElementById('quiz');
   // countries that exist as a country in all three border views → questions work whatever view you're in
   const viewKeys = Object.values(data.views).map(v => new Map(v.units.map(u => [u.k, u])));
@@ -98,14 +98,14 @@ export function createQuiz({ data, layer, globe, flyTo, onExit, onMode, onMiss, 
       layer.setMark(t.key, 'good');
       msg = `<span class="qz-ok">Correct!</span> That's ${esc(t.unit.n)}. <b>+${pts}</b>`;
     } else {
-      const km = point ? Math.round(point.clone().normalize().angleTo(t.g.centroid) * KM) : null;
+      const km = point ? Math.round(point.clone().normalize().angleTo(anchorOf(t)) * KM) : null; // to a point on its land
       pts = km == null ? 0 : pointsFor(km, S.hinted);
       if (o) layer.setMark(o.key, 'bad');
       layer.setMark(t.key, 'target');
       msg = km == null
         ? `Here it is: <b>${esc(t.unit.n)}</b>, outlined in white.`
         : `<span class="qz-no">Not quite.</span> ${o ? `That's ${esc(o.unit.n)}. ` : ''}${esc(t.unit.n)} is about <b>${int.format(km)} km</b> away, where the line leads. <b>+${pts}</b>`;
-      if (point) onMiss?.(point, t.g.centroid, km); // a line from your guess to the answer
+      if (point) onMiss?.(point, anchorOf(t), km); // a line from your guess to the answer
       flyTo(t, point);
     }
     if (o || point) onResult?.(pts >= 1000 || o?.key === t.key); // only for real guesses, not "Show me"
