@@ -1,7 +1,8 @@
 // Tiny cartoon ships sailing the main sea lanes between the big ports. Purely decorative and cheap: one low-poly
-// boat (hull, deck, a few containers, a white bridge, a funnel and a little wake) drawn for every ship in a single
-// instanced draw call, with flat baked shading. Ships keep about the same size on screen at any zoom, sail on the
-// right of their lane, shrink into port at each end and turn round. Fixed to the Earth; nothing is clickable.
+// boat (hull, deck, a few containers, a white bridge, a funnel) drawn for every ship in a single instanced draw
+// call, with flat baked shading, plus one more for their soft foam wakes. Ships are small from afar and grow a
+// little as you zoom in, sail on the right of their lane, shrink into port at each end and turn round. Fixed to the
+// Earth; nothing is clickable.
 import * as THREE from 'three';
 import { lonLatToVec3 } from './geo.js';
 import { LIGHT_DIR_VIEW } from './globe.js';
@@ -56,7 +57,9 @@ export const ROUTES = [
     [-72.0, -33.0]] },
 ];
 
-const SHIP_PX = [8, 14];       // length on screen: about 4% of the globe's radius, within these bounds
+// length on screen: 6 px with the whole globe in view (radius ~335 px), growing with the globe as you zoom in, so they
+// stay small from afar and are worth a look up close (~35 px at the closest zoom)
+const SHIP_PX = { base: 6, radius: 335, power: 1, min: 4, max: 40 };
 const SPEED = 0.0062;          // radians a second (cosmetic: a lane crosses the globe in a few minutes)
 const LANE = 0.0012;           // ships keep right of the lane's centre (radians; narrow straits leave little room)
 const HULLS = ['#c8423b', '#2f5f9e', '#2e7d5b', '#d9822b', '#3a3f58', '#8a3e8f'];
@@ -90,14 +93,27 @@ function boatGeometry() {
   box(-0.96, -0.52, T, 0.5, -0.22, 0.22, [0.97, 0.97, 0.97]);                         // bridge
   box(-0.9, -0.62, 0.5, 0.56, -0.24, 0.24, [0.36, 0.42, 0.55]);                        // its roof and windows' shade
   box(-0.84, -0.68, 0.56, 0.78, -0.08, 0.08, [0.92, 0.32, 0.27]);                     // funnel
-  const W = 0.03, foam = [0.85, 0.93, 1];                                             // a little V of wake
-  tri([-0.98, W, -0.16], [-2.3, W, -0.62], [-0.98, W, -0.05], foam);
-  tri([-0.98, W, 0.05], [-2.3, W, 0.62], [-0.98, W, 0.16], foam);
   const g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
   g.setAttribute('aCol', new THREE.Float32BufferAttribute(col, 3));
   g.setAttribute('aHull', new THREE.Float32BufferAttribute(hull, 1));
   g.computeVertexNormals(); // non-indexed: flat, per face
+  return g;
+}
+
+/** The wake: a flat strip behind the stern (aT 0 at the stern → 1 at the end, aS −1…1 across), shaded in the shader. */
+function wakeGeometry() {
+  const pos = [], t = [], sd = [], idx = [], N = 10, Y = 0.02;
+  for (let i = 0; i <= N; i++) {
+    const k = i / N, x = -0.9 - k * 2.6, half = 0.18 + 0.42 * Math.sqrt(k); // widens as it spreads out behind
+    for (const s of [-1, 0, 1]) { pos.push(x, Y, s * half); t.push(k); sd.push(s); }
+    if (i < N) for (const c of [0, 1]) { const a = i * 3 + c; idx.push(a, a + 3, a + 1, a + 1, a + 3, a + 4); }
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('aT', new THREE.Float32BufferAttribute(t, 1));
+  g.setAttribute('aS', new THREE.Float32BufferAttribute(sd, 1));
+  g.setIndex(idx);
   return g;
 }
 
@@ -148,22 +164,59 @@ export class Ships {
     this.ships.forEach((s, i) => this.mesh.setColorAt(i, c.set(HULLS[i % HULLS.length]).convertLinearToSRGB()));
     this.mesh.frustumCulled = false;
     this.mesh.renderOrder = 2.5;       // over the sea and the fills, under highlights
-    globe.world.add(this.mesh);
+    // the wakes: soft foam fanning out behind each ship and fading away (shares the ships' matrices; one more draw)
+    const wakeMat = new THREE.ShaderMaterial({
+      transparent: true, depthWrite: false,
+      uniforms: { uScale: mat.uniforms.uScale, uTime: { value: 0 }, uShow: { value: 0 }, uSun: SKY.uSun, uNight: SKY.uNight },
+      vertexShader: /* glsl */`
+        attribute float aT; attribute float aS;
+        uniform float uScale; uniform vec3 uSun; uniform float uNight;
+        varying float vT; varying float vS; varying float vDim; varying float vSeed;
+        void main(){
+          vec3 at = instanceMatrix[3].xyz;
+          vec3 c = (modelViewMatrix * vec4(at, 1.0)).xyz;
+          float face = dot(normalize(normalMatrix * at), normalize(-c));
+          if (face < 0.0) { gl_Position = vec4(2.0, 2.0, 2.0, 1.0); return; }
+          vT = aT; vS = aS; vSeed = fract(at.x * 53.1 + at.z * 17.7);
+          float day = smoothstep(-0.05, 0.1, dot(normalize(at), uSun));
+          vDim = mix(1.0, 0.25 + 0.75 * day, uNight) * smoothstep(0.0, 0.15, face);
+          gl_Position = projectionMatrix * modelViewMatrix * instanceMatrix * vec4(position * uScale, 1.0);
+        }`,
+      fragmentShader: /* glsl */`
+        uniform float uTime; uniform float uShow;
+        varying float vT; varying float vS; varying float vDim; varying float vSeed;
+        void main(){
+          float s = abs(vS);
+          float arms = exp(-pow((s - 0.78) / 0.2, 2.0));                     // the two spreading wake lines
+          float churn = exp(-s * s * 7.0) * (1.0 - smoothstep(0.0, 0.55, vT));  // white water right behind the stern
+          float fleck = 0.75 + 0.25 * sin(vT * 26.0 - uTime * 3.0 + vSeed * 40.0 + vS * 3.0); // foam drifting back
+          float a = (0.5 * arms + 0.7 * churn) * fleck * pow(1.0 - vT, 1.6) * smoothstep(0.0, 0.08, vT) * vDim;
+          gl_FragColor = vec4(0.92, 0.97, 1.0, a * 0.75 * uShow);
+        }`,
+    });
+    this.wake = new THREE.InstancedMesh(wakeGeometry(), wakeMat, this.ships.length);
+    this.wake.instanceMatrix = this.mesh.instanceMatrix;
+    this.wake.frustumCulled = false;
+    this.wake.renderOrder = 2.45;
+    globe.world.add(this.wake, this.mesh);
     this._m = new THREE.Matrix4(); this._f = new THREE.Vector3(); this._s = new THREE.Vector3(); this._p = new THREE.Vector3();
     this.t0 = performance.now();
   }
 
   /** Every frame: sail on and keep the boats a steady size on screen. */
   tick(now) {
-    this.mesh.visible = !document.body.classList.contains('lens-on');
+    this.mesh.visible = this.wake.visible = !document.body.classList.contains('lens-on');
     if (!this.mesh.visible) return;
     const g = this.globe, cam = g.camera;
     const D = cam.position.length(), tanH = Math.tan(cam.fov * Math.PI / 360), H = Math.max(1, g.size.y);
     const perPx = 2 * tanH * Math.max(0.05, D - 1) / H;                       // world units per pixel at the sea
     const radiusPx = H / 2 / tanH / Math.sqrt(Math.max(1e-4, D * D - 1));     // the globe's radius on screen
-    const px = Math.min(SHIP_PX[1], Math.max(SHIP_PX[0], radiusPx * 0.04));
+    const P0 = SHIP_PX, px = Math.min(P0.max, Math.max(P0.min, P0.base * (radiusPx / P0.radius) ** P0.power));
     this.mesh.material.uniforms.uScale.value = px / 2 * perPx;
     const t = reduced.matches ? 0 : (now - this.t0) / 1000;
+    this.wake.material.uniforms.uTime.value = t;
+    this.wake.material.uniforms.uShow.value = Math.min(1, Math.max(0, (px - 9) / 8)); // wakes only once ships are big enough to read
+    this.wake.visible = px > 9;
     const m = this._m, F = this._f, S = this._s, P = this._p;
     this.ships.forEach((s, i) => {
       const { pts, len } = s.lane, n = pts.length - 1;
