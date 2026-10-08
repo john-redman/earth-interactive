@@ -108,7 +108,7 @@ for (const [dev, vp, touch] of [['desktop', { width: 1280, height: 800 }, false]
     // drag with a real pointer; `hold` waits for the press-and-hold lift before moving
     const dragFrom = async (pt, dx, dy, hold = false) => {
       if (touch) { await touchTo('touchStart', pt); } else { await p.mouse.move(pt.x, pt.y); await p.mouse.down(); }
-      const lifted = hold ? await until(() => !!window.EarthInteractive.compare.drag, null, 8000) : true;
+      const lifted = hold ? await until(() => !!window.EarthInteractive.compare.drag, null, 30000) : true; // headless frames are slow, so the hold timer fires late
       for (let i = 1; i <= 6; i++) { const q = { x: pt.x + dx * i / 6, y: pt.y + dy * i / 6 }; if (touch) await touchTo('touchMove', q); else await p.mouse.move(q.x, q.y); }
       if (touch) await touchTo('touchEnd'); else await p.mouse.up();
       return lifted;
