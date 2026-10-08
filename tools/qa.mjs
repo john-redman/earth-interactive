@@ -1,6 +1,6 @@
 /**
  * Broad QA run: real taps on the globe, cards, compare (UI + drag + share image), free move (tag + hold), the
- * world population counter, lenses, search, keyboard, games
+ * world population counter, ships/clouds/song link, lenses, search, keyboard, games
  * (taps, Confirm/Enter, miss line, results, daily), toggles, deep links, resizes, overlaps and a leak check, on
  * desktop and phone. Slower and wider than tools/smoke.mjs (~20 min headless at ~1 fps).
  *   npm run dev   (or any static server), then   BASE=http://localhost:5173/ npm run qa [desktop|phone]
@@ -177,6 +177,20 @@ for (const [dev, vp, touch] of [['desktop', { width: 1280, height: 800 }, false]
     await E(() => document.querySelector('#pin-tag [data-act="info"]').click());
     await until(() => document.body.classList.contains('card-open')); await p.waitForTimeout(500);
     ok('steps aside for the card', !(await E(() => document.getElementById('popclock').classList.contains('on'))));
+  });
+
+  await t('ships, clouds and the song link', async () => {
+    await go();
+    const at = () => E(() => { const m = window.EarthInteractive.ships.mesh, a = m.instanceMatrix.array; return { n: m.count, x: a[12], y: a[13], z: a[14] }; });
+    const s0 = await at(); await p.waitForTimeout(3000); const s1 = await at();
+    ok('ships sail (one instanced mesh)', s0.n > 50 && Math.hypot(s1.x - s0.x, s1.y - s0.y, s1.z - s0.z) > 1e-5, { s0, s1 });
+    ok(touch ? 'no clouds on phones' : 'clouds on desktop', await E(() => !!window.EarthInteractive.clouds) === !touch);
+    ok('no wave crests left in the ocean shader', await E(() => { let src = ''; window.EarthInteractive.globe.scene.traverse(o => { if (o.material?.fragmentShader?.includes('the tone of the water')) src = o.material.fragmentShader; }); return !!src && !/crest/i.test(src); }));
+    await E(() => window.EarthInteractive.setLens('pop'));
+    ok('a data lens hides the ships', await until(() => !window.EarthInteractive.ships.mesh.visible));
+    await E(() => window.EarthInteractive.setLens('none'));
+    ok('…and brings them back', await until(() => window.EarthInteractive.ships.mesh.visible));
+    ok('"We love the Earth" links to the video', await E(() => [...document.querySelectorAll('.site-links a')].some(a => /youtube\.com\/watch\?v=pvuN_WvF1to/.test(a.href) && a.target === '_blank' && /love the Earth/.test(a.textContent))));
   });
 
   await t('lenses', async () => {

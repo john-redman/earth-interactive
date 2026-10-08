@@ -357,6 +357,7 @@ function footer(base) {
       <a href="${base}privacy.html">Privacy</a>
       <a href="${base}terms.html">Terms</a>
       <a href="${base}contact.html">Contact</a>
+      <a href="https://www.youtube.com/watch?v=pvuN_WvF1to" target="_blank" rel="noopener" title="Lil Dicky, Earth (music video on YouTube)">We love the Earth ↗</a>
       ${kofiLink()}
     </nav>
     <p class="fine">© ${new Date().getFullYear()} ${esc(SITE.name)}. Borders: <a href="https://www.naturalearthdata.com/">Natural Earth</a> (public domain).
