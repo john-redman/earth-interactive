@@ -18,6 +18,7 @@ import { createSfx } from './sfx.js';
 import { createMusic } from './music.js';
 import { MissLine } from './miss-line.js';
 import { Currents } from './currents.js';
+import { createPopClock } from './popclock.js';
 import { countryOfTheDay, factsFor, mountDailyChip } from './daily-country.js';
 import { flagImg } from './flags.js';
 import { shareCompareImage } from './share-image.js';
@@ -62,6 +63,7 @@ const sfx = createSfx({ muted: () => thrills.muted });
 const music = createMusic(document.getElementById('music-toggle'));
 const missLine = new MissLine(globe, layer, stage);
 const currents = new Currents(globe);
+const popClock = createPopClock(document.getElementById('popclock'), globe);
 const cotdKey = countryOfTheDay(data);
 /** Fly to today's country and open its card (from the chip or the Play menu). */
 function goDaily() { const o = layer.get(cotdKey); if (!o || mode === 'quiz') return; if (mode === 'compare') endCompare(true); openCountry(o, { fly: true }); openInfo(o); }
@@ -99,7 +101,8 @@ const ui = createUI({
     if (mode === 'quiz') { ui.setViewSilently(viewKey); ui.showToast('Games use the UN map. Quit the game to switch.'); return; } // a view switch mid-round would lose its highlights
     switchView(k);
   },
-  onCompareRequest: o => { mode = 'pick'; document.body.classList.add('picking'); pickFrom = o; closePopup(); compare.preview(o); sfx.play('snapOut'); ui.showPick(o); }, // it lifts out straight away
+  onCompareRequest: o => liftCountry(o, 'compare'),
+  onMoveRequest: o => liftCountry(o, 'move'),
   onCompareCancelPick: () => cancelPick(),
   onCompareReset: () => compare.resetPositions(),
   onCompareEnd: () => endCompare(),
@@ -369,6 +372,18 @@ function recenter() {
   globe.resumeAuto();
 }
 document.getElementById('recenter').addEventListener('click', recenter);
+/**
+ * Lift a country out of the globe (Move, Compare, or press-and-hold on the pinned country). Both ways share one
+ * state: the piece can be dragged anywhere, and tapping another country turns it into a comparison with the same
+ * piece, so nothing jumps when you change your mind. Only the banner's wording follows how you started.
+ */
+function liftCountry(o, intent) {
+  if (mode === 'pick' && pickFrom === o) { ui.showPick(o, intent); return; }
+  if (mode !== 'browse') return;
+  mode = 'pick'; document.body.classList.add('picking'); pickFrom = o;
+  closePopup(); compare.preview(o); sfx.play('snapOut'); ui.showPick(o, intent);
+  track(intent === 'move' ? 'move' : 'compare-pick', o.key);
+}
 function cancelPick() {
   if (mode === 'pick' && compare.previewPiece) { compare.end(); sfx.play('snapIn'); } // the lifted piece settles back
   mode = 'browse'; pickFrom = null; ui.hidePick(); layer.setSelected(null); document.body.classList.remove('picking');
@@ -394,8 +409,24 @@ function countryAt(x, y) {
   return o ? { o, point: hit.clone() } : { o: null, point: hit.clone() };
 }
 
-const CLICK_SLOP = 6, CLICK_MS = 650;
+const CLICK_SLOP = 6, CLICK_MS = 650, HOLD_MS = 420;
 let down = null; const pointers = new Set();
+let holdT = 0;
+
+/** Press and hold the pinned country (without moving) to lift it out and carry it straight away. */
+function liftHeld(pointerId) {
+  holdT = 0;
+  if (!down || down.moved || down.multi || pointers.size !== 1 || mode !== 'browse' || !selected) return;
+  liftCountry(selected, 'move');
+  const hit = compare.hitPiece(rayAt(down.lx, down.ly));
+  if (!hit) return; // held on a small island the piece leaves out: it is lifted, and can be dragged from there
+  spin.cancel(); spin.stop(); globe.pauseAuto();
+  globe.controls.enabled = false;
+  compare.beginDrag(hit);
+  try { canvas.setPointerCapture(pointerId); } catch { /* pointer already gone */ }
+  stage.classList.add('dragging-piece');
+  navigator.vibrate?.(12);
+}
 
 // capture phase → runs before OrbitControls so we can claim drags that start on a compare piece
 stage.addEventListener('pointerdown', e => {
@@ -403,7 +434,9 @@ stage.addEventListener('pointerdown', e => {
   thrills.unlock();
   pointers.add(e.pointerId);
   ui.dismissHint();
-  down = { x: e.clientX, y: e.clientY, t: performance.now(), moved: false, multi: pointers.size > 1 };
+  down = { x: e.clientX, y: e.clientY, lx: e.clientX, ly: e.clientY, t: performance.now(), moved: false, multi: pointers.size > 1 };
+  clearTimeout(holdT); holdT = 0;
+  if (mode === 'browse' && selected && pointers.size === 1 && countryAt(e.clientX, e.clientY)?.o === selected) holdT = setTimeout(liftHeld, HOLD_MS, e.pointerId);
   if ((mode === 'compare' || mode === 'pick') && pointers.size === 1) { // pieces can be dragged while choosing the second country too
     const hit = compare.hitPiece(rayAt(e.clientX, e.clientY));
     if (hit) {
@@ -427,7 +460,8 @@ stage.addEventListener('wheel', e => {
 
 window.addEventListener('pointermove', e => {
   if (down) {
-    if (Math.hypot(e.clientX - down.x, e.clientY - down.y) > CLICK_SLOP) down.moved = true;
+    down.lx = e.clientX; down.ly = e.clientY;
+    if (Math.hypot(e.clientX - down.x, e.clientY - down.y) > CLICK_SLOP) { down.moved = true; clearTimeout(holdT); holdT = 0; }
     if (compare.drag) compare.dragTo(rayAt(e.clientX, e.clientY));
     else if (pointers.size === 1) spin.move(e.clientX, e.clientY, performance.now());
     ui.showTip(null);
@@ -460,6 +494,7 @@ function hoverAt(x, y) {
 
 function endPointer(e) {
   pointers.delete(e.pointerId);
+  clearTimeout(holdT); holdT = 0;
   if (!down) return;
   const d = down; down = null;
   stage.classList.remove('grabbing');
@@ -470,6 +505,7 @@ function endPointer(e) {
   onClick(e.clientX, e.clientY);
 }
 window.addEventListener('pointerup', endPointer);
+canvas.addEventListener('contextmenu', e => { if (e.pointerType !== 'mouse') e.preventDefault(); }); // press-and-hold lifts a country, no menu
 window.addEventListener('pointercancel', endPointer);
 
 function onClick(x, y) {
@@ -532,6 +568,7 @@ function frame(now) {
   compare.tick(now);
   missLine.tick(now);
   currents.tick(now);
+  popClock.tick();
   tickNight(dt);
   if (guess && !quiz.waiting) cancelGuess(); // the round moved on (hint, Show me, next)
   thrills.tick(now);
