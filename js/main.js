@@ -114,6 +114,7 @@ let viewKey = data.views[params.get('view')] ? params.get('view') : data.default
 // ---------- state ----------
 let mode = 'browse';          // 'browse' | 'pick' | 'compare' | 'quiz'
 let pickFrom = null;          // country chosen first for comparison
+let pickIntent = 'compare';   // how it was lifted: 'move' (arrow keys carry it) or 'compare' (arrow keys aim the globe)
 let anchor = null;            // 3D point the pin (and popup) is attached to
 let selected = null;          // country marked by the pin
 
@@ -123,14 +124,14 @@ const ui = createUI({
     if (mode === 'quiz') { ui.setViewSilently(viewKey); ui.showToast('Games use the UN map. Quit the game to switch.'); return; } // a view switch mid-round would lose its highlights
     switchView(k);
   },
-  onCompareRequest: o => liftCountry(o, 'compare'),
-  onMoveRequest: o => liftCountry(o, 'move'),
+  onCompareRequest: (o, e) => { liftCountry(o, 'compare'); if (e?.detail === 0) canvas.focus({ preventScroll: true }); }, // keyboard: aim and press Enter
+  onMoveRequest: (o, e) => { liftCountry(o, 'move'); if (e?.detail === 0) canvas.focus({ preventScroll: true }); },      // keyboard: arrows carry it
   onCompareCancelPick: () => cancelPick(),
   onCompareReset: () => compare.resetPositions(),
   onCompareEnd: () => endCompare(),
   onClosePopup: () => closeCard(),
   onSound: name => sfx.play(name),
-  onInfo: o => openInfo(o),
+  onInfo: (o, e) => { openInfo(o); if (e?.detail === 0) document.querySelector('#popup .pop-x')?.focus({ preventScroll: true }); },
   onNeighbour: key => { const o = layer.get(key); if (o) { openCountry(o, { fly: true }); openInfo(o); } },
   onShare: o => copyLink(o),
   onCompareImage: () => compareImage(),
@@ -384,6 +385,8 @@ function tickSun() {
 }
 tickSun(); setInterval(tickSun, 30000);
 
+/** Keyboard: put focus on one of the pin tag's buttons ('move' | 'compare' | 'info'). */
+function focusTag(act) { document.querySelector(`#pin-tag [data-act="${act}"]`)?.focus({ preventScroll: true }); }
 function closePopup() {
   ui.hidePopup(); ui.hideTag(); pin.hide(); anchor = null; selected = null; if (mode === 'browse') layer.setSelected(null); setParam('c', null);
   if (globe.hold('card', false)) globe.pauseAuto(); // card closed: idle auto-rotate resumes after the usual delay
@@ -405,9 +408,9 @@ document.getElementById('recenter').addEventListener('click', recenter);
  * piece, so nothing jumps when you change your mind. Only the banner's wording follows how you started.
  */
 function liftCountry(o, intent) {
-  if (mode === 'pick' && pickFrom === o) { ui.showPick(o, intent); return; }
+  if (mode === 'pick' && pickFrom === o) { pickIntent = intent; ui.showPick(o, intent); return; }
   if (mode !== 'browse') return;
-  mode = 'pick'; document.body.classList.add('picking'); pickFrom = o;
+  mode = 'pick'; document.body.classList.add('picking'); pickFrom = o; pickIntent = intent;
   closePopup(); compare.preview(o); sfx.play('snapOut'); ui.showPick(o, intent);
   track(intent === 'move' ? 'move' : 'compare-pick', o.key);
 }
@@ -558,18 +561,34 @@ window.addEventListener('keydown', e => {
   if (e.target.closest?.('input, textarea')) return;
   if ((e.key === '/' || (e.key.toLowerCase() === 'k' && (e.metaKey || e.ctrlKey))) && mode !== 'quiz') { e.preventDefault(); closeMenus(); search.open(); return; }
   if (e.key === 'Escape') {
+    const inCard = !!e.target.closest?.('#popup'), inTag = !!e.target.closest?.('#pin-tag');
     if (!Object.values(menus).every(m => m.hidden)) closeMenus();
-    else if (mode === 'compare') endCompare(); else if (mode === 'pick') cancelPick(); else if (mode === 'quiz') { if (guess) cancelGuess(); } else { if (ui.popFor) closeCard(); else closePopup(); }
+    else if (mode === 'compare') endCompare(); else if (mode === 'pick') cancelPick(); else if (mode === 'quiz') { if (guess) cancelGuess(); }
+    else if (ui.popFor) { closeCard(); if (inCard) focusTag('info'); } // card → tag (keep the keyboard where it was)
+    else { closePopup(); if (inTag) canvas.focus({ preventScroll: true }); }
     return;
+  }
+  // the tag's three buttons: Tab and Shift+Tab go round them
+  if (e.key === 'Tab' && e.target.closest?.('#pin-tag')) {
+    const btns = [...document.querySelectorAll('#pin-tag .tag-btn')], i = btns.indexOf(e.target);
+    if (btns.length && i >= 0) { e.preventDefault(); btns[(i + (e.shiftKey ? -1 : 1) + btns.length) % btns.length].focus({ preventScroll: true }); return; }
   }
   if ((e.key === 'Home' || e.key.toLowerCase() === 'r') && !e.metaKey && !e.ctrlKey && !e.altKey && mode !== 'quiz') { e.preventDefault(); recenter(); return; }
   // preventDefault: answering moves focus to "Next country", and the same Enter would otherwise press it too
   if (e.key === 'Enter' && guess && !e.target.closest?.('button')) { e.preventDefault(); confirmGuess(); return; }
   if (e.key === 'Enter' && quiz.canAdvance && !e.target.closest?.('button')) { e.preventDefault(); quiz.next(); return; }
   // Enter on the globe itself: as if you clicked the middle of the view (select, choose, or guess)
-  if (e.key === 'Enter' && e.target === canvas) { e.preventDefault(); const r = canvas.getBoundingClientRect(); onClick(r.left + r.width / 2, r.top + r.height / 2); return; }
+  if (e.key === 'Enter' && e.target === canvas) {
+    e.preventDefault(); const r = canvas.getBoundingClientRect(); onClick(r.left + r.width / 2, r.top + r.height / 2);
+    if (mode === 'browse' && selected) focusTag('move'); // its options next: Tab goes round Move, Compare, Info
+    return;
+  }
   // arrow keys, while held: they carry a lifted country (Move, Compare) or else turn the globe, smoothly, every frame
-  if (e.key.startsWith('Arrow') && !e.metaKey && !e.ctrlKey && !e.altKey && !e.target.closest?.('[role="menu"], [role="radiogroup"]')) {
+  if (e.key.startsWith('Arrow') && !e.metaKey && !e.ctrlKey && !e.altKey && !e.target.closest?.('[role="menu"], [role="radiogroup"], #popup')) {
+    if (mode === 'browse' && selected) { // an arrow while a country is pinned: let it go and carry on turning
+      const hadFocus = !!e.target.closest?.('#pin-tag');
+      closePopup(); if (hadFocus) canvas.focus({ preventScroll: true });
+    }
     if (!heldArrows.size) arrowsSince = performance.now();
     heldArrows.add(e.key); e.preventDefault();
     if (!e.repeat) spinByKeys(performance.now()); // react to the press itself, even if it is let go before the next frame
@@ -594,7 +613,7 @@ function spinByKeys(now) {
 }
 let keyPiece = null; // the piece the arrow keys move in a comparison (the last one dragged, or 1 / 2)
 function arrowPiece() {
-  if (mode === 'pick') return compare.previewPiece;
+  if (mode === 'pick') return pickIntent === 'move' ? compare.previewPiece : null; // Compare: the arrows aim the globe instead
   if (mode === 'compare') return compare.pieces.includes(keyPiece) ? keyPiece : compare.pieces[0];
   return null;
 }

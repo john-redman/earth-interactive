@@ -182,6 +182,8 @@ contains `Allow: /` anyway). That's why the sitemap must be submitted by hand un
 
 ## Moving to the custom domain later
 
+0. About two weeks before: ship a `sw.js` that, on the github.io host, loads pages from the network (or unregisters
+   itself). Otherwise returning visitors' old service worker keeps serving the cached globe on github.io after the move.
 1. Buy the domain, point its DNS at GitHub Pages and add it under repo **Settings → Pages → Custom domain**. With an
    Actions deploy (ours) no `CNAME` file is needed; the setting is enough. Enable **Enforce HTTPS**.
 2. GitHub then 301-redirects `john-redman.github.io/earth-interactive/*` to the new domain, path for path, so rankings carry over.
@@ -189,8 +191,10 @@ contains `Allow: /` anyway). That's why the sitemap must be submitted by hand un
    canonical, OG tags and JSON-LD). Push. Canonicals, sitemap and OG URLs all switch.
 4. The site now lives at the domain root, so `robots.txt` and `llms.txt` start working where tools look for them, and `ads.txt`
    and `/.well-known/security.txt` become possible. Run `--indexnow` once after the move (the key file moves with the build).
-5. Search Console: add a **Domain** property for the new domain (DNS TXT verification), submit the new sitemap, and use
-   **Settings → Change of address** from the old property. Bing: add the new site and submit its sitemap.
+5. Search Console: add a **Domain** property for the new domain (DNS TXT verification), submit the new sitemap and
+   request indexing for the key pages. The Change of address tool must start from a domain-level property, so it
+   most likely won't accept `john-redman.github.io/earth-interactive/`; the 301s carry the move anyway. Bing: add
+   the new site and submit its sitemap.
 6. Keep the redirect forever (don't delete the github.io Pages setup).
 
 ## Core Web Vitals

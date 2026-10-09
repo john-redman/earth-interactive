@@ -107,7 +107,7 @@ export function createUI({ data, initialView, onView, onCompareRequest, onMoveRe
     if (!same) { setPeek(true); pop.scrollTop = 0; pop.classList.remove('in'); void pop.offsetWidth; pop.classList.add('in'); }
     else setPeek(pop.classList.contains('peek'));
     $('.pop-x', pop).onclick = () => onClosePopup();
-    $('[data-act="compare"]', pop).onclick = () => onCompareRequest(o);
+    $('[data-act="compare"]', pop).onclick = e => onCompareRequest(o, e);
     $('[data-act="share"]', pop).onclick = () => onShare?.(o);
     pop.querySelectorAll('[data-nb]').forEach(b => (b.onclick = () => onNeighbour?.(b.dataset.nb)));
   }
@@ -158,10 +158,10 @@ export function createUI({ data, initialView, onView, onCompareRequest, onMoveRe
     let tipped = true; try { tipped = localStorage.getItem('ei-tip-tag') === '1'; localStorage.setItem('ei-tip-tag', '1'); } catch { /* storage unavailable */ }
     if (!tipped) tag.insertAdjacentHTML('beforeend', '<p class="tag-tip"><b>Move</b> lifts it out to drag anywhere. <b>Compare</b> puts it beside another country at true size.</p>');
     tag.style.setProperty('--c', o.color);
-    $('[data-act="move"]', tag).onclick = () => onMoveRequest(o);
+    $('[data-act="move"]', tag).onclick = e => onMoveRequest(o, e);
     tag.hidden = false; tag.classList.remove('in'); void tag.offsetWidth; tag.classList.add('in');
-    $('[data-act="compare"]', tag).onclick = () => onCompareRequest(o);
-    $('[data-act="info"]', tag).onclick = () => onInfo?.(o);
+    $('[data-act="compare"]', tag).onclick = e => onCompareRequest(o, e);
+    $('[data-act="info"]', tag).onclick = e => onInfo?.(o, e);
   }
   function hideTag() { tagFor = null; tag.hidden = true; tag.classList.remove('confirm'); }
   /** In a game: the pin marks your guess and the tag asks to confirm it (no name, that would give it away). */
@@ -215,7 +215,7 @@ export function createUI({ data, initialView, onView, onCompareRequest, onMoveRe
     const keys = !matchMedia('(pointer: coarse)').matches; // keyboards: the arrow keys move it too
     const [main, sub] = intent === 'move'
       ? [`Drag ${n} anywhere`, keys ? 'Or use the arrow keys. Click another country to compare sizes' : 'Tap another country to compare sizes']
-      : [`${keys ? 'Click' : 'Tap'} a country to compare with ${n}`, keys ? `Or drag ${n} around first, or move it with the arrow keys` : `Or drag ${n} around first`];
+      : [`${keys ? 'Click' : 'Tap'} a country to compare with ${n}`, keys ? `Or aim with the arrow keys and press Enter. Drag ${n} to move it` : `Or drag ${n} around first`];
     const again = !pick.hidden && pick.dataset.key === o.key;
     pick.dataset.key = o.key;
     pick.innerHTML = `<span class="pulse"></span><span class="pk-text"><span>${main}</span><small>${sub}</small></span><button type="button" class="btn small ghost">Put back</button>`;

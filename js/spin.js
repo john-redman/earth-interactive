@@ -109,7 +109,7 @@ export class Spin {
     const d = g.camera.position.length(), zoom = THREE.MathUtils.clamp((d - 1) / Math.max(0.2, g.fitDistance - 1), 0.12, 1.6);
     const ramp = THREE.MathUtils.smoothstep(dir.held, 0.3, 1.4);
     const speed = (0.6 + 1.6 * ramp) * zoom * (dir.fast ? 2 : 1);
-    this.target = { v: -dir.x * speed, vPhi: -dir.y * 0.7 * zoom * (dir.fast ? 2 : 1) };
+    this.target = { v: dir.x * speed, vPhi: -dir.y * 0.7 * zoom * (dir.fast ? 2 : 1) }; // → turns the globe's face to the right
     if (fresh) { if (dir.x) this.v = this.target.v; if (dir.y) this.vPhi = this.target.vPhi; } // a press answers at once
     this.auto = 0; g.pauseAuto();
   }

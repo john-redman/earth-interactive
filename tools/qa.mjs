@@ -239,6 +239,22 @@ for (const [dev, vp, touch] of [['desktop', { width: 1280, height: 800 }, false]
       ok('Enter on the globe selects the country in the middle', await until(() => document.querySelector('#pin-tag b')?.textContent === 'Brazil'));
       ok('…announced for screen readers, with a one-time tip', await until(() => /Brazil selected/.test(document.getElementById('sr-live').textContent)) && await vis('.tag-tip'));
       ok('the finger has gone after the first key press', await until(() => !document.querySelector('.intro-hand:not(.out)')));
+      // keyboard flow: Move is focused, Tab goes round the three buttons, Info opens the card, Escape steps back
+      const act = () => E(() => document.activeElement?.dataset?.act || document.activeElement?.className || document.activeElement?.id);
+      ok('Enter puts focus on Move', (await act()) === 'move', await act());
+      const order = [];
+      for (let i = 0; i < 3; i++) { await p.keyboard.press('Tab'); order.push(await act()); }
+      ok('Tab goes round Move, Compare, Info', order.join() === 'compare,info,move', order);
+      await p.keyboard.press('Tab'); await p.keyboard.press('Tab'); await p.keyboard.press('Enter'); // → Info
+      ok('Enter on Info opens the card with focus inside it', await until(() => document.body.classList.contains('card-open')) && await until(() => !!document.activeElement?.closest?.('#popup')));
+      await p.keyboard.press('Escape');
+      ok('Escape: card → tag, focus back on Info', await until(() => !document.body.classList.contains('card-open') && document.activeElement?.dataset?.act === 'info'));
+      await p.keyboard.press('Escape');
+      ok('Escape: tag → nothing, focus back on the globe', await until(() => document.getElementById('pin-tag').hidden && document.activeElement?.id === 'globe'));
+      await p.keyboard.press('Enter'); await until(() => !document.getElementById('pin-tag').hidden);
+      const a1 = await E(() => window.EarthInteractive.spin.angle);
+      await p.keyboard.press('ArrowRight');
+      ok('an arrow lets the pin go and turns the globe', await until(() => document.getElementById('pin-tag').hidden) && await until(a => Math.abs(window.EarthInteractive.spin.angle - a) > 0.02, a1, 60000));
     }
     await E(() => window.EarthInteractive.quiz.start('classic'));
     await until(() => document.querySelector('.qz-prog')?.textContent === '1 / 10');
