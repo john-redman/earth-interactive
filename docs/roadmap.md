@@ -10,7 +10,8 @@
 - [x] Open Graph / link-preview image (`og-image.png`), installable PWA with offline cache
 - [ ] Custom domain (Cloudflare Registrar when affordable), analytics code (GoatCounter) and Search Console sitemap
 - [ ] Leaderboard live: deploy `server/` (Cloudflare Worker + D1 recommended) and set `API_BASE`
-- [ ] Bundle + minify for production (Vite) — `data/world.js` is ~1.1 MB raw
+- [x] Fast first load without a bundler: every module is modulepreloaded, the map data streams with progress (~740 KB gzipped in all on a first visit; repeat visits come from the offline cache)
+- [ ] Test on a real iPhone (Safari): audio unlock, the bottom sheet, the share sheet
 - [x] Flag images (Windows doesn't render flag emoji) — `vendor/flags/`
 
 ## Next features
@@ -20,6 +21,6 @@
 - [ ] Flag and capital game modes; teacher mode (custom rounds by region)
 - [ ] Accounts + daily streaks (needs a backend)
 - [ ] Historical borders time slider (1914 / 1945 / 1991)
-- [ ] Unit tests (geo math, quiz scoring, lens breaks) + Playwright smoke test in CI (`tools/qa.mjs` exists for a full local run)
-- [ ] Fewer draw calls on phones (~400 per frame now): batch country fills/borders into a few merged meshes
-- [ ] Measured wave climatology (NOAA WAVEWATCH III) if the ocean ever shows wave data
+- [x] Unit tests in CI (`npm test`: geo maths, triangulated areas, Sun position, population clock, lens breaks, currents table, game pool, country of the day)
+- [ ] Playwright smoke test in CI (`tools/smoke.mjs` and `tools/qa.mjs` exist for local runs)
+- [x] Fewer draw calls on phones: the country layer is ~3 draw calls on every device (was ~400)

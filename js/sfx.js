@@ -90,11 +90,16 @@ const SOUNDS = {
  * Also wires every button click in the page to a fitting sound (specific actions by selector, `tick` otherwise).
  */
 export function createSfx({ muted }) {
-  const last = {}; let lastAny = 0;
+  const last = {}; let lastAny = 0, sleepT = 0;
+  // a running AudioContext keeps the audio hardware awake even in silence: let it sleep between sounds (the
+  // longest one is under a second) and while the tab is hidden; play() wakes it again
+  const sleepSoon = () => { clearTimeout(sleepT); sleepT = setTimeout(() => { if (ctx?.state === 'running') ctx.suspend(); }, 2500); };
+  document.addEventListener('visibilitychange', () => { if (document.hidden && ctx?.state === 'running') ctx.suspend(); });
   function play(name) {
     if (muted() || !SOUNDS[name]) return;
     const c = setup(); if (!c) return;
     if (c.state === 'suspended') c.resume();
+    sleepSoon();
     // never stack the same sound twice on one click, and let a specific sound replace the generic tick
     const now = performance.now();
     if (now - (last[name] || 0) < 40 || (name === 'tick' && now - lastAny < 40)) return;
@@ -102,7 +107,7 @@ export function createSfx({ muted }) {
     SOUNDS[name](c.currentTime + 0.005);
   }
   // create the audio context and fetch the samples on the first touch, so the first sound isn't late
-  addEventListener('pointerdown', () => { if (!muted()) setup(); }, { once: true, capture: true });
+  addEventListener('pointerdown', () => { if (!muted() && setup()) sleepSoon(); }, { once: true, capture: true });
   const MAP = [
     ['[data-act="info"], .pill-main, .cmp-grab, .pop-grab, [data-act="stats"]', 'open'],
     ['.pop-x:not(.pop-link), .pill-x, [data-act="done"], .qz-x', 'close'],

@@ -4,7 +4,17 @@ All notable changes to EarthInteractive are documented here.
 
 ## [Unreleased]
 
+### Changed
+- **No empty ad boxes**: until an ad network is connected, visitors no longer see grey "Advertisement" placeholders; the globe gets the space (phones gain the bottom strip). The layout can still be checked with `?ads=preview`.
+- **Faster hover**: moving the mouse over the globe restyles only the two countries involved, not all of them.
+- **Lighter updates**: after a new deploy, returning visitors only download the files that changed (the offline copy used to fetch everything again, about 2 MB).
+- **Quieter on batteries**: the interface sounds' audio engine now sleeps between sounds and in background tabs.
+- **No 3D? Told sooner**: devices without WebGL 2 see the plain pages at once instead of after the map data downloads.
+- **Accessibility**: buttons on the accent purple now meet the WCAG AA contrast minimum (the purple is a shade deeper), and the two ad slots have distinct labels; an axe audit of the text pages and the globe's main states reports no issues.
+- **Privacy page**: lists every setting the site keeps on your device, and no longer says the font comes from Google (it is self-hosted).
+
 ### Added
+- **Unit tests** (`npm test`, run in CI): sphere maths, triangulated country areas, the Sun's position, the population clock, data-lens breaks, the currents table, the game's question pool and a year of countries of the day.
 - **Truer ocean currents**: redrawn along their real mean paths (the Gulf Stream leaving the coast at Cape Hatteras, the Kuroshio and its Extension, the Agulhas turning back south of Africa) and now 33 of them, adding the Norwegian, Caribbean, Loop, North Brazil, Guinea, Falkland, Agulhas Return, Leeuwin, Oyashio and Alaska currents. They meander like the real thing, and fine streamlines weave through each one with streaks drifting downstream, fastest in the middle.
 - **Shift and Ctrl zoom**: Shift on its own zooms in, Ctrl zooms out (tap for a step, hold to glide). Shortcuts such as Shift+Tab or Ctrl+K never zoom.
 - **Deep sky**: the stars sit in three layers that slide past at different speeds as the globe spins.

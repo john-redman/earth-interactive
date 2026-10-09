@@ -29,6 +29,22 @@ import { shareCompareImage } from './share-image.js';
 import { track } from './analytics.js';
 import { TIER } from './perf.js';
 
+const canvas = document.getElementById('globe');
+const stage = document.getElementById('stage');
+/** No WebGL (switched off, very old device) or the GPU took it back: show the plain pages instead of a blank screen. */
+function showNo3D(lost) {
+  const box = document.getElementById('no-3d');
+  box.hidden = false; box.classList.toggle('lost', lost);
+  document.querySelector('.loader')?.remove();
+}
+// three.js needs WebGL 2. Check before downloading the map data, so a device that can't draw the globe gets the
+// plain pages at once; the probe's context is handed back straight away (browsers allow only a few at a time).
+const webgl = (() => {
+  try { const gl = document.createElement('canvas').getContext('webgl2'); gl?.getExtension('WEBGL_lose_context')?.loseContext(); return !!gl; }
+  catch { return false; }
+})();
+if (!webgl) { showNo3D(false); throw new Error('WebGL 2 unavailable'); }
+
 const data = await loadWorld();
 
 // Offline + instant repeat visits (skipped on localhost so development always sees fresh files)
@@ -47,16 +63,6 @@ if ('serviceWorker' in navigator && !/^(localhost|127\.0\.0\.1)$/.test(location.
   if (document.readyState === 'complete') register(); else addEventListener('load', register);
 }
 
-const canvas = document.getElementById('globe');
-const stage = document.getElementById('stage');
-/** No WebGL (switched off, very old device) or the GPU took it back: show the plain pages instead of a blank screen. */
-function showNo3D(lost) {
-  const box = document.getElementById('no-3d');
-  box.hidden = false; box.classList.toggle('lost', lost);
-  document.querySelector('.loader')?.remove();
-}
-const webgl = (() => { try { const c = document.createElement('canvas'); return !!(c.getContext('webgl2') || c.getContext('webgl')); } catch { return false; } })();
-if (!webgl) { showNo3D(false); throw new Error('WebGL unavailable'); }
 const globe = (() => { try { return createGlobe(canvas); } catch (e) { showNo3D(false); throw e; } })();
 canvas.addEventListener('webglcontextlost', e => { e.preventDefault(); showNo3D(true); track('error/webgl-lost'); });
 /** Screen readers: a polite status line for what just happened on the globe. */

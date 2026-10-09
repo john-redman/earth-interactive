@@ -113,7 +113,7 @@ All asset paths are relative, so the app works from the `/earth-interactive/` su
 
 ## Data & licences
 
-Borders: Natural Earth (public domain). Country facts: mledoze/countries (**ODbL — attribution required**, shown in the footer). Population/GDP: Natural Earth estimates (mostly 2019). Full list: [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+Borders: Natural Earth (public domain). Country facts: mledoze/countries (**ODbL — attribution required**, shown in the footer). Population/GDP: World Bank World Development Indicators (CC BY 4.0; population 2025, GDP mostly 2024), Natural Earth estimates where the World Bank has none. Full list: [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
 ## Docs
 

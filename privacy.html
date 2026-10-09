@@ -44,7 +44,7 @@
   <!--/site:header-->
   <main id="main" class="page prose">
     <h1>Privacy policy</h1>
-    <p class="updated">Last updated: 5 October 2026</p>
+    <p class="updated">Last updated: 9 October 2026</p>
     <p class="lede">Short version: there are no accounts, we don't ask for your name or email, and the globe keeps your game progress on your own device.</p>
 
     <h2>Who we are</h2>
@@ -54,10 +54,15 @@
     <p>The globe saves a few small settings in your browser's local storage. They never leave your device unless you use the leaderboard (see below).</p>
     <ul>
       <li><code>ei-muted</code>: whether you turned the sound off.</li>
+      <li><code>ei-music</code>: whether the background music is on.</li>
+      <li><code>ei-daynight</code>: whether day and night shading is on.</li>
       <li><code>ei-best</code>: your best <i>Find it</i> score.</li>
       <li><code>ei-daily-…</code>: your Daily Challenge result for each day you played, so you can't replay it and can share it.</li>
+      <li><code>ei-cotd-seen</code>: the last day you opened or closed the Country of the day, so it shows once a day.</li>
+      <li><code>ei-intro</code> and <code>ei-tip-tag</code>: that you've seen the first-visit hint and the one-time tip, so they don't come back.</li>
       <li><code>ei-player</code>: a random ID and, if you chose one, a display name for the leaderboard.</li>
     </ul>
+    <p>One more, <code>ei-sw-reloaded</code>, lives in session storage and is gone when you close the tab: after a new version of the site arrives, it makes sure the page reloads at most once.</p>
     <p>To delete them, clear this site's data in your browser settings. A service worker also keeps a copy of the site's files so it loads fast and works offline. This is a cache of our own files, not data about you.</p>
 
     <h2>Leaderboard (optional)</h2>
@@ -70,10 +75,10 @@
     <p>Please don't use your real full name or anything that identifies you as a display name. Names are filtered for offensive words. Your IP address is used briefly to stop abuse (rate limiting) and is not stored. To remove your name and scores, contact us with your display name and the date you played.</p>
 
     <h2>Analytics</h2>
-    <p>We use <a href="https://www.goatcounter.com/">GoatCounter</a> to count visits. It sets no cookies and collects no personal data. It records the page visited, the referring site, the browser and operating system, screen size and approximate country (derived from the IP address, which is not stored). We also count a few anonymous events, such as a country being opened, a comparison started or a Daily Challenge played, so we know which features people use. We can't identify you from any of this. Read <a href="https://www.goatcounter.com/help/privacy">GoatCounter's privacy policy</a>.</p>
+    <p>We use <a href="https://www.goatcounter.com/">GoatCounter</a> to count visits. It sets no cookies and collects no personal data. It records the page visited, the referring site, the browser and operating system, screen size and approximate country (derived from the IP address, which is not stored). We also count a few anonymous events, such as a country being opened, a comparison started or a Daily Challenge played, so we know which features people use, and the text of any JavaScript error the page hits (the message and file name only), so we can fix bugs on devices we don't own. We can't identify you from any of this. Read <a href="https://www.goatcounter.com/help/privacy">GoatCounter's privacy policy</a>.</p>
 
     <h2>Hosting and fonts</h2>
-    <p>The site is hosted on GitHub Pages. Like any web server, GitHub receives your IP address when you load a page, and may keep it in logs for security; see the <a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement">GitHub privacy statement</a>. The globe page loads its typeface from Google Fonts, so Google receives your IP address and browser details when it loads; see <a href="https://developers.google.com/fonts/faq/privacy">Google Fonts privacy</a>.</p>
+    <p>The site is hosted on GitHub Pages. Like any web server, GitHub receives your IP address when you load a page, and may keep it in logs for security; see the <a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement">GitHub privacy statement</a>. The typeface (Plus Jakarta Sans) is served from this site too, so no font service sees your visit.</p>
 
     <h2>Advertising</h2>
     <p>The site does not show ads at the moment. If and when ads are shown, they will be served by Google AdSense. Google and its partners may then use cookies or similar technologies to show ads and measure them, based on your visits to this and other websites. You can learn more in <a href="https://policies.google.com/technologies/partner-sites">How Google uses information from sites that use its services</a>, and turn off personalised ads at <a href="https://adssettings.google.com/">Google Ad Settings</a>.</p>
