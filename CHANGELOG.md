@@ -15,6 +15,7 @@ All notable changes to EarthInteractive are documented here.
 - **Privacy page**: lists every setting the site keeps on your device, and no longer says the font comes from Google (it is self-hosted).
 
 ### Added
+- **Challenge a friend**: every Find it round is seeded, so the link in its result replays the same ten countries and shows your score as the one to beat; the friend's end screen says who won.
 - **Daily streak**: the Daily Challenge result counts the days you've played in a row (kept on your device), puts the streak in the shared result, and says when the next challenge opens. On phones, **Share result** opens the share sheet.
 - **Data-map links**: `?lens=density` (or `pop`, `gdppc`, `area`) opens the globe already coloured, and the address bar follows the lens you pick.
 - **Data year in the legend**: each data lens names its source and the year most figures are for.

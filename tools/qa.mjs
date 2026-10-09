@@ -330,8 +330,10 @@ for (const [dev, vp, touch] of [['desktop', { width: 1280, height: 800 }, false]
     await go('?view=defacto');
     await E(() => window.EarthInteractive.quiz.start('classic'));
     ok('game on UN view, dock hidden', (await E(() => window.EarthInteractive.layer.view.key)) === 'un' && !(await vis('#dock')));
+    let firstName = null;
     for (let i = 0; i < 3; i++) {
       const name = await E(() => document.querySelector('#quiz .qz-ask b').textContent);
+      firstName ??= name;
       const key = await E(n => window.EarthInteractive.layer.view.objects.find(o => o.unit.n === n)?.key, name);
       const target = i === 0 ? key : (await E(k => window.EarthInteractive.layer.view.objects.find(o => o.key !== k && o.unit.t === 'country' && o.unit.area > 500000).key, key));
       const pt = await aim(target, 2.6); await tap(pt);
@@ -353,6 +355,18 @@ for (const [dev, vp, touch] of [['desktop', { width: 1280, height: 800 }, false]
     await E(() => document.querySelector('#quiz [data-a="share"]').click()); await p.waitForTimeout(400);
     const clip = await E(() => navigator.clipboard.readText().catch(() => ''));
     ok('copy result has a grid + link', /EarthInteractive/.test(clip) && /play=classic/.test(clip), clip);
+    // the link is a challenge: the same ten countries, with this score to beat
+    const link = clip.match(/\?play=classic&round=([a-z0-9]+)&beat=(\d+)/);
+    ok('the result link carries the round and the score to beat', !!link, clip);
+    if (link) {
+      await E(() => document.querySelector('#quiz .qz-x').click()); await p.waitForTimeout(400);
+      await go(link[0]);
+      ok('a challenge link replays the same round, shows the score to beat', await until(([n, sc]) => document.querySelector('#quiz .qz-ask b')?.textContent === n
+        && (document.querySelector('#quiz .qz-msg')?.textContent || '').includes('A friend scored ' + Number(sc).toLocaleString('en-US')), [firstName, link[2]]));
+      ok('the challenge link is cleared from the address', !/round=|beat=/.test(await E(() => location.search)));
+      for (let i = 0; i < 10; i++) { await E(() => document.querySelector('#quiz [data-a="skip"]').click()); await E(() => document.querySelector('#quiz [data-a="next"]')?.click()); await p.waitForTimeout(200); }
+      ok('challenge result compares with the friend', await until(() => /your friend's|A tie with/i.test(document.querySelector('#quiz .qz-verdict')?.textContent || '')));
+    }
     await E(() => document.querySelector('#quiz .qz-x').click()); await p.waitForTimeout(600);
     ok('quit: back to De facto, no leftovers', (await E(() => window.EarthInteractive.layer.view.key)) === 'defacto' && await vis('#dock'));
     // daily: yesterday's already played (a streak), finish today's, reload, still done

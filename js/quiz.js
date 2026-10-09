@@ -61,14 +61,20 @@ export function createQuiz({ data, layer, globe, flyTo, onExit, onMode, onMiss, 
     });
   }
 
-  function start(mode = 'classic') {
+  /**
+   * mode 'daily' | 'classic'. A Find it round is seeded too (`round`), so its result link replays the same ten
+   * countries for a friend; `beat` is the score that link carries (shown as the one to beat).
+   */
+  function start(mode = 'classic', { round = null, beat = null } = {}) {
     const day = todayKey();
     if (mode === 'daily') {
       const done = store.get('ei-daily-' + day);
       if (done) { S = { mode, day, results: done.results, i: done.results.length, qs: done.qs, finished: true }; onMode(true); renderEnd(); return; }
     }
-    const rand = mode === 'daily' ? mulberry32(hash('ei-' + day)) : Math.random;
-    S = { mode, day, qs: pickQuestions(mode, rand), i: 0, results: [], hinted: false, answered: false, t0: performance.now() };
+    if (mode === 'classic' && !/^[a-z0-9]{4,12}$/.test(round || '')) { round = Math.random().toString(36).slice(2, 8).padEnd(6, '0'); beat = null; }
+    beat = beat != null && /^\d{1,5}$/.test(String(beat)) && +beat <= MODES[mode].count * 1000 ? +beat : null;
+    const rand = mulberry32(hash(mode === 'daily' ? 'ei-' + day : 'ei-round-' + round));
+    S = { mode, day, round, beat, qs: pickQuestions(mode, rand), i: 0, results: [], hinted: false, answered: false, t0: performance.now() };
     onMode(true);
     ask();
   }
@@ -85,7 +91,7 @@ export function createQuiz({ data, layer, globe, flyTo, onExit, onMode, onMiss, 
         <button class="qz-x" type="button" aria-label="Quit game">✕</button></div>
       <div class="qz-ask"><span>Find</span><b>${esc(t.unit.n)}</b></div>
       <div class="qz-dots">${S.qs.map((_, i) => `<i class="${i < S.results.length ? square(S.results[i].pts) : i === S.i ? 'now' : ''}"></i>`).join('')}</div>
-      <p class="qz-msg" aria-live="polite">${TAP} it on the globe. You can spin and zoom first.</p>
+      <p class="qz-msg" aria-live="polite">${S.i === 0 && S.beat != null ? `A friend scored <b>${int.format(S.beat)}</b> on these ten. ` : ''}${TAP} it on the globe. You can spin and zoom first.</p>
       <div class="qz-act"><button class="btn small ghost" type="button" data-a="hint">Hint (½ points)</button><button class="btn small ghost" type="button" data-a="skip">Show me</button></div>`;
     el.hidden = false; el.classList.remove('in'); void el.offsetWidth; el.classList.add('in');
     el.querySelector('.qz-x').onclick = exit;
@@ -161,7 +167,9 @@ export function createQuiz({ data, layer, globe, flyTo, onExit, onMode, onMiss, 
     const grid = S.results.map(r => ({ perfect: '🟩', close: '🟨', near: '🟧', miss: '⬛' }[square(r.pts)])).join('');
     const streak = S.mode === 'daily' ? dailyStreak(S.day) : 0;
     const title = S.mode === 'daily' ? `EarthInteractive Daily ${S.day}${streak >= 2 ? ` · ${streak} days in a row` : ''}` : 'EarthInteractive · Find it';
-    return `${title}\n${grid} ${int.format(total())}/${int.format(S.qs.length * 1000)}\n${shareBase()}?play=${S.mode}`;
+    // Find it: the link replays these ten countries with this score to beat
+    const link = S.mode === 'classic' && S.round ? `${shareBase()}?play=classic&round=${S.round}&beat=${total()}` : `${shareBase()}?play=${S.mode}`;
+    return `${title}\n${grid} ${int.format(total())}/${int.format(S.qs.length * 1000)}${S.mode === 'classic' ? '\nSame ten countries, can you beat it?' : ''}\n${link}`;
   }
 
   function renderEnd() {
@@ -169,6 +177,7 @@ export function createQuiz({ data, layer, globe, flyTo, onExit, onMode, onMiss, 
     const right = S.results.filter(r => r.pts >= 1000).length;
     const verdict = sc >= max * 0.85 ? 'Cartographer level.' : sc >= max * 0.6 ? 'Seasoned traveller.' : sc >= max * 0.35 ? 'Getting your bearings.' : 'The world is big — try again!';
     const streak = S.mode === 'daily' ? dailyStreak(S.day) : 0;
+    const vs = S.beat == null ? '' : sc > S.beat ? ` <b>You beat your friend's ${int.format(S.beat)}.</b>` : sc === S.beat ? ` A tie with your friend's ${int.format(S.beat)}.` : ` Your friend's ${int.format(S.beat)} stays on top this time.`;
     const daily = S.mode !== 'daily' ? '' : `${streak >= 2 ? ` <b>${streak} days in a row.</b>` : ''} ${S.day === todayKey() ? `The next challenge opens ${untilTomorrow()}.` : 'A new challenge is waiting today.'}`;
     // phones: the share sheet (messages, socials); computers: the clipboard
     const sheet = TAP === 'Tap' && !!navigator.share;
@@ -176,7 +185,7 @@ export function createQuiz({ data, layer, globe, flyTo, onExit, onMode, onMiss, 
       <div class="qz-top"><span class="qz-mode">${MODES[S.mode].label}${S.mode === 'daily' ? ' · ' + S.day : ''}</span><span class="qz-prog"></span><span></span>
         <button class="qz-x" type="button" aria-label="Close">✕</button></div>
       <div class="qz-end"><b>${int.format(sc)}</b><span>of ${int.format(max)} points</span></div>
-      <p class="qz-verdict">${verdict} ${right} of ${S.qs.length} found exactly.${S.newBest ? ' <b>New personal best!</b>' : ''}${daily}</p>
+      <p class="qz-verdict">${verdict} ${right} of ${S.qs.length} found exactly.${S.newBest ? ' <b>New personal best!</b>' : ''}${vs}${daily}</p>
       <div class="qz-dots big">${S.results.map(r => `<i class="${square(r.pts)}" title="${esc(layer.get(r.k)?.unit.n || r.k)}: ${r.pts} pts"></i>`).join('')}</div>
       <ul class="qz-review">${S.results.map(r => `<li><button type="button" data-k="${r.k}">${esc(layer.get(r.k)?.unit.n || r.k)}</button><span>${r.pts}</span></li>`).join('')}</ul>
       <div class="qz-board" hidden></div>
