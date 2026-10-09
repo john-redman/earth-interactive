@@ -1,7 +1,7 @@
 :root {
   /* Single dark look by design: a globe in space. */
   color-scheme: dark;
-  --accent: #9d4dff;
+  --accent: #9645f8;   /* white text on it: 4.7:1 (WCAG AA); was #9d4dff (4.25:1) */
   --accent-2: #b98aff;
   --ink: #f2f3ff;
   --muted: rgba(226, 230, 255, 0.62);

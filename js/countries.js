@@ -13,8 +13,14 @@ import { SKY } from './sun.js';
 export const PALETTE = ['#b9c0cf', '#7cc8ff', '#8ef0c4', '#ffe28a', '#ffadd2', '#c3b1ff', '#ffbf8a', '#ffffff', '#c6f27c', '#7fe7e0'];
 const GREY = '#8d93a6';
 
-/** Darker line of the same hue — or a soft slate when the fill is white. */
+/** Darker line of the same hue — or a soft slate when the fill is white. Memoised: restyles ask for it a lot. */
+const borderMemo = new Map();
 export function borderColorFor(hex) {
+  let out = borderMemo.get(hex);
+  if (!out) borderMemo.set(hex, out = borderColorOf(hex));
+  return out;
+}
+function borderColorOf(hex) {
   const c = new THREE.Color(hex);
   const hsl = {}; c.getHSL(hsl);
   if (hsl.l > 0.92 && hsl.s < 0.1) return '#9aa2b8'; // white fills: a light slate that defines the edge without shouting
@@ -347,8 +353,10 @@ export class CountryLayer {
     return best;
   }
 
-  setHover(o) { if (this.hover !== o) { this.hover = o; this.restyle(); } }
-  setSelected(o) { if (this.selected !== o) { this.selected = o; this.restyle(); } }
+  // hover and selection only change the two countries involved (a mouse sweeping the globe hovers a new
+  // country every few frames, and restyling all ~250 each time showed up in profiles)
+  setHover(o) { if (this.hover !== o) { const was = this.hover; this.hover = o; this.restyleOnly(was, o); } }
+  setSelected(o) { if (this.selected !== o) { const was = this.selected; this.selected = o; this.restyleOnly(was, o); } }
   setDim(keep) { this.dim = keep ? new Set(keep) : null; this.restyle(); }
   setSockets(keys) { this.sockets = new Set(keys || []); this.restyle(); }
   /** Data lens: fn(o) → hex colour, or null for "no data". Pass null to go back to political colours. */
@@ -360,6 +368,12 @@ export class CountryLayer {
   restyle() {
     if (!this.view) return;
     for (const o of this.view.objects) this.style(o);
+  }
+
+  /** Restyle just these countries (those of the current view; others restyle when their view is shown). */
+  restyleOnly(...objs) {
+    if (!this.view) return;
+    for (const o of objs) if (o && o.entry === this.view) this.style(o);
   }
 
   style(o) {

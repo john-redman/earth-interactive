@@ -128,7 +128,7 @@ r/geography, r/SideProject, r/webdev Showoff Saturday) work best from **your per
 - ☐ Join and **read the rules of**: r/geography, r/MapPorn, r/InternetIsBeautiful, r/dataisbeautiful,
   r/SideProject, r/webdev, r/threejs, r/WebGames. Comment helpfully every day; the 90/10 rule applies.
 - **First 3 posts:** from the plan's dates, see `captions.md` → "Reddit". In order: r/InternetIsBeautiful
-  (Wed 21 Oct), r/geography or r/MapPorn (Thu 22 Oct), r/SideProject (Fri 23 Oct).
+  (L+2), r/geography or r/MapPorn (L+3), r/SideProject (L+4). L is launch day; see `captions.md` → A.
 
 ### 1.2 X / Twitter (10 min)
 
@@ -222,7 +222,7 @@ r/geography, r/SideProject, r/webdev Showoff Saturday) work best from **your per
 - ☐ Photo `profile/pfp-globe-1080.png`.
 - ☐ Safety: Settings → Security → **2-step verification**. Privacy → comment filters on ("Filter
   spam and offensive comments"). Add keywords for border fights if needed.
-- **First 3 posts:** `video/v01…` (Wed 21 Oct), `video/v02…`, `video/v03…` (see `captions.md` → TikTok).
+- **First 3 posts:** `video/v01…` (L+2), `video/v02…`, `video/v03…` (see `captions.md` → TikTok).
   Record your own 20–35 s screen recordings later as well (plan §4.3); these kit clips are short starters.
 
 ### 1.7 YouTube (Shorts) (15 min)
@@ -277,10 +277,10 @@ No company page needed yet; the plan uses one **personal "what I built" post**.
   classrooms and map nerds | Three.js, WebGL, plain JavaScript* (136)
 - ☐ Featured section: add the site link, and later the Show HN thread.
 - ☐ Turn on Creator mode only if you plan to post weekly.
-- **First 3 posts:** `captions.md` → LinkedIn (launch story Mon 19 Oct; a "Did you know" card Wed; a
+- **First 3 posts:** `captions.md` → LinkedIn (launch story on L day; a "Did you know" card Wed; a
   dev-lesson post the week after).
 
-### 1.10 Product Hunt maker profile (10 min now, launch Tue 17 Nov)
+### 1.10 Product Hunt maker profile (10 min now, launch on a Tue–Thu between L+21 and L+42)
 
 - ☐ Sign up with **your personal identity** (makers are people). Username: your name, e.g. `@johnredman`.
 - ☐ Headline: *Solo dev · building EarthInteractive, a true-to-scale 3D globe*.
@@ -304,7 +304,7 @@ No company page needed yet; the plan uses one **personal "what I built" post**.
   are around 2–15 characters, *unverified*). Brand accounts look odd on HN.
 - ☐ Profile "about": *Solo dev. Building EarthInteractive (true-to-scale WebGL globe): <site>.* Add your
   email if you want people to reach you.
-- ☐ Comment on a few threads before launch day, so the account isn't brand new on Tue 20 Oct.
+- ☐ Comment on a few threads before launch day, so the account isn't brand new on L+1 (Show HN day).
 - **Post:** Show HN (title + first comment are in plan §3.3, repeated in `captions.md`). No UTMs, no images.
 
 ### 1.12 Discord (10 min)

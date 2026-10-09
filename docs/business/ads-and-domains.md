@@ -2,6 +2,11 @@
 
 Researched 2026-10-05 for EarthInteractive (currently `https://john-redman.github.io/earth-interactive/`).
 
+> **Reviewed 2026-10-09** against the product as it is now: the site-side steps that are already done are marked
+> **(done)**, and the ad slots' current behaviour is described in §2.4. Network terms, thresholds and prices were
+> not re-checked. The domain and brand choice now lives in the owner's private plan (linked from
+> [docs/launch-checklist.md](../launch-checklist.md)); the name ideas in §6 are kept for history only.
+
 **How to read this**
 - Facts are linked to their source. Most come from search-engine summaries of the pages. The research sandbox blocked direct fetches of Google, GitHub Docs, the registrars, RDAP and most publisher sites, so anything marked **(unverified)** needs a quick check before you rely on it.
 - Prices are USD per year and include the ICANN fee where the source says so. Registrar prices change often, so check them at checkout.
@@ -12,9 +17,9 @@ Researched 2026-10-05 for EarthInteractive (currently `https://john-redman.githu
 ## 0. TL;DR
 
 1. **Buy a domain first** (≈ $10–15/yr: `.com` if a good name is free, otherwise `.app`). Buy from **Cloudflare Registrar or Porkbun**, not GoDaddy, because GoDaddy's renewals are about twice the price. Point it at GitHub Pages, or better, Cloudflare Pages (see §1.4).
-2. Add a **privacy policy, terms, about/contact page, a little original text content and `ads.txt`**. Then apply to **Google AdSense** and turn on Google's **free certified CMP** (Privacy & messaging).
-3. Decide your **audience stance now**: a general-audience site, not "for kids" (see §1.3). This affects AdSense personalised ads, Amazon Associates eligibility and which premium networks you can join later.
-4. Add **Ko-fi** (0% fee on one-off tips) on day one.
+2. **(done)** Privacy policy, terms, about and contact pages and original text content: `privacy.html`, `terms.html`, `about.html`, `contact.html`, plus 400+ generated text pages. Still to do: **`ads.txt`** at the domain root, then apply to **Google AdSense** and turn on Google's **free certified CMP** (Privacy & messaging).
+3. **(done)** Audience stance: a general-audience site, not "for kids" (see §1.3). The privacy page says so ("for a general audience of all ages… not directed at children under 13"). This affects AdSense personalised ads, Amazon Associates eligibility and which premium networks you can join later.
+4. Add **Ko-fi** (0% fee on one-off tips) on day one. The "Support" links are already wired into every page and stay hidden until `kofi` is set in `tools/site.config.mjs`; only the Ko-fi page itself is missing.
 5. Next steps by traffic: **Mediavine Journey** (≥ 1k sessions/mo) is possible but a poor fit for a one-page WebGL app. Look at **Raptive** (≥ 25k pageviews, mostly tier-1 traffic) or a game-focused stack (**AdinPlay**, **Playwire** at 500k pageviews) once traffic is real. Ezoic now wants 250k users/mo.
 6. Consider a **separate "game edition"** (Daily Challenge / Find-it) for **CrazyGames / Poki / GameMonetize**. These portals bring their own traffic. Poki asks for web exclusivity for the game you submit, so don't submit the main site.
 7. Be realistic. With 1–3 banner units on a single-page app, expect roughly **$0.50–$3 per 1,000 visits** early on (my estimate). **$100/mo needs on the order of 30k–100k+ visits/mo.**
@@ -50,7 +55,7 @@ Researched 2026-10-05 for EarthInteractive (currently `https://john-redman.githu
 
 | Stage | Monthly traffic | Do this |
 |---|---|---|
-| **0: Launch** | 0–1k visits | Buy the domain, add the legal/about pages and `ads.txt`, **apply to AdSense**, add Ko-fi. Submit a spin-off quiz game to **CrazyGames** for exposure (optional). |
+| **0: Launch** | 0–1k visits | Buy the domain, add `ads.txt` (the legal and about pages are done), **apply to AdSense**, set up Ko-fi. Submit a spin-off quiz game to **CrazyGames** for exposure (optional). |
 | **1: Prove it** | 1k–25k | AdSense in the 3 slots. Apply for **AdSense H5 Games Ads** (interstitial between Daily Challenge rounds, rewarded "hint"). Try **Journey** only if you add a blog/article section; otherwise skip it. |
 | **2: Grow** | 25k–100k pageviews | If ≥ 50% of traffic is tier-1, apply to **Raptive** (ask whether they take app-style pages). Email **AdinPlay** and **Snigel** with traffic stats. |
 | **3: Scale** | 100k–500k+ | **AdinPlay / Snigel / Playwire** (Playwire at 500k). Ezoic only at 250k+ users. Look at sponsorships (§4). |
@@ -60,7 +65,8 @@ Researched 2026-10-05 for EarthInteractive (currently `https://john-redman.githu
 - **COPPA** covers US sites **directed to children under 13**, and general-audience sites with *actual knowledge* of under-13 users. Ad cookies and device IDs count as personal information. If you're covered, you must tag ad requests **child-directed (TFCD)**, which turns off interest-based ads and remarketing ([Google: tag site or ad request](https://support.google.com/adsense/answer/3248194?hl=en), [Google Publisher Policies](https://support.google.com/adsense/answer/10502938?hl=en)).
 - The **2025 COPPA Rule amendments** took effect 23 Jun 2025, with a **compliance deadline of 22 Apr 2026** (now in force). They require *separate* verifiable parental consent before sharing a child's data for targeted ads ([Jones Day](https://www.jonesday.com/en/insights/2025/05/ftc-finalizes-amendments-to-coppa--rule), [Hunton](https://www.hunton.com/privacy-and-information-security-law/ftc-publishes-final-coppa-rule-amendments)).
 - **Amazon Associates bans sites directed to children under 13** ([Amazon policy coverage](https://mikeyounglaw.com/amazon-associates-child-policy-coppa-affiliate-websites/), [UK policies](https://affiliate-program.amazon.co.uk/help/operating/policies)).
-- **Recommendation:** position EarthInteractive as **general audience** ("for curious people of all ages"). Don't use "for kids" or primary-school marketing, cartoon mascots or kid-targeted copy. Don't collect personal data. Keep the privacy policy honest about ads and cookies.
+- **Recommendation (done in the privacy page):** position EarthInteractive as **general audience** ("for curious people of all ages"). Don't use "for kids" or primary-school marketing, cartoon mascots or kid-targeted copy. Don't collect personal data. Keep the privacy policy honest about ads and cookies; it already promises to update before any ads go live.
+  - Tagging: the marketing plan (§10.2) notes that Google now steers publishers from TFCD to **Tag for age treatment (TFAT)**. Check which one Google's help pages ask for when you set it up.
   - If you later sell to **classrooms**, ship a **`?classroom=1` / teacher mode with ads off** rather than tagging the whole site child-directed. This is my suggestion; get legal advice before marketing to under-13s.
   - The UK Children's Code and similar EU rules may also apply to child users (unverified detail; out of scope here).
 
@@ -86,15 +92,15 @@ GitHub says Pages is "not intended for or allowed to be used as a free web-hosti
 
 | Item | Notes |
 |---|---|
-| Custom domain + HTTPS | GitHub Pages issues certificates automatically. `.app`/`.dev` are HSTS-preloaded (HTTPS required), which is fine. |
-| `ads.txt` at the domain root | `google.com, pub-XXXXXXXXXXXXXXXX, DIRECT, f08c47fec0942fa0` (your publisher ID from AdSense) ([Google ads.txt guide](https://developers.google.com/adsense/platforms/direct/ads-txt)). **Add `ads.txt` (and `privacy.html`, `terms.html`, `about.html`) to the copy line in `.github/workflows/pages.yml`**, because the workflow only publishes the listed files. |
-| **Privacy policy** | Cover: Google/partners use cookies for ads; link to Google's "How Google uses data from partner sites"; the localStorage keys we use (`ei-best`, `ei-muted`, quiz state); no account or personal data collected; audience is general; contact email. |
+| Custom domain + HTTPS | GitHub Pages issues certificates automatically. `.app`/`.dev` are HSTS-preloaded (HTTPS required), which is fine. Steps: [docs/launch-checklist.md](../launch-checklist.md). |
+| `ads.txt` at the domain root | `google.com, pub-XXXXXXXXXXXXXXXX, DIRECT, f08c47fec0942fa0` (your publisher ID from AdSense) ([Google ads.txt guide](https://developers.google.com/adsense/platforms/direct/ads-txt)). **Add `ads.txt` to the copy line in `.github/workflows/pages.yml`**, because the workflow only publishes the listed files. (The text pages are already published: `tools/build-pages.mjs` copies them at deploy.) |
+| **Privacy policy** | **(done:** `privacy.html`). It already covers Google/partner ad cookies and the consent message (as "if and when ads are shown"), local storage, the leaderboard, GoatCounter and the general audience. Before ads go live: rewrite the Advertising section in the present tense, add the newer local-storage keys (`ei-music`, `ei-daynight`, `ei-intro`, `ei-tip-tag`, `ei-cotd-seen`), drop the outdated Google Fonts paragraph (the font is self-hosted now), and add the contact email once it exists. |
 | **Cookie consent (EEA/UK/CH)** | A **Google-certified, TCF-integrated CMP** is required for personalised ads in the EEA and UK (since 16 Jan 2024) and Switzerland (since 31 Jul 2024) ([Google requirement](https://support.google.com/adsense/answer/13554116?hl=en)). Use AdSense → **Privacy & messaging → European regulations message**, which is **free and certified** ([webnots how-to](https://www.webnots.com/how-to-setup-gdpr-consent-message-in-google-adsense-account/), [secureprivacy](https://secureprivacy.ai/blog/adsense-certified-cmp)). Add the US-states message too. |
-| Terms of use | Short: as-is, no warranty, data sources and licences (link THIRD_PARTY_NOTICES), border-view disclaimer. |
-| About / contact | Who runs it, a contact email, data sources. |
-| Original, crawlable content | **The biggest risk.** AdSense sees a mostly empty HTML page with a canvas. Add server-rendered text: an about page, "How true-size comparison works", "Why Greenland looks huge", a short explainer for each lens and border view, and FAQs. Around 5–15 real pages helps against "low value content" ([adsenseaudit](https://adsenseaudit.net/guides/low-value-content-adsense), [theguidex](https://theguidex.com/google-adsense-approval/)). Optional later: one crawlable page per country (`/country/fra`) built from `data/world.js` facts. |
-| Navigation | A small footer with links to About · Privacy · Terms · Contact. It stays minimal, so the design brief holds. |
-| Search Console + sitemap | Verify the domain and submit `sitemap.xml`. This helps Google find the text pages. |
+| Terms of use | **(done:** `terms.html`). Short: as-is, no warranty, data sources and licences, border-view disclaimer. |
+| About / contact | **(done:** `about.html`, `contact.html`). Contact goes to GitHub issues until `contactEmail` is set. |
+| Original, crawlable content | **(done)** This was the biggest risk: AdSense sees a mostly empty HTML page with a canvas. The site now has six hand-written pages (About, How to play, Why maps lie, Privacy, Terms, Contact) and generated plain-HTML pages: 217 countries (`countries/<slug>/`), 150 comparisons, 27 region hubs and 3 rankings, 406 URLs in all ([docs/seo.md](../seo.md)). That is well past the 5–15 pages that help against "low value content" ([adsenseaudit](https://adsenseaudit.net/guides/low-value-content-adsense), [theguidex](https://theguidex.com/google-adsense-approval/)). |
+| Navigation | **(done)** A small link row under the brand on the globe (a menu on phones) and a footer on every text page. |
+| Search Console + sitemap | `sitemap.xml` is generated at deploy **(done)**. Still to do: verify the domain in Search Console and submit it ([docs/seo.md](../seo.md) → Owner setup). |
 
 ### 2.3 Applying and the timeline
 
@@ -102,11 +108,11 @@ GitHub says Pages is "not intended for or allowed to be used as a free web-hosti
 2. Paste the verification snippet (`<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-…" crossorigin="anonymous"></script>`) into `index.html` `<head>`. Upload `ads.txt`.
 3. Request review. Typical reviews take **a few days to about 4 weeks**; some 2026 reports say 2–3 months ([adsenseaudit](https://adsenseaudit.net/guides/adsense-approval-time), [webtimize](https://webtimizesolutions.com/blog/adsense-approval-new-website-2026/)). If rejected, fix the issues and wait a few weeks before reapplying.
 4. **While you wait:**
-   - Write the text pages.
+   - Text pages: done.
    - Set up the Privacy & messaging CMP.
-   - Set up Ko-fi.
+   - Create the Ko-fi page and set `kofi`.
    - Submit to Search Console.
-   - Post to r/geography, r/MapPorn, r/InternetIsBeautiful, Hacker News "Show HN", Product Hunt and teacher communities (general audience).
+   - Launch: the marketing plan §3, with copy in [launch-kit.md](launch-kit.md) (r/InternetIsBeautiful, r/geography, r/MapPorn, Show HN, Product Hunt, teacher communities; general audience).
    - Build a CrazyGames spin-off if you want portal traffic.
 5. Once approved:
    - Create **3 display ad units with fixed sizes**: 160×600 (side), 728×90 (bottom), and 320×50 (mobile bottom; choose fixed-size units, not responsive).
@@ -115,6 +121,7 @@ GitHub says Pages is "not intended for or allowed to be used as a free web-hosti
 
 ### 2.4 Wiring the code into `js/ads.js`
 
+- **Today:** `ADS.enabled` is `true` and every slot's `html` is `null`, so visitors see empty "Advertisement" placeholder boxes: two side slots (160×600 or 120×240) on screens at least 1100 px wide, and one bottom banner (728×90, 468×60 or 320×50) on narrower ones, which also shrinks the stage. Decide before launch whether to hide them (`ADS.enabled = false`) until a network is approved; the marketing plan §3.1 suggests hiding them.
 - `mountAds()` writes `ADS.slots[side].html` with **`innerHTML`, which does not run `<script>` tags**. So:
   - Load `adsbygoogle.js` **once** in `index.html`.
   - Put only the `<ins>` element in the slot.
@@ -178,7 +185,7 @@ AdSense pays only once the balance reaches **$100**. At $10/mo, that means one p
 
 | Option | Cost / fee | Fit | Notes |
 |---|---|---|---|
-| **Ko-fi** | **0%** on one-off tips (Free plan); 5% on memberships/shop; Gold $12/mo removes fees ([SchoolMaker](https://schoolmaker.com/blog/ko-fi-pricing)) | ★★★ | Start here. Put a small "Support" link in the footer/about page. Plus a supporter perk: **"remove ads"** via a Ko-fi membership and a code stored in localStorage (honour system, no accounts). |
+| **Ko-fi** | **0%** on one-off tips (Free plan); 5% on memberships/shop; Gold $12/mo removes fees ([SchoolMaker](https://schoolmaker.com/blog/ko-fi-pricing)) | ★★★ | Start here. The "Support" links are already wired (globe link row, every footer, About, Contact) and appear once `kofi` is set. Plus a supporter perk: **"remove ads"** via a Ko-fi membership and a code stored in localStorage (honour system, no accounts). |
 | Buy Me a Coffee | 5% plus Stripe fees ([SchoolMaker](https://schoolmaker.com/blog/buy-me-a-coffee-pricing)) | ★★ | Same idea, higher fee |
 | Patreon | ~8–12% plus processing (10% standard for new creators from Aug 2025, per [unilink](https://app.unilink.us/blog/patreon-vs-buymeacoffee-vs-kofi-2026)) | ★ | Only if you post regular updates or extra content |
 | **Affiliate** (globes, atlases, map posters, geography books) | Amazon: physical books ~4.5%, toys ~3% ([azonpress](https://azonpress.com/amazon-affiliate-commission-rates/)); **3 qualifying sales in 180 days** or the account is closed ([getaawp](https://getaawp.com/blog/amazon-affiliate-program-requirements/)) | ★★ | **Not allowed on child-directed sites** (§1.3). One "Get a real globe" link on the country card or about page, with an affiliate disclosure. Also consider map-poster and print shops (Etsy/Awin; unverified rates). |
@@ -235,6 +242,8 @@ Cells marked "?" were not found. Figures come from aggregator or search summarie
 - Or the Porkbun / Cloudflare search box.
 - Then search **USPTO (tmsearch.uspto.gov)** and **EUIPO** for the word mark.
 
+Superseded by the owner's private brand plan; kept for history.
+
 | # | Name | What web search turned up (not an availability check) | Trademark / confusion notes |
 |---|---|---|---|
 | 1 | **earthinteractive.app** | Only our own GitHub repo and site showed for "EarthInteractive" ([search](https://github.com/john-redman/earth-interactive)) | Generic words; low risk. **Top pick if free.** |
@@ -258,25 +267,28 @@ Cells marked "?" were not found. Figures come from aggregator or search summarie
 
 ## 7. Do this next (in order)
 
-1. **Decide the audience stance:** general audience, not "for kids". Write one sentence for the About page.
-2. **Pick 3 names and check them** via RDAP/Porkbun, then USPTO/EUIPO.
+1. **(done)** Audience stance: general audience, not "for kids". The privacy page says so.
+2. **Pick the name and check it.** Superseded: the choice is in the owner's private brand plan. Still check
+   availability via RDAP/Porkbun and trademarks via USPTO/EUIPO before buying.
 3. **Buy the domain** at Cloudflare (`.com`/`.app`) or Porkbun (`.earth`). Turn on auto-renew, registrar lock and WHOIS privacy.
-4. **Point it at GitHub Pages:**
-   - Repo Settings → Pages → Custom domain.
-   - DNS: apex A/AAAA records to GitHub's IPs plus a `www` CNAME (use DNS-only, not Cloudflare-proxied, while the certificate issues).
-   - Enforce HTTPS.
-   - Update the `og:url`/canonical links and the share URLs in the app.
+4. **Point it at GitHub Pages:** follow [docs/launch-checklist.md](../launch-checklist.md) (service-worker change
+   two weeks before, custom domain, Enforce HTTPS, switch the URLs in `tools/site.config.mjs`, `js/site.js` and
+   `index.html`). Use DNS-only, not Cloudflare-proxied, while the certificate issues.
    - (Optional later: move to Cloudflare Pages for clearly allowed commercial use.)
-5. **Add pages:** `about.html`, `privacy.html`, `terms.html`, plus 5–10 short explainer pages. Add a footer with links.
-   - Add every new file to `.github/workflows/pages.yml` and, if needed offline, to `CORE` in `sw.js`.
-6. **Search Console:** verify the domain and submit `sitemap.xml`.
-7. **Ko-fi page** and footer link.
+5. **(done)** Pages: `about.html`, `privacy.html`, `terms.html`, `contact.html`, `how-to-play.html`,
+   `why-maps-lie.html`, plus the generated country, comparison, region and ranking pages, with a footer on every
+   page.
+6. **Search Console:** verify the domain and submit `sitemap.xml` (it already exists); Bing; one IndexNow ping
+   ([docs/seo.md](../seo.md)).
+7. **Ko-fi page**, then set `kofi` (the footer links are already wired).
 8. **Apply to AdSense:**
    - Put the snippet in `<head>`.
    - Publish `ads.txt` at the root (and add it to `pages.yml`).
    - Set up the **Privacy & messaging** GDPR message (EEA/UK/CH) and the US-states message.
+   - Update the privacy page's Advertising section first.
    - Leave Auto ads off.
-9. **While in review:** launch posts (Show HN, Reddit, Product Hunt, teacher forums) and an optional CrazyGames spin-off.
+9. **While in review:** launch (marketing plan §3, copy in [launch-kit.md](launch-kit.md)) and an optional
+   CrazyGames spin-off. Decide whether the empty ad placeholders stay visible meanwhile (§2.4).
 10. **On approval:**
     - Create fixed-size units (160×600, 120×240, 728×90, 468×60, 320×50).
     - Wire them into `js/ads.js` with `adsbygoogle.push({})` after painting.

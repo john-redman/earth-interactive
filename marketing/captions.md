@@ -17,51 +17,55 @@ Conventions:
 
 ## A. Posting schedule
 
-Times are US Eastern (ET), following the plan. Launch week is Mon 19 to Sun 25 Oct 2026 (§3.2), then
+Times are US Eastern (ET), following the plan. Dates are relative to go-live, as in the plan: **L** is launch day (a
+Monday, on the custom domain), L−5 five days before, L+3 three days after. Launch week runs L to L+6 (§3.2), then
 the weekly rhythm (§4.1): Mon daily share, Tue True Size Tuesday, Wed "Did you know?", Thu lens, Fri poll.
 
-### Pre-launch warm-up (accounts made by Sun 11 Oct; the plan says 2+ weeks before launch)
+### Pre-launch warm-up (accounts made by L−14 at the latest; the plan says 2+ weeks before launch)
 
 | Date | Platform | Asset | Notes |
 |---|---|---|---|
-| Daily from 6 Oct | Reddit (personal) | none | 15 min of helpful comments in the target subs. No links. |
-| Wed 14 Oct, 12:00 | Instagram, Bluesky, Mastodon | `p12-card-kazakhstan` | A quiet first post so the profiles aren't empty. |
-| Fri 16 Oct, 12:00 | X, Bluesky, IG story | `p15a-poll-iran-or-mongolia` + `s05` | Poll, warm-up. |
-| Sat 17 Oct | X, Bluesky, IG story | `p15b-poll-answer` + `s06` | Reveal. |
+| Daily from L−28 | Reddit (personal) | none | 15 min of helpful comments in the target subs. No links. |
+| L−5 (Wed), 12:00 | Instagram, Bluesky, Mastodon | `p12-card-kazakhstan` | A quiet first post so the profiles aren't empty. |
+| L−3 (Fri), 12:00 | X, Bluesky, IG story | `p15a-poll-iran-or-mongolia` + `s05` | Poll, warm-up. |
+| L−2 (Sat) | X, Bluesky, IG story | `p15b-poll-answer` + `s06` | Reveal. |
 
 ### Launch week
 
 | Day | Time (ET) | Platform | Asset | Caption |
 |---|---|---|---|---|
-| **Mon 19** | 12:00–14:00 | X (thread), Bluesky, Mastodon, Threads | `v01` + `p01` + `p10` + `p14` | §B "Launch thread" |
-| Mon 19 | 12:00 | LinkedIn (personal) | `p01` square | §B "LinkedIn launch story" |
-| Mon 19 | 12:00 | Instagram carousel + story | `p01`, `p03`, `p05` (portrait) + `s07` with link sticker | p01 caption |
-| Mon 19 | evening | Facebook Page | `p01` | p01 caption |
-| **Tue 20** | 09:00–10:00 | **Show HN** | none (link only) | §B "Show HN" |
-| Tue 20 | 12:00 | X, Bluesky | `p04` | p04 |
-| **Wed 21** | 07:00–10:00 | **r/InternetIsBeautiful** | link post | §C Reddit |
-| Wed 21 | 14:00–18:00 | TikTok, Reels, Shorts | `v01` | v01 |
-| Wed 21 | 14:00 | IG story | `s01` | — |
-| **Thu 22** | 08:00–10:00 | **r/geography *or* r/MapPorn** (one only) | `p01` square image | §C Reddit |
-| Thu 22 | afternoon | r/threejs | `v01` (as video) | §C Reddit |
-| Thu 22 | 14:00 | Bluesky, Mastodon | `p10` | p10 |
-| **Fri 23** | 07:00–09:00 | **r/SideProject** | `p01` or link | §C Reddit |
-| Fri 23 | 12:00 | X poll, IG story poll | text poll "Brazil or Australia?" + `s02` | p07 (reveal Sat) |
-| **Sat 24** | morning | **r/webdev Showoff Saturday** | `screenshots/` phone shots or `v01` | §C Reddit |
-| Sat 24 | 12:00 | X, Bluesky | `p07` (poll reveal) | p07 |
-| Sat 24 | — | Bluesky / Mastodon thread | none | "5 things I learned building a WebGL globe" (write it yourself, plan §3.2) |
-| **Sun 25** | — | rest | — | Review referrers. |
+| **L (Mon)** | 12:00–14:00 | X (thread), Bluesky, Mastodon, Threads | `v01` + `p01` + `p10` + `p14` | §B "Launch thread" |
+| L (Mon) | 12:00 | LinkedIn (personal) | `p01` square | §B "LinkedIn launch story" |
+| L (Mon) | 12:00 | Instagram carousel + story | `p01`, `p03`, `p05` (portrait) + `s07` with link sticker | p01 caption |
+| L (Mon) | evening | Facebook Page | `p01` | p01 caption |
+| **L+1 (Tue)** | 09:00–10:00 | **Show HN** | none (link only) | §B "Show HN" |
+| L+1 (Tue) | 12:00 | X, Bluesky | `p04` | p04 |
+| **L+2 (Wed)** | 07:00–10:00 | **r/InternetIsBeautiful** | link post | §C Reddit |
+| L+2 (Wed) | 14:00–18:00 | TikTok, Reels, Shorts | `v01` | v01 |
+| L+2 (Wed) | 14:00 | IG story | `s01` | — |
+| **L+3 (Thu)** | 08:00–10:00 | **r/geography *or* r/MapPorn** (one only) | `p01` square image | §C Reddit |
+| L+3 (Thu) | afternoon | r/threejs | `v01` (as video) | §C Reddit |
+| L+3 (Thu) | 14:00 | Bluesky, Mastodon | `p10` | p10 |
+| **L+4 (Fri)** | 07:00–09:00 | **r/SideProject** | `p01` or link | §C Reddit |
+| L+4 (Fri) | 12:00 | X poll, IG story poll | text poll "Brazil or Australia?" + `s02` | p07 (reveal Sat) |
+| **L+5 (Sat)** | morning | **r/webdev Showoff Saturday** | `screenshots/` phone shots or `v01` | §C Reddit |
+| L+5 (Sat) | 12:00 | X, Bluesky | `p07` (poll reveal) | p07 |
+| L+5 (Sat) | — | Bluesky / Mastodon thread | none | "5 things I learned building a WebGL globe" (write it yourself, plan §3.2) |
+| **L+6 (Sun)** | — | rest | — | Review referrers. |
 
-### Weeks 2–5 (the weekly rhythm)
+### Weeks 2–6 (the weekly rhythm)
 
 | Week | Mon (08:00) daily | Tue (15:00) True Size Tuesday | Wed (12:00) Did you know | Thu (14:00) lens | Fri (12:00) poll | Pinterest (any day) |
 |---|---|---|---|---|---|---|
-| 26 Oct–1 Nov | `p14` (post **your own** grid) | `v02` TikTok/Reels/Shorts + `p04` X/Bsky | `p12` IG carousel, LinkedIn, Bluesky | **r/dataisbeautiful [OC]**: `p10` static image (§C) + `p10` Bsky/Masto | "Japan or Germany?" + `s03` IG story | pin `p01`, `p03`, `p10` |
-| 2–8 Nov | `p14` | `p02` + `s01` repost | `p13` | `v03` everywhere | "UK or Madagascar?" (reveal `p05` Sat) | pin `p02`, `p04`, `p12` |
-| 9–15 Nov | `p14` | `p06` | `p12`/`p13` on Facebook (teacher angle) | `p09` | "Iran or Mongolia?" on X if not done (`p15a`/`p15b`) | pin `p06`, `p09`, `p13` |
-| 16–22 Nov (Geography Awareness Week) | `p14` | **Tue 17: Product Hunt** (gallery `banners/producthunt-gallery-*`) + `p08` | teacher post: `p01` on LinkedIn/Facebook | **Wed 18 GIS Day:** `p11` + `p10` | poll | pin `p08`, `p11`, `p14` |
-| 23–29 Nov | `p14` | `v01` re-cut or your own recording | `p03` | `p11` on Mastodon | poll | pin `p05`, `p07` |
+| L+7 to L+13 | `p14` (post **your own** grid) | `v02` TikTok/Reels/Shorts + `p04` X/Bsky | `p12` IG carousel, LinkedIn, Bluesky | **r/dataisbeautiful [OC]**: `p10` static image (§C) + `p10` Bsky/Masto | "Japan or Germany?" + `s03` IG story | pin `p01`, `p03`, `p10` |
+| L+14 to L+20 | `p14` | `p02` + `s01` repost | `p13` | `v03` everywhere | "UK or Madagascar?" (reveal `p05` Sat) | pin `p02`, `p04`, `p12` |
+| L+21 to L+27 | `p14` | `p06` | `p12`/`p13` on Facebook (teacher angle) | `p09` | "Iran or Mongolia?" on X if not done (`p15a`/`p15b`) | pin `p06`, `p09`, `p13` |
+| L+28 to L+34 | `p14` | **Product Hunt** on a Tue–Thu in L+21 to L+42 (gallery `banners/producthunt-gallery-*`) + `p08` | teacher post: `p01` on LinkedIn/Facebook | `p11` + `p10` (on **GIS Day**, the third Wednesday of November, if it falls in this window) | poll | pin `p08`, `p11`, `p14` |
+| L+35 to L+41 | `p14` | `v01` re-cut or your own recording | `p03` | `p11` on Mastodon | poll | pin `p05`, `p07` |
 | Later (only after the "About the borders" page is live) | | | | | | `p16` border-views carousel (§D) |
+
+**Fixed dates** (they don't move with L): Geography Awareness Week (third week of November) and GIS Day (its
+Wednesday). If they fall in weeks 2–6, give that week's Wednesday slot to the teacher post and the Thursday slot to `p11`.
 
 ---
 
@@ -128,9 +132,9 @@ the weekly rhythm (§4.1): Mon daily share, Tue True Size Tuesday, Wed "Did you 
 | r/geography | Thu 22 | Image (`p01` square) | `Greenland vs DR Congo at true scale on a globe. DR Congo is 8% larger. Which pairing surprised you most?` | "I made the tool (free, no sign-up): SITE?compare=GRL,COD. Areas: Natural Earth." |
 | *or* r/MapPorn | Thu 22 | Image (`p01` square, or `cmp` raw without text if text overlays aren't allowed) | `Greenland and the DR Congo side by side at true scale [OC]` | Source + tool, as above. |
 | r/threejs | Thu 22 | Video (`v01`) | `I made a WebGL globe where countries lift out as curved puzzle pieces (stencil + spherical triangulation write-up inside)` | The technical notes from the plan §3.3 list. |
-| r/SideProject | Fri 23 | Text + image | `I built a free true-to-scale 3D globe: compare country sizes, data lenses and a daily geography game` | Story: why, how long, what's next, what feedback you want. |
+| r/SideProject | L+4 (Fri) | Text + image | `I built a free true-to-scale 3D globe: compare country sizes, data lenses and a daily geography game` | Story: why, how long, what's next, what feedback you want. |
 | r/webdev | **Sat 24 only** (Showoff Saturday) | Text + images (`screenshots/`) | `[Showoff Saturday] A no-build Three.js globe: plain ES modules, ~1 MB of data, seamless country fills with a stencil trick` | Stack, challenges, live demo link. |
-| r/dataisbeautiful | Thu 29 Oct | Image (`p10` square) | `[OC] People per km² by country, on a 3D globe` | **Required:** "Source: World Bank WDI (2025 population), Natural Earth areas. Tool: EarthInteractive (Three.js), made by me." |
+| r/dataisbeautiful | L+10 (Thu) | Image (`p10` square) | `[OC] People per km² by country, on a 3D globe` | **Required:** "Source: World Bank WDI (2025 population), Natural Earth areas. Tool: EarthInteractive (Three.js), made by me." |
 | r/WebGames | week 2 | Link | `Daily geography challenge: find the same 5 countries as everyone else, scored by distance` | Lead with the game (this is where the game angle belongs). |
 
 ---

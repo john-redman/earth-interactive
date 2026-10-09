@@ -22,8 +22,10 @@ const CORE = [
 const FONTS = /^https:\/\/fonts\.(googleapis|gstatic)\.com\//;
 
 self.addEventListener('install', e => {
-  // cache: 'reload' skips the HTTP cache so a new deploy never installs stale files
-  e.waitUntil(caches.open(CACHE).then(c => c.addAll(CORE.map(u => new Request(u, { cache: 'reload' })))).then(() => self.skipWaiting()));
+  // cache: 'no-cache' asks the server every time (so a new deploy never installs stale files), but a file that has
+  // not changed comes back as a 304 and is reused from the browser's HTTP cache: a deploy that only touches a few
+  // files doesn't make returning visitors download the 1 MB map data and the 700 KB of three.js again
+  e.waitUntil(caches.open(CACHE).then(c => c.addAll(CORE.map(u => new Request(u, { cache: 'no-cache' })))).then(() => self.skipWaiting()));
 });
 
 self.addEventListener('activate', e => {
