@@ -579,6 +579,23 @@ html { -webkit-tap-highlight-color: transparent; text-rendering: optimizeLegibil
 .tap-ripple.strong { border-color: color-mix(in srgb, var(--accent-2) 80%, #fff); box-shadow: 0 0 18px rgba(185, 138, 255, 0.35); }
 @keyframes tapRipple { from { scale: 0.2; opacity: 0.9; } to { scale: 1.25; opacity: 0; } }
 
+/* ?embed=1 (an iframe in a lesson or a blog post): just the globe, the border views, the corner buttons and the
+   attribution, plus one link to the full site */
+:root[data-embed] .dock, :root[data-embed] .site-links, :root[data-embed] .brand, :root[data-embed] #cotd,
+:root[data-embed] #popclock, :root[data-embed] .ad-slot, :root[data-embed] .ad-banner, :root[data-embed] #app-links,
+:root[data-embed] #music-toggle { display: none !important; }
+.embed-open { position: absolute; top: max(20px, env(safe-area-inset-top)); right: 20px; z-index: 22; padding: 8px 14px; border-radius: 999px;
+  background: rgba(14,16,38,0.72); border: 1px solid rgba(255,255,255,0.2); color: #fff; font-size: 13px; font-weight: 700; text-decoration: none; }
+.embed-open:hover { background: rgba(255,255,255,0.13); }
+.embed-open:focus-visible { outline: 2px solid var(--accent-2); outline-offset: 2px; }
+:root[data-embed] .credit { display: block !important; left: 16px; right: auto; bottom: 12px; max-width: calc(100% - 200px); line-height: 1.35; }
+/* the music button is gone: close the gap in the corner row */
+:root[data-embed] .daynight-toggle { right: 64px; }
+:root[data-embed] .recenter { right: 108px; }
+@media (max-width: 720px) { :root[data-embed] .daynight-toggle { right: 56px; } :root[data-embed] .recenter { right: 98px; } }
+/* narrow frames: below the view switch, not on top of it */
+@media (max-width: 560px) { .embed-open { top: calc(max(20px, env(safe-area-inset-top)) + 56px); right: 14px; padding: 6px 11px; font-size: 12px; } }
+
 /* reduced motion: animations jump to their end state. The iteration cap matters: an infinite animation squeezed to 0.01 ms
    would land on a random phase every frame and flicker */
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; } }

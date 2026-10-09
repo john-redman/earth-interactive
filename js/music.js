@@ -9,7 +9,8 @@ const store = {
   set(on) { try { localStorage.setItem(KEY, on ? '1' : '0'); } catch { /* storage unavailable */ } },
 };
 
-export function createMusic(button) {
+/** autostart: false keeps a stored "on" from starting by itself (an embedded globe must stay quiet until asked). */
+export function createMusic(button, { autostart = true } = {}) {
   let audio = null, on = store.get(), fadeTimer = null;
 
   function element() {
@@ -37,7 +38,7 @@ export function createMusic(button) {
   button.addEventListener('click', () => { on = !on; store.set(on); paint(); if (on) play(); else stop(); });
   paint();
   // "on": start with the first tap or key press anywhere (autoplay rules)
-  if (on) {
+  if (on && autostart) {
     const start = () => { removeEventListener('pointerdown', start, true); removeEventListener('keydown', start, true); if (on) play(); };
     addEventListener('pointerdown', start, true); addEventListener('keydown', start, true);
   }

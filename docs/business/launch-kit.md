@@ -358,6 +358,8 @@ Paste into a document and print on one page. Delete the analytics line if analyt
 > - The globe can show borders three ways: UN membership, who administers each area on the ground, and a neutral
 >   view that marks disputed areas. The games always use the UN view.
 > - Everything works with a mouse, a finger or the keyboard: {SITE}how-to-play.html
+> - To put the globe in a slide deck or a class page, use {SITE}?embed=1 in an iframe; any link works, such as
+>   {SITE}?embed=1&compare=GRL,COD. It shows just the globe, and music never starts by itself there.
 
 ### 7.2 Email to a geography teacher or department
 
@@ -430,8 +432,9 @@ and redrawn currents, so re-shoot them before sending.
    Take it after a miss, when the line and the distance show. *Alt:* a phone showing the Daily Challenge, with a
    line from the player's guess to the right country and the distance in kilometres.
 
-Other deep links: `?compare=FRA,BRA`, `?view=un`, `?view=defacto`, `?view=neutral`, `?play=classic`. Data lenses
-have no deep link: open Data and pick one.
+Other deep links: `?compare=FRA,BRA`, `?view=un`, `?view=defacto`, `?view=neutral`, `?play=classic`, and a data
+lens with `?lens=pop`, `density`, `gdppc` or `area`. Add `?embed=1` to any of them to embed the globe in an article
+(iframe snippet on `how-to-play.html`).
 
 Usage: the contact page already says writers may link to any page and use screenshots.
 
@@ -508,7 +511,7 @@ Yes. Link to the globe, any country page or any comparison, and use screenshots.
 ## 10. Product suggestions from a marketing view
 
 Ranked by likely effect on first impressions, sharing and return visits for the effort. Each keeps the UI as
-clean as it is now. **Built on 9 October 2026:** 1, 2, 3, 4, 5, 6 and 10 (marked ✓); 7, 8 and 9 are still open.
+clean as it is now. **Built on 9 October 2026:** 1, 2, 3, 4, 5, 6 and 10 (marked ✓); 8 (embed mode) too; 7 and 9 are still open.
 
 1. ✓ **Hide the empty "Advertisement" boxes until an ad network is live** (`ADS.enabled` in `js/ads.js`): they're the first thing HN and Reddit will mention.
 2. ✓ **Open the share sheet for the Daily result on phones** (`navigator.share`, clipboard as the fallback), in the same Copy result button.
@@ -517,6 +520,6 @@ clean as it is now. **Built on 9 October 2026:** 1, 2, 3, 4, 5, 6 and 10 (marked
 5. ✓ **Add a `?lens=` deep link** (for example `?lens=density`) so data-lens posts open on the view they show.
 6. ✓ **"Next challenge in 6 h" on the Daily end screen**, so finishers know when to come back.
 7. **Per-pair link preview images for the 150 comparison pages**, reusing the compare share image; it needs a rasteriser at deploy (docs/seo.md explains the trade-off).
-8. **An embed mode** (`?embed=1`: no ads, no dock, an "Open the full globe" link) for teachers and bloggers.
+8. ✓ **An embed mode** (`?embed=1`: no ads, no dock, an "Open the full globe" link) for teachers and bloggers.
 9. **Publish the border-view rules as a text page** linked from About and How to play, so border comments can be answered with one link.
 10. ✓ **Show the data year in the lens legend** (the cards already show it), which heads off "this data is old" replies.

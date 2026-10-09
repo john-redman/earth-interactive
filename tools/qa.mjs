@@ -403,6 +403,10 @@ for (const [dev, vp, touch] of [['desktop', { width: 1280, height: 800 }, false]
     await E(() => window.EarthInteractive.setLens('none'));
     ok('lens off drops it from the address', !/lens=/.test(await E(() => location.search)));
     await go('?lens=nope'); ok('bad lens ignored', !(await E(() => document.body.classList.contains('lens-on'))));
+    await go('?embed=1&c=FRA');
+    const embedHref = await E(() => document.querySelector('.embed-open')?.href || '');
+    ok('?embed=1: just the globe, the credit and a link to the full site', !(await vis('#dock')) && !(await vis('#popclock')) && await vis('.credit') && await vis('.embed-open')
+      && !/embed/.test(embedHref) && /c=FRA/.test(embedHref) && !(await E(() => document.body.classList.contains('ads-on'))), embedHref);
   });
 
   await t('resize with panels open', async () => {

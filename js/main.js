@@ -68,7 +68,18 @@ canvas.addEventListener('webglcontextlost', e => { e.preventDefault(); showNo3D(
 /** Screen readers: a polite status line for what just happened on the globe. */
 const srLive = document.getElementById('sr-live');
 function announce(text) { srLive.textContent = ''; setTimeout(() => { srLive.textContent = text; }, 60); }
+// ?embed=1: inside someone else's page (a lesson, a blog post). The page hides the dock, site links and chips (CSS,
+// :root[data-embed]); no ads, no music by itself, and one link that opens the full globe in a new tab.
+const EMBED = document.documentElement.dataset.embed === '1';
 const ads = mountAds(globe);
+if (EMBED) {
+  ads.enable(false);
+  const fullUrl = () => { const u = new URL(location.href); u.searchParams.delete('embed'); return u.toString().replace(/%2C/gi, ','); };
+  const a = Object.assign(document.createElement('a'), { className: 'embed-open', href: fullUrl(), target: '_blank', rel: 'noopener', textContent: 'Open the full globe ↗' });
+  a.addEventListener('click', () => { a.href = fullUrl(); }); // what you're looking at now (the address follows selections)
+  stage.append(a);
+  track('embed', document.referrer ? new URL(document.referrer).hostname : '');
+}
 // Native app only (Capacitor): AdMob, consent, haptics, back button. The website never loads js/native.js.
 const native = window.Capacitor?.isNativePlatform?.()
   ? import('./native.js').then(m => m.initNative({ ads, globe, isBusy: () => mode === 'quiz' })).catch(() => null)
@@ -82,7 +93,7 @@ globe.controls.enableRotate = false; // rotation is ours (flywheel); OrbitContro
 const thrills = new Thrills(globe, spin);
 const pin = new Pin(document.getElementById('stage'));
 const sfx = createSfx({ muted: () => thrills.muted });
-const music = createMusic(document.getElementById('music-toggle'));
+const music = createMusic(document.getElementById('music-toggle'), { autostart: !EMBED });
 const missLine = new MissLine(globe, layer, stage);
 const currents = new Currents(globe);
 const popClock = createPopClock(document.getElementById('popclock'), globe);
