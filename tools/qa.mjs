@@ -355,10 +355,17 @@ for (const [dev, vp, touch] of [['desktop', { width: 1280, height: 800 }, false]
     ok('copy result has a grid + link', /EarthInteractive/.test(clip) && /play=classic/.test(clip), clip);
     await E(() => document.querySelector('#quiz .qz-x').click()); await p.waitForTimeout(600);
     ok('quit: back to De facto, no leftovers', (await E(() => window.EarthInteractive.layer.view.key)) === 'defacto' && await vis('#dock'));
-    // daily: finish, reload, still done
+    // daily: yesterday's already played (a streak), finish today's, reload, still done
+    await E(() => { const d = new Date(); d.setDate(d.getDate() - 1); const k = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; localStorage.setItem('ei-daily-' + k, JSON.stringify({ results: [], qs: [] })); });
     await go('?play=daily');
+    if (touch) await E(() => { navigator.share = async d => { window.__shared = d.text; }; }); // headless Linux has no share sheet
     for (let i = 0; i < 5; i++) { await E(() => document.querySelector('#quiz [data-a="skip"]').click()); await E(() => document.querySelector('#quiz [data-a="next"]')?.click()); await p.waitForTimeout(200); }
     await until(() => !!document.querySelector('#quiz .qz-end'));
+    ok('daily end: streak and when the next one opens', await until(() => { const t = document.querySelector('#quiz .qz-verdict')?.textContent || ''; return /2 days in a row/.test(t) && /next challenge opens in \d+ (h|min)/.test(t); }));
+    if (touch) {
+      await E(() => document.querySelector('#quiz [data-a="share"]').click());
+      ok('phone: Share result opens the share sheet with the grid and streak', await until(() => /days in a row/.test(window.__shared || '') && /play=daily/.test(window.__shared)));
+    }
     await go('?play=daily');
     ok('daily remembers it was played today', await until(() => !!document.querySelector('#quiz .qz-end')));
     await E(() => document.querySelector('#quiz .qz-x').click());
@@ -377,6 +384,11 @@ for (const [dev, vp, touch] of [['desktop', { width: 1280, height: 800 }, false]
     await go('?compare=FRA'); ok('half a compare link ignored', !(await E(() => document.body.classList.contains('comparing'))));
     await go('?compare=fra,esp'); ok('lower-case compare link works', await E(() => document.body.classList.contains('comparing')), 'lowercase keys');
     await go('?play=nope'); ok('bad play ignored', !(await E(() => document.body.classList.contains('quiz-on'))));
+    await go('?lens=density');
+    ok('?lens= opens a data map, legend names the source year', await E(() => document.body.classList.contains('lens-on')) && /mostly 20\d\d/.test(await E(() => document.querySelector('#legend .lg-src')?.textContent || '')) && /lens=density/.test(await E(() => location.search)));
+    await E(() => window.EarthInteractive.setLens('none'));
+    ok('lens off drops it from the address', !/lens=/.test(await E(() => location.search)));
+    await go('?lens=nope'); ok('bad lens ignored', !(await E(() => document.body.classList.contains('lens-on'))));
   });
 
   await t('resize with panels open', async () => {

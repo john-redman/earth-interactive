@@ -303,7 +303,8 @@ async function copyLink(o) {
 }
 
 // ---------- data lens ----------
-let lensKey = 'none', lens = null;
+// ?lens=density opens the globe already coloured by that statistic (links in posts about a data map)
+let lensKey = LENSES[params.get('lens')]?.get ? params.get('lens') : 'none', lens = null;
 const legendEl = document.getElementById('legend');
 function applyLens() {
   if (!layer.view) return;
@@ -311,6 +312,7 @@ function applyLens() {
   layer.setLens(lens ? o => lens.color(o) : null);
   renderLegend(legendEl, lens);
   document.body.classList.toggle('lens-on', !!lens);
+  setParam('lens', lens ? lensKey : null);
   document.querySelector('[data-dock="lens"]').classList.toggle('on', !!lens);
   if (ui.popFor) ui.showPopup(ui.popFor, viewKey, extras(ui.popFor));
 }
@@ -725,7 +727,7 @@ requestAnimationFrame(() => setTimeout(async () => {
   applyLens();
   document.body.classList.add('ready');
   showIntro(stage); // first visit: a finger shows the globe can be spun
-  // deep links: ?c=FRA · ?compare=FRA,DEU · ?play=daily
+  // deep links: ?c=FRA · ?compare=FRA,DEU · ?play=daily · ?lens=pop|density|gdppc|area (set above)
   const c = params.get('c')?.toUpperCase(), cmp = params.get('compare')?.toUpperCase().split(','), play = params.get('play')?.toLowerCase();
   if (cmp?.length === 2 && cmp[0] !== cmp[1] && layer.get(cmp[0]) && layer.get(cmp[1])) { mode = 'compare'; compare.start(layer.get(cmp[0]), layer.get(cmp[1])); }
   else if (play === 'daily' || play === 'classic') startGame(play);

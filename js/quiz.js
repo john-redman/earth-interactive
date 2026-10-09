@@ -14,6 +14,20 @@ const store = {
   set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* storage unavailable */ } },
 };
 
+/** Daily Challenges finished in a row up to and including `day` (the results live on this device). */
+export function dailyStreak(day = todayKey()) {
+  const d = new Date(day + 'T12:00:00'); let n = 0; // local noon: never trips over a daylight-saving hour
+  while (n < 3660 && store.get('ei-daily-' + todayKey(d))) { n++; d.setDate(d.getDate() - 1); }
+  return n;
+}
+
+/** "in 6 h" / "in 40 min": time left until the next local midnight, when the next Daily Challenge opens. */
+export function untilTomorrow(now = new Date()) {
+  const next = new Date(now); next.setHours(24, 0, 0, 0);
+  const min = Math.max(1, Math.round((next - now) / 6e4));
+  return min >= 90 ? `in ${Math.round(min / 60)} h` : `in ${min} min`;
+}
+
 const MODES = {
   classic: { label: 'Find it', count: 10, tiers: [400e3, 400e3, 400e3, 80e3, 80e3, 80e3, 80e3, 5e3, 5e3, 5e3] },
   daily:   { label: 'Daily Challenge', count: 5, tiers: [400e3, 150e3, 50e3, 15e3, 2e3] },
@@ -145,7 +159,8 @@ export function createQuiz({ data, layer, globe, flyTo, onExit, onMode, onMiss, 
 
   function shareText() {
     const grid = S.results.map(r => ({ perfect: '🟩', close: '🟨', near: '🟧', miss: '⬛' }[square(r.pts)])).join('');
-    const title = S.mode === 'daily' ? `EarthInteractive Daily ${S.day}` : 'EarthInteractive · Find it';
+    const streak = S.mode === 'daily' ? dailyStreak(S.day) : 0;
+    const title = S.mode === 'daily' ? `EarthInteractive Daily ${S.day}${streak >= 2 ? ` · ${streak} days in a row` : ''}` : 'EarthInteractive · Find it';
     return `${title}\n${grid} ${int.format(total())}/${int.format(S.qs.length * 1000)}\n${shareBase()}?play=${S.mode}`;
   }
 
@@ -153,16 +168,20 @@ export function createQuiz({ data, layer, globe, flyTo, onExit, onMode, onMiss, 
     const max = S.qs.length * 1000, sc = total();
     const right = S.results.filter(r => r.pts >= 1000).length;
     const verdict = sc >= max * 0.85 ? 'Cartographer level.' : sc >= max * 0.6 ? 'Seasoned traveller.' : sc >= max * 0.35 ? 'Getting your bearings.' : 'The world is big — try again!';
+    const streak = S.mode === 'daily' ? dailyStreak(S.day) : 0;
+    const daily = S.mode !== 'daily' ? '' : `${streak >= 2 ? ` <b>${streak} days in a row.</b>` : ''} ${S.day === todayKey() ? `The next challenge opens ${untilTomorrow()}.` : 'A new challenge is waiting today.'}`;
+    // phones: the share sheet (messages, socials); computers: the clipboard
+    const sheet = TAP === 'Tap' && !!navigator.share;
     el.innerHTML = `
       <div class="qz-top"><span class="qz-mode">${MODES[S.mode].label}${S.mode === 'daily' ? ' · ' + S.day : ''}</span><span class="qz-prog"></span><span></span>
         <button class="qz-x" type="button" aria-label="Close">✕</button></div>
       <div class="qz-end"><b>${int.format(sc)}</b><span>of ${int.format(max)} points</span></div>
-      <p class="qz-verdict">${verdict} ${right} of ${S.qs.length} found exactly.${S.newBest ? ' <b>New personal best!</b>' : ''}${S.mode === 'daily' ? ' A new challenge arrives tomorrow.' : ''}</p>
+      <p class="qz-verdict">${verdict} ${right} of ${S.qs.length} found exactly.${S.newBest ? ' <b>New personal best!</b>' : ''}${daily}</p>
       <div class="qz-dots big">${S.results.map(r => `<i class="${square(r.pts)}" title="${esc(layer.get(r.k)?.unit.n || r.k)}: ${r.pts} pts"></i>`).join('')}</div>
       <ul class="qz-review">${S.results.map(r => `<li><button type="button" data-k="${r.k}">${esc(layer.get(r.k)?.unit.n || r.k)}</button><span>${r.pts}</span></li>`).join('')}</ul>
       <div class="qz-board" hidden></div>
       <div class="qz-act">
-        <button class="btn small ghost" type="button" data-a="share">Copy result</button>
+        <button class="btn small ghost" type="button" data-a="share">${sheet ? 'Share result' : 'Copy result'}</button>
         ${S.mode === 'daily' ? '<button class="btn small primary" type="button" data-a="classic">Play a free round</button>' : '<button class="btn small primary" type="button" data-a="again">Play again</button>'}
       </div>
       <pre class="qz-share" hidden></pre>`;
@@ -170,6 +189,10 @@ export function createQuiz({ data, layer, globe, flyTo, onExit, onMode, onMiss, 
     el.querySelector('.qz-x').onclick = exit;
     el.querySelector('[data-a="share"]').onclick = async e => {
       const txt = shareText();
+      if (sheet) {
+        try { await navigator.share({ text: txt }); return; }
+        catch (err) { if (err?.name === 'AbortError') return; } // closed the sheet; anything else falls back to copying
+      }
       try { await navigator.clipboard.writeText(txt); e.target.textContent = 'Copied!'; }
       catch { const pre = el.querySelector('.qz-share'); pre.textContent = txt; pre.hidden = false; const r = document.createRange(); r.selectNodeContents(pre); getSelection().removeAllRanges(); getSelection().addRange(r); e.target.textContent = 'Select & copy below'; }
     };
