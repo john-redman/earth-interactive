@@ -1020,7 +1020,7 @@ Facts on the pages:
 - Borders are not an endorsement of any claim. The globe offers three border views (UN, de facto, neutral).
 - Data last updated ${DATA_DATE}.
 
-Linking into the globe: \`${SITE.url}?c=FRA\` opens a country (ISO 3166-1 alpha-3 code), \`${SITE.url}?compare=GRL,COD\` lifts two countries side by side at true size, \`${SITE.url}?play=daily\` starts the daily geography game, \`${SITE.url}?lens=density\` colours the globe by a statistic (pop, density, gdppc, area).
+Linking into the globe: \`${SITE.url}?c=FRA\` opens a country (ISO 3166-1 alpha-3 code), \`${SITE.url}?compare=GRL,COD\` lifts two countries side by side at true size, \`${SITE.url}?play=daily\` starts the daily geography game, \`${SITE.url}?lens=density\` colours the globe by a statistic (pop, density, gdppc, area). Add \`embed=1\` to any of these to show just the globe inside another page (an iframe).
 
 ## Main pages
 ${L('', 'The 3D globe', 'interactive true-size globe, country facts, size comparison, data maps, games (needs JavaScript and WebGL)')}
