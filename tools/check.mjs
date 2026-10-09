@@ -3,6 +3,7 @@
  *  1. every JS module parses
  *  2. the generated data loads and is internally consistent
  *  3. index.html modulepreloads every module the app imports (so the browser fetches them all at once)
+ *  4. the service worker's offline list (sw.js CORE) exists file by file and covers that module graph
  */
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
@@ -50,5 +51,14 @@ const preloaded = new Set([...html.matchAll(/<link rel="modulepreload" href="([^
 for (const f of graph) if (!preloaded.has(f)) fail(`index.html: add <link rel="modulepreload" href="${f}">`);
 for (const f of preloaded) if (!graph.has(f)) fail(`index.html: ${f} is preloaded but no longer imported`);
 console.log(`✓ ${graph.size} modules preloaded`);
+
+// 4. sw.js CORE: one missing file and cache.addAll() rejects, so the service worker never installs (and nothing says
+//    so); every module of the graph, the data and the stylesheet must be in it for the globe to work offline
+const sw = fs.readFileSync(path.join(root, 'sw.js'), 'utf8');
+const core = [...(sw.match(/const CORE = \[([\s\S]*?)\];/)?.[1] || '').matchAll(/'([^']+)'/g)].map(m => m[1]);
+if (!core.length) fail('sw.js: CORE list not found');
+for (const f of core) if (f !== './' && !fs.existsSync(path.join(root, f))) fail(`sw.js CORE lists ${f}, which does not exist (the service worker would never install)`);
+for (const f of [...graph, 'js/main.js', 'index.html', 'css/style.css', 'data/world.js', 'data/ocean.png']) if (!core.includes(f)) fail(`sw.js CORE: add '${f}' (needed offline)`);
+console.log(`✓ offline cache: ${core.length} files, all present`);
 
 if (failed) { console.error(`\n${failed} problem(s)`); process.exit(1); }
