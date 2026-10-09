@@ -10,6 +10,7 @@ All notable changes to EarthInteractive are documented here.
 - **Lighter updates**: after a new deploy, returning visitors only download the files that changed (the offline copy used to fetch everything again, about 2 MB).
 - **Quieter on batteries**: the interface sounds' audio engine now sleeps between sounds and in background tabs.
 - **No 3D? Told sooner**: devices without WebGL 2 see the plain pages at once instead of after the map data downloads.
+- **Older iPhones get an answer**: on browsers too old for the globe (Safari before 16.4, such as iOS 15) the page used to sit on "Loading map data…" forever; it now says the browser needs an update and links to the country pages.
 - **Reduced motion without flicker**: with reduced motion on, looping animations (the pulsing dot, the live marker's glow) now stop instead of flickering at a random phase every frame.
 - **Accessibility**: buttons on the accent purple now meet the WCAG AA contrast minimum (the purple is a shade deeper), and the two ad slots have distinct labels; an axe audit of the text pages and the globe's main states reports no issues.
 - **Privacy page**: lists every setting the site keeps on your device, and no longer says the font comes from Google (it is self-hosted).
