@@ -5,6 +5,8 @@ All notable changes to EarthInteractive are documented here.
 ## [Unreleased]
 
 ### Added
+- **Deep sky**: the stars sit in three layers that slide past at different speeds as the globe spins.
+- **Keyboard flow**: after Enter selects a country, Move is focused and Tab goes round Move, Compare and Info; Escape steps back; an arrow key lets the pin go and turns the globe. In Compare, the arrow keys aim the globe and Enter picks the country in the middle.
 - **First visit**: a finger shows how to spin the globe, music starts on (with your first tap), and after your first country a one-line tip explains Move and Compare.
 - **Games move on by themselves**: the result shows for a moment while the Next button fills up, then the next country comes; press Next to go on at once, or point at the panel to hold it.
 - **Keyboard and screen readers**: press Enter on the globe to select the country in the middle of the view; selections and comparison results are announced.
@@ -32,6 +34,7 @@ All notable changes to EarthInteractive are documented here.
 - Escape (and the app's back button) closes search from anywhere; the screams pause when the tab is hidden; reduced motion freezes the water patches and the star twinkle; links accept lower-case country codes (`?c=fra`, `?compare=fra,esp`).
 
 ### Changed
+- **Left and right arrow keys** turn the globe the other way round (→ turns its face to the right).
 - **Spinning feels like a real desk globe**: a swipe on a spinning globe speeds it up instead of stopping and re-throwing it; resting a finger, tapping, or dragging the other way still stops it. Arrow keys now turn it smoothly, build momentum only when held, and stop quickly after a short press.
 - **Ships are proper cargo ships**: container ships with stacked boxes and tankers with a pipe deck, a white bridge and funnel at the stern, and a long straight wake.
 - **Ocean and current names stay readable**: they print over ships and clouds (never over land).

@@ -144,34 +144,26 @@ function graticule() {
 
 /**
  * A light scatter of soft stars, like the backdrop of a solar-system model: mostly faint pinpoints, a few
- * brighter ones with a gentle glow, faintly blue or warm, each twinkling slowly at its own pace.
+ * brighter ones with a gentle glow, faintly blue or warm, each twinkling slowly at its own pace. They sit in three
+ * depth layers that follow only part of the camera's turn (`STAR_LAYERS`, see tickStars), so the sky slides past at
+ * different speeds behind a spinning globe: parallax. The nearer layer's stars are a little bigger and brighter.
  */
+const STAR_LAYERS = [{ share: 0.55, follow: 0.25, near: 0 }, { share: 0.3, follow: 0.45, near: 0.5 }, { share: 0.15, follow: 0.7, near: 1 }];
 function stars() {
-  const n = QUALITY.stars, p = new Float32Array(n * 3), seed = new Float32Array(n), tint = new Float32Array(n * 3);
+  const n = QUALITY.stars;
   const warm = [1.0, 0.86, 0.72], cool = [0.76, 0.86, 1.0], white = [1, 1, 1];
-  for (let i = 0; i < n; i++) {
-    const v = new THREE.Vector3().randomDirection().multiplyScalar(50);
-    p.set([v.x, v.y, v.z], i * 3);
-    seed[i] = Math.random();
-    const r = Math.random();
-    tint.set(r < 0.18 ? warm : r < 0.5 ? cool : white, i * 3);
-  }
-  const g = new THREE.BufferGeometry();
-  g.setAttribute('position', new THREE.BufferAttribute(p, 3));
-  g.setAttribute('seed', new THREE.BufferAttribute(seed, 1));
-  g.setAttribute('tint', new THREE.BufferAttribute(tint, 3));
   const m = new THREE.ShaderMaterial({
     uniforms: { uTime: { value: 0 }, uPR: { value: 1 } }, transparent: true, depthWrite: false,
     vertexShader: /* glsl */`
-      attribute float seed; attribute vec3 tint; uniform float uTime; uniform float uPR;
+      attribute float seed; attribute vec3 tint; attribute float near; uniform float uTime; uniform float uPR;
       varying float vA; varying vec3 vTint; varying float vGlow;
       void main(){
         float bright = pow(seed, 6.0);                       // most stars faint, a handful bright
         float tw = 0.5 + 0.5 * sin(uTime * (0.35 + seed * 0.9) + seed * 61.0);
-        vA = (0.22 + 0.7 * bright) * (0.55 + 0.45 * tw);
+        vA = (0.22 + 0.7 * bright) * (0.55 + 0.45 * tw) * (0.85 + 0.3 * near);
         vGlow = bright;
         vTint = tint;
-        gl_PointSize = (1.6 + bright * 5.5) * uPR;
+        gl_PointSize = (1.6 + bright * 5.5) * (0.9 + 0.35 * near) * uPR;
         gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
       }`,
     fragmentShader: /* glsl */`
@@ -183,7 +175,48 @@ function stars() {
         gl_FragColor = vec4(vTint, clamp((core + halo) * vA, 0.0, 1.0)); // alpha falloff: the canvas is transparent
       }`,
   });
-  return new THREE.Points(g, m);
+  const group = new THREE.Group();
+  for (const L of STAR_LAYERS) {
+    const k = Math.round(n * L.share), p = new Float32Array(k * 3), seed = new Float32Array(k), tint = new Float32Array(k * 3);
+    for (let i = 0; i < k; i++) {
+      const v = new THREE.Vector3().randomDirection().multiplyScalar(50);
+      p.set([v.x, v.y, v.z], i * 3);
+      seed[i] = Math.random();
+      const r = Math.random();
+      tint.set(r < 0.18 ? warm : r < 0.5 ? cool : white, i * 3);
+    }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.BufferAttribute(p, 3));
+    g.setAttribute('seed', new THREE.BufferAttribute(seed, 1));
+    g.setAttribute('tint', new THREE.BufferAttribute(tint, 3));
+    g.setAttribute('near', new THREE.BufferAttribute(new Float32Array(k).fill(L.near), 1));
+    const pts = new THREE.Points(g, m);
+    pts.userData.follow = L.follow;
+    group.add(pts);
+  }
+  group.material = m; // one material for all layers (time, pixel ratio)
+  return group;
+}
+
+/**
+ * Every frame: turn each star layer along with part of the camera's last turn, so it appears to move by only
+ * `follow` of it (the rest is carried along). Incremental, so it never jumps when the angle wraps round.
+ */
+const _q = new THREE.Quaternion(), _qd = new THREE.Quaternion(), _qs = new THREE.Quaternion();
+function tickStars(globe) {
+  const cam = globe.camera.quaternion, prev = globe.starCam;
+  if (!prev) { globe.starCam = cam.clone(); return; }
+  _qd.copy(cam).multiply(_q.copy(prev).invert());       // the camera's turn since the last frame (world space)
+  prev.copy(cam);
+  if (reducedMotionQuery.matches) return;               // reduced motion: a still sky (it simply stays put)
+  const w = Math.min(1, Math.abs(_qd.w)), angle = 2 * Math.acos(w);
+  if (angle < 1e-7) return;
+  const sign = _qd.w < 0 ? -1 : 1, s = Math.sqrt(1 - w * w) || 1;
+  for (const layer of globe.starField.children) {
+    const a = angle * (1 - layer.userData.follow) / 2;
+    _qs.set(sign * _qd.x / s * Math.sin(a), sign * _qd.y / s * Math.sin(a), sign * _qd.z / s * Math.sin(a), Math.cos(a));
+    layer.quaternion.premultiply(_qs);
+  }
 }
 
 export function createGlobe(canvas) {
@@ -233,7 +266,7 @@ export function createGlobe(canvas) {
   addEventListener('pointerup', lift); addEventListener('pointercancel', lift);
 
   const globe = {
-    renderer, scene, camera, controls, world, ocean, lockAuto: false, pauseAuto,
+    renderer, scene, camera, controls, world, ocean, starField, lockAuto: false, pauseAuto,
     autoRotate: !reducedMotion.matches,
     autoRotateSpeed: 0.0367, // rad/s (about 2¾ minutes per turn)
     /** Keep the idle auto-rotate off while `reason` is held. Releasing returns whether it was held. */
@@ -301,6 +334,7 @@ export function tickGlobe(globe, t) {
   if (reducedMotionQuery.matches) t = 0;          // reduced motion: still water, steady stars
   globe.ocean.material.uniforms.uTime.value = t;
   globe.scene.children.forEach(c => c.material?.uniforms?.uTime && (c.material.uniforms.uTime.value = t));
+  tickStars(globe);
   if (globe.zoom) {
     const z = globe.zoom, k = Math.min(1, (performance.now() - z.t0) / (reducedMotionQuery.matches ? 1 : 260));
     globe.camera.position.setLength(z.from + (z.to - z.from) * (1 - Math.pow(1 - k, 3)));
