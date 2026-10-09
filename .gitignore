@@ -27,3 +27,6 @@ temp/
 
 # agent worktrees
 .claude/worktrees/
+
+# marketing pipeline scratch (raw captures, frames, temp pages)
+tools/marketing/.work/
