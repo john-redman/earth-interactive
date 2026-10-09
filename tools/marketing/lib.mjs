@@ -35,7 +35,7 @@ export async function openApp(browser, { w = 1000, h = 1000, dsf = 2, query = ''
   const page = await ctx.newPage(); page.setDefaultTimeout(400000);
   page.on('pageerror', e => console.error('pageerror', e.message));
   if (vt) await page.addInitScript(VT);
-  await page.addInitScript(() => { try { localStorage.clear(); localStorage.setItem('ei-intro', '1'); localStorage.setItem('ei-tip-tag', '1'); localStorage.setItem('ei-music', '0'); } catch {} });
+  await page.addInitScript(() => { try { localStorage.clear(); localStorage.setItem('ei-intro', '1'); localStorage.setItem('ei-tip-tag', '1'); localStorage.setItem('ei-music', '0'); localStorage.setItem('ei-daynight', '0'); } catch {} }); // daylight everywhere: the app eases night back in each frame otherwise
   await page.goto(BASE + (query ? '?' + query : ''), { waitUntil: 'load' });
   await page.waitForFunction(() => document.body.classList.contains('ready') && window.EarthInteractive, null, { timeout: 180000 });
   if (css) await page.addStyleTag({ content: css });
