@@ -11,7 +11,9 @@ https://claude.ai/artifact/JQRYGWQQTjLRLjR8otrzfX
    301-redirects every `john-redman.github.io/earth-interactive/…` URL to the same path. Don't rename or transfer the
    repo afterwards, or the redirect may stop.
 3. **Switch the URLs** (see `docs/seo.md` → "Moving to the custom domain later"): `url` in `tools/site.config.mjs`,
-   `SITE_URL` in `js/site.js`, the canonical/OG/JSON-LD URLs in `index.html`, and `contactEmail`. Keep every slug.
+   `SITE_URL` in `js/site.js`, the canonical/OG/JSON-LD URLs in `index.html`, the embed snippet in `how-to-play.html`,
+   and `contactEmail`. Keep every slug. Then re-render the marketing images, which print the address:
+   `node tools/marketing/run.mjs compose video og contact` (`tools/marketing/README.md`).
 4. **Search engines:** Search Console Domain property (DNS TXT), submit the sitemap, request indexing for key pages;
    Bing Webmaster Tools; run the IndexNow ping once.
 5. **Now possible at the domain root:** `ads.txt`, `/.well-known/security.txt`; `robots.txt` and `llms.txt` are

@@ -44,6 +44,10 @@
       src: url(vendor/fonts/plus-jakarta-sans/plus-jakarta-sans-latin.woff2) format('woff2');
       unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
   </style>
+  <!-- ?embed=1: the globe inside someone else's page (marked before the first paint so the full UI never flashes) -->
+  <script>if (/[?&]embed(=1|&|$)/.test(location.search)) document.documentElement.dataset.embed = '1';
+    // browsers without import maps (Safari before 16.4, iOS 15) can't start the globe: say so instead of loading forever
+    if (!(window.HTMLScriptElement && HTMLScriptElement.supports && HTMLScriptElement.supports('importmap'))) document.documentElement.dataset.old = '1';</script>
   <link rel="stylesheet" href="css/style.css">
   <script type="importmap">{ "imports": { "three": "./vendor/three/three.module.min.js", "three/addons/": "./vendor/three/" } }</script>
   <!-- start the big downloads in parallel with the module graph (js/load.js fetches data/world.js after every import) -->
@@ -96,6 +100,7 @@
     <div id="sr-live" class="sr-only" role="status" aria-live="polite"></div>
     <div id="no-3d" class="noscript no-3d" role="alert" hidden>
       <p class="n3-none"><b>Your browser can't draw the 3D globe</b> (WebGL is switched off or not supported here).</p>
+      <p class="n3-old"><b>This browser is too old for the 3D globe.</b> Updating it (on an iPhone or iPad: updating iOS) brings it back.</p>
       <p class="n3-lost"><b>The 3D view stopped.</b> Your device needed the graphics memory back. <button type="button" class="btn small primary" onclick="location.reload()">Reload</button></p>
       <p>You can still read about <a href="countries/">every country</a>, browse <a href="compare/">country size comparisons</a>, see the <a href="countries/ranking/largest-countries/">largest countries</a>, or learn <a href="why-maps-lie.html">why flat maps distort size</a>.</p>
     </div>

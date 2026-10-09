@@ -188,7 +188,8 @@ contains `Allow: /` anyway). That's why the sitemap must be submitted by hand un
    Actions deploy (ours) no `CNAME` file is needed; the setting is enough. Enable **Enforce HTTPS**.
 2. GitHub then 301-redirects `john-redman.github.io/earth-interactive/*` to the new domain, path for path, so rankings carry over.
 3. Change `url` in `tools/site.config.mjs` **and** `SITE_URL` in `js/site.js` (and the hard-coded URLs in `index.html`'s
-   canonical, OG tags and JSON-LD). Push. Canonicals, sitemap and OG URLs all switch.
+   canonical, OG tags and JSON-LD, and the embed snippet in `how-to-play.html`). Push. Canonicals, sitemap and OG URLs
+   all switch. Then re-render the marketing kit with the new address: `node tools/marketing/run.mjs compose video og contact`.
 4. The site now lives at the domain root, so `robots.txt` and `llms.txt` start working where tools look for them, and `ads.txt`
    and `/.well-known/security.txt` become possible. Run `--indexnow` once after the move (the key file moves with the build).
 5. Search Console: add a **Domain** property for the new domain (DNS TXT verification), submit the new sitemap and

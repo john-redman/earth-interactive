@@ -10,11 +10,13 @@ All notable changes to EarthInteractive are documented here.
 - **Lighter updates**: after a new deploy, returning visitors only download the files that changed (the offline copy used to fetch everything again, about 2 MB).
 - **Quieter on batteries**: the interface sounds' audio engine now sleeps between sounds and in background tabs.
 - **No 3D? Told sooner**: devices without WebGL 2 see the plain pages at once instead of after the map data downloads.
+- **Older iPhones get an answer**: on browsers too old for the globe (Safari before 16.4, such as iOS 15) the page used to sit on "Loading map data…" forever; it now says the browser needs an update and links to the country pages.
 - **Reduced motion without flicker**: with reduced motion on, looping animations (the pulsing dot, the live marker's glow) now stop instead of flickering at a random phase every frame.
 - **Accessibility**: buttons on the accent purple now meet the WCAG AA contrast minimum (the purple is a shade deeper), and the two ad slots have distinct labels; an axe audit of the text pages and the globe's main states reports no issues.
 - **Privacy page**: lists every setting the site keeps on your device, and no longer says the font comes from Google (it is self-hosted).
 
 ### Added
+- **Embed the globe**: `?embed=1` (with any other link, such as `?embed=1&compare=GRL,COD`) shows just the globe, the border views and the corner buttons, with one link that opens the full site; for lessons and blog posts. No ads or music inside other people's pages, and the data credit stays.
 - **Challenge a friend**: every Find it round is seeded, so the link in its result replays the same ten countries and shows your score as the one to beat; the friend's end screen says who won.
 - **Daily streak**: the Daily Challenge result counts the days you've played in a row (kept on your device), puts the streak in the shared result, and says when the next challenge opens. On phones, **Share result** opens the share sheet.
 - **Data-map links**: `?lens=density` (or `pop`, `gdppc`, `area`) opens the globe already coloured, and the address bar follows the lens you pick.
