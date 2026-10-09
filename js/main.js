@@ -620,7 +620,30 @@ function arrowPiece() {
 let keyShift = false;
 window.addEventListener('keyup', e => { heldArrows.delete(e.key); keyShift = e.shiftKey; });
 window.addEventListener('keydown', e => { keyShift = e.shiftKey; });
-window.addEventListener('blur', () => heldArrows.clear());
+window.addEventListener('blur', () => { heldArrows.clear(); modZoom = null; });
+
+// ---------- Shift on its own zooms in, Ctrl on its own zooms out ----------
+// A tap steps like + / −; holding glides. A modifier used with anything else (Shift+Tab, Shift+arrows, Ctrl+K, a click,
+// the wheel) never zooms, so the release decides a tap and the glide waits MOD_HOLD before it starts.
+const MOD_ZOOM = { Shift: 0.8, Control: 1.25 }, MOD_HOLD = 300, MOD_RATE = 0.9; // glide: ln(distance) per second
+let modZoom = null;
+window.addEventListener('keydown', e => {
+  if (modZoom && e.key !== modZoom.key) modZoom.used = true;
+  if (!(e.key in MOD_ZOOM) || e.repeat || modZoom || search.isOpen || e.target.closest?.('input, textarea')) return;
+  if (e.shiftKey + e.ctrlKey + e.altKey + e.metaKey > 1) return; // already part of a chord
+  modZoom = { key: e.key, t0: e.timeStamp, used: false };   // when the key went down, even if a slow frame held up the handler
+}, true);
+window.addEventListener('keyup', e => {
+  if (!modZoom || e.key !== modZoom.key) return;
+  const z = modZoom; modZoom = null;
+  if (!z.used && e.timeStamp - z.t0 < MOD_HOLD) globe.zoomBy(MOD_ZOOM[z.key]);
+});
+for (const t of ['pointerdown', 'wheel']) window.addEventListener(t, () => { if (modZoom) modZoom.used = true; }, { capture: true, passive: true });
+/** Every frame while Shift or Ctrl is held on its own: glide in or out. */
+function zoomByMods(now, dt) {
+  if (!modZoom || modZoom.used || now - modZoom.t0 < MOD_HOLD) return;
+  globe.zoomBy(Math.exp(Math.sign(Math.log(MOD_ZOOM[modZoom.key])) * MOD_RATE * Math.min(dt, 0.05)));
+}
 const _kv = new THREE.Vector3(), _kr = new THREE.Vector3(), _ku = new THREE.Vector3(), _kq = new THREE.Quaternion();
 /** Every frame while an arrow is held: glide the piece across the globe, up/down/left/right as seen on screen. */
 function moveByKeys(dt, shift) {
@@ -653,6 +676,7 @@ function frame(now) {
   globe.governor.frame(dt * 1000);
   globe.flight?.(now);
   spinByKeys(now);
+  zoomByMods(now, dt);
   spin.update(now, dt);
   globe.controls.update();
   tickGlobe(globe, t);
@@ -680,7 +704,7 @@ function frame(now) {
   // phones: while nothing moves (reading a card, idle with auto-rotate paused) draw every other frame; the ocean and
   // stars still animate at 30 fps and the battery lasts noticeably longer. Any movement goes straight back to full rate.
   const calm = TIER === 'low' && !globe.flight && !globe.zoom && !spin.dragging && spin.momentum() < 0.02 && spin.auto < 0.01
-    && !compare.anim && !compare.drag && !pointers.size && !heldArrows.size;
+    && !compare.anim && !compare.drag && !pointers.size && !heldArrows.size && !modZoom;
   halfRate = calm && !halfRate;
   if (!halfRate) globe.renderer.render(globe.scene, globe.camera);
   requestAnimationFrame(frame);

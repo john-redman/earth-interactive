@@ -5,6 +5,8 @@ All notable changes to EarthInteractive are documented here.
 ## [Unreleased]
 
 ### Added
+- **Truer ocean currents**: redrawn along their real mean paths (the Gulf Stream leaving the coast at Cape Hatteras, the Kuroshio and its Extension, the Agulhas turning back south of Africa) and now 33 of them, adding the Norwegian, Caribbean, Loop, North Brazil, Guinea, Falkland, Agulhas Return, Leeuwin, Oyashio and Alaska currents. They meander like the real thing, and fine streamlines weave through each one with streaks drifting downstream, fastest in the middle.
+- **Shift and Ctrl zoom**: Shift on its own zooms in, Ctrl zooms out (tap for a step, hold to glide). Shortcuts such as Shift+Tab or Ctrl+K never zoom.
 - **Deep sky**: the stars sit in three layers that slide past at different speeds as the globe spins.
 - **Keyboard flow**: after Enter selects a country, Move is focused and Tab goes round Move, Compare and Info; Escape steps back; an arrow key lets the pin go and turns the globe. In Compare, the arrow keys aim the globe and Enter picks the country in the middle.
 - **First visit**: a finger shows how to spin the globe, music starts on (with your first tap), and after your first country a one-line tip explains Move and Compare.
@@ -17,7 +19,7 @@ All notable changes to EarthInteractive are documented here.
 - **"We love the Earth"**: a link to Lil Dicky's *Earth* video on YouTube in the footer (globe and text pages).
 - **World population, live**: a quiet strip at the bottom with an estimate that ticks up in real time (UN World Population Prospects 2024) and today's births and deaths. It fades out as you zoom in and comes back as you zoom out, and steps aside for cards, games, comparisons and data lenses.
 - **Move a country freely**: the pin's tag has a **Move** button, or press and hold the pinned country, and it lifts out and follows your finger or mouse anywhere on the globe. Tap another country while it is lifted and the same piece becomes a size comparison; Compare works the same way round (drag first, then choose). One banner, one Put back button for both.
-- **A satellite-style ocean with its currents**: a medium ocean blue with fine swell lines in long, gently curving rows that drift over all open water (no more white crests bunched in the storm belts), and about 20 major surface currents drawn as dark lines whose dashes run with the flow, each labelled with its name, direction and typical speed. Ocean names sit on the water in the same type, larger. Labels thin out when zoomed out and step aside for data lenses, games, compare and country cards.
+- **A satellite-style ocean with its currents**: a calm, still medium ocean blue with teal shallows, and the major surface currents drawn on the water, each labelled with its name, direction and typical speed. Ocean names sit on the water in the same type, larger. Labels thin out when zoomed out and step aside for data lenses, games, compare and country cards.
 - **Card never covers its country**: the card docks on the right (bottom sheet on phones) and the globe turns and zooms so the country sits in the free space.
 - **Games use the UN map** automatically, and your view comes back afterwards.
 - **Games: miss line**: after a wrong answer, a line arcs from your guess to the right country with the distance on it, and the camera frames both.

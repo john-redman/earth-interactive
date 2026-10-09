@@ -23,7 +23,7 @@ Static site, no bundler. `index.html` loads `js/main.js` as an ES module; an imp
 | `pin.js` | 3D map pin for the selected country (drop-in animation, constant on-screen size, leans to screen-up) | `Pin` |
 | `load.js` | Streams `data/world.js` with loader progress, then evaluates it via a blob `import()` | `loadWorld`, `setLoader` |
 | `miss-line.js` | Games: arc from a wrong guess to the answer, drawn in, with a distance label | `MissLine` |
-| `currents.js` | Major ocean currents as a faint lighter sheen with soft trails drifting downstream, labels (name, direction, strength) and ocean names; decluttered by zoom, hidden under data lenses | `Currents`, `CURRENTS`, `OCEANS` |
+| `currents.js` | Major ocean currents along their charted mean paths: a faint lighter sheen with meanders and weaving streamlines whose streaks drift downstream, labels (name, direction, strength) and ocean names; decluttered by zoom, hidden under data lenses | `Currents`, `CURRENTS`, `OCEANS` |
 | `ships.js` | Low-poly cartoon ships on sea lanes between big ports, one instanced draw call | `Ships`, `ROUTES` |
 | `clouds.js` | Light clouds over the open ocean, desktop only, masked away from big landmasses | `Clouds` |
 | `intro.js` | First visit: the animated finger that shows the globe can be spun | `showIntro` |

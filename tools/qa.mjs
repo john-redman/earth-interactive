@@ -299,6 +299,25 @@ for (const [dev, vp, touch] of [['desktop', { width: 1280, height: 800 }, false]
     const zoomed = await until(d => window.EarthInteractive.globe.camera.position.length() < d - 0.05, d0, 60000); // frames, not the clock
     const d1 = await E(() => window.EarthInteractive.globe.camera.position.length());
     ok('+ zooms in', zoomed, { d0, d1 });
+    // Shift on its own zooms in, Ctrl out: a tap steps (synthetic events, so a slow headless frame can't turn it into a hold)
+    const tapKey = (key) => E(k => { const o = { key: k, shiftKey: k === 'Shift', ctrlKey: k === 'Control', bubbles: true };
+      window.dispatchEvent(new KeyboardEvent('keydown', o)); window.dispatchEvent(new KeyboardEvent('keyup', { ...o, shiftKey: false, ctrlKey: false })); }, key);
+    const dist = () => E(() => window.EarthInteractive.globe.camera.position.length());
+    const frames = n => E(n => new Promise(r => { let i = 0; const f = () => (++i >= n ? r() : requestAnimationFrame(f)); requestAnimationFrame(f); }), n);
+    await until(() => !window.EarthInteractive.globe.zoom, null, 60000);
+    let z0 = await dist(); await tapKey('Control');
+    ok('Ctrl tap zooms out', await until(d => window.EarthInteractive.globe.camera.position.length() > d + 0.05, z0, 60000));
+    await until(() => !window.EarthInteractive.globe.zoom, null, 60000);
+    z0 = await dist(); await tapKey('Shift');
+    ok('Shift tap zooms in', await until(d => window.EarthInteractive.globe.camera.position.length() < d - 0.05, z0, 60000));
+    await until(() => !window.EarthInteractive.globe.zoom, null, 60000);
+    z0 = await dist(); await p.keyboard.down('Control');                                   // held: glides out
+    ok('Ctrl held glides out', await until(d => window.EarthInteractive.globe.camera.position.length() > d + 0.05, z0, 60000));
+    await p.keyboard.up('Control');
+    await until(() => !window.EarthInteractive.globe.zoom, null, 60000);
+    z0 = await dist(); await p.keyboard.press('Shift+Tab'); await frames(6);              // a chord never zooms
+    ok('Shift+Tab does not zoom', !(await E(() => !!window.EarthInteractive.globe.zoom)) && Math.abs((await dist()) - z0) < 1e-6);
+    await p.mouse.click(5, 300).catch(() => {});
     const a0 = await E(() => window.EarthInteractive.spin.angle);
     await p.keyboard.press('ArrowLeft');
     // a tap turns it a few degrees and settles; wait on the spin (headless frames are slow), not on the clock
