@@ -40,7 +40,12 @@ test('data lenses: quantile breaks rise, the extremes get the end colours, no da
     assert.equal(L.color(lo), RAMP[0]); assert.equal(L.color(hi), RAMP[RAMP.length - 1]);
     const none = objects.find(o => o.unit.t === 'disputed');
     if (none) assert.equal(L.color(none), null, `${k}: disputed areas have no data`);
+    assert.ok(L.source, `${k} names its source`);
   }
+  // the legend says which year most figures are for
+  assert.equal(buildLens('pop', objects).year, 2025);
+  assert.equal(buildLens('gdppc', objects).year, 2024);
+  assert.equal(buildLens('area', objects).year, null);
 });
 
 test('games: a large question pool of countries that exist in all three views', () => {

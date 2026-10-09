@@ -508,15 +508,15 @@ Yes. Link to the globe, any country page or any comparison, and use screenshots.
 ## 10. Product suggestions from a marketing view
 
 Ranked by likely effect on first impressions, sharing and return visits for the effort. Each keeps the UI as
-clean as it is now. Suggestions only; nothing here is built.
+clean as it is now. **Built on 9 October 2026:** 1, 2, 3, 4, 5, 6 and 10 (marked ✓); 7, 8 and 9 are still open.
 
-1. **Hide the empty "Advertisement" boxes until an ad network is live** (`ADS.enabled` in `js/ads.js`): they're the first thing HN and Reddit will mention.
-2. **Open the share sheet for the Daily result on phones** (`navigator.share`, clipboard as the fallback), in the same Copy result button.
-3. **Show a local daily streak** on the end screen and in the share text ("Day 4 in a row"), stored on the device like the results.
-4. **"Challenge a friend" for Find it**: a link with the round's seed and your score, so a friend plays the same ten countries.
-5. **Add a `?lens=` deep link** (for example `?lens=density`) so data-lens posts open on the view they show.
-6. **"Next challenge in 6 h" on the Daily end screen**, so finishers know when to come back.
+1. ✓ **Hide the empty "Advertisement" boxes until an ad network is live** (`ADS.enabled` in `js/ads.js`): they're the first thing HN and Reddit will mention.
+2. ✓ **Open the share sheet for the Daily result on phones** (`navigator.share`, clipboard as the fallback), in the same Copy result button.
+3. ✓ **Show a local daily streak** on the end screen and in the share text ("Day 4 in a row"), stored on the device like the results.
+4. ✓ **"Challenge a friend" for Find it**: a link with the round's seed and your score, so a friend plays the same ten countries.
+5. ✓ **Add a `?lens=` deep link** (for example `?lens=density`) so data-lens posts open on the view they show.
+6. ✓ **"Next challenge in 6 h" on the Daily end screen**, so finishers know when to come back.
 7. **Per-pair link preview images for the 150 comparison pages**, reusing the compare share image; it needs a rasteriser at deploy (docs/seo.md explains the trade-off).
 8. **An embed mode** (`?embed=1`: no ads, no dock, an "Open the full globe" link) for teachers and bloggers.
 9. **Publish the border-view rules as a text page** linked from About and How to play, so border comments can be answered with one link.
-10. **Show the data year in the lens legend** (the cards already show it), which heads off "this data is old" replies.
+10. ✓ **Show the data year in the lens legend** (the cards already show it), which heads off "this data is old" replies.

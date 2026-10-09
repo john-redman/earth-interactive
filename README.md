@@ -21,7 +21,7 @@ An interactive, true-to-scale 3D globe for the browser. Spin it, open any countr
 | **Flywheel spin** | The globe keeps its momentum; grab to stop. A hard flick starts *rollercoaster mode*: a screaming crowd |
 | **Ads** | Left/right banner slots (160×600 → 120×240), hidden on small screens |
 | **Recenter** | Bottom-right button (or `R` / `Home`) flies back to the start-up view and resumes the idle spin; the globe holds still while a country card is open |
-| **Deep links** | `?c=FRA` · `?compare=FRA,DEU` · `?play=daily` · `?view=un` |
+| **Deep links** | `?c=FRA` · `?compare=FRA,DEU` · `?play=daily` · `?play=classic&round=…&beat=…` (a friend's challenge) · `?view=un` · `?lens=density` |
 
 ## Quick start
 

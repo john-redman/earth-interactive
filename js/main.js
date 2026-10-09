@@ -303,7 +303,8 @@ async function copyLink(o) {
 }
 
 // ---------- data lens ----------
-let lensKey = 'none', lens = null;
+// ?lens=density opens the globe already coloured by that statistic (links in posts about a data map)
+let lensKey = LENSES[params.get('lens')]?.get ? params.get('lens') : 'none', lens = null;
 const legendEl = document.getElementById('legend');
 function applyLens() {
   if (!layer.view) return;
@@ -311,6 +312,7 @@ function applyLens() {
   layer.setLens(lens ? o => lens.color(o) : null);
   renderLegend(legendEl, lens);
   document.body.classList.toggle('lens-on', !!lens);
+  setParam('lens', lens ? lensKey : null);
   document.querySelector('[data-dock="lens"]').classList.toggle('on', !!lens);
   if (ui.popFor) ui.showPopup(ui.popFor, viewKey, extras(ui.popFor));
 }
@@ -318,7 +320,7 @@ function applyLens() {
 // ---------- dock: search, play, data ----------
 const GAME_VIEW = 'un';
 let viewBeforeGame = null;
-function startGame(m) { track(`play/${m}`); quiz.start(m); }
+function startGame(m, opts) { track(opts?.round ? 'play/challenge' : `play/${m}`); quiz.start(m, opts); }
 const search = createSearch({ getObjects: () => layer.view?.objects || [], onPick: o => { if (mode === 'quiz') return; if (mode === 'compare') endCompare(true); openCountry(o, { fly: true }); } });
 const quiz = createQuiz({
   data, layer, globe, anchorOf: o => compare.anchorFor(o),
@@ -337,7 +339,7 @@ const quiz = createQuiz({
       viewBeforeGame = null;
     }
     document.body.classList.toggle('quiz-on', on);
-    setParam('play', null);
+    setParam('play', null); setParam('round', null); setParam('beat', null);
   },
 });
 const menus = { play: document.getElementById('play-menu'), lens: document.getElementById('lens-menu') };
@@ -725,10 +727,10 @@ requestAnimationFrame(() => setTimeout(async () => {
   applyLens();
   document.body.classList.add('ready');
   showIntro(stage); // first visit: a finger shows the globe can be spun
-  // deep links: ?c=FRA · ?compare=FRA,DEU · ?play=daily
+  // deep links: ?c=FRA · ?compare=FRA,DEU · ?play=daily · ?lens=pop|density|gdppc|area (set above)
   const c = params.get('c')?.toUpperCase(), cmp = params.get('compare')?.toUpperCase().split(','), play = params.get('play')?.toLowerCase();
   if (cmp?.length === 2 && cmp[0] !== cmp[1] && layer.get(cmp[0]) && layer.get(cmp[1])) { mode = 'compare'; compare.start(layer.get(cmp[0]), layer.get(cmp[1])); }
-  else if (play === 'daily' || play === 'classic') startGame(play);
+  else if (play === 'daily' || play === 'classic') startGame(play, { round: params.get('round')?.toLowerCase(), beat: params.get('beat') }); // a friend's Find it round
   else if (c && layer.get(c)) openCountry(layer.get(c), { fly: true });
   const chip = layer.get(cotdKey) && mountDailyChip(document.getElementById('cotd'), { o: layer.get(cotdKey), onGo: goDaily });
   if (chip && !c && !cmp && !play) setTimeout(() => chip.show(), 1400); // after the globe has settled in
