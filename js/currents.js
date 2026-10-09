@@ -1,64 +1,117 @@
-// Major surface currents painted on the sea, like the type and markings on a real globe: a faint lighter sheen
-// that meanders a little, with soft trails of light drifting slowly downstream, and their names (direction, typical speed)
+// Major surface currents painted on the sea, like the type and markings on a real globe: a faint lighter sheen that
+// meanders like the real thing, threaded with fine streamlines whose streaks drift downstream, and their names (direction, typical speed)
 // laid on the surface beside them, curving with the current and the sphere. Ocean names in the same type, larger,
 // along their parallel. Everything is fixed to the Earth and turns with it. Decorative: nothing is clickable.
 import * as THREE from 'three';
 import { lonLatToVec3 } from './geo.js';
 
 /**
- * Waypoints are [lon, lat] in the direction of flow, kept off the coasts. Speeds are typical surface speeds in m/s
- * (textbook figures; the strong western boundary currents peak higher; the Somali Current runs in the summer
- * monsoon). `major` labels appear first as you zoom in; `at` places the label along the line (0…1); `side` is the
- * side of the flow the label sits on ('left' by default; 'right' keeps it off the coast); `label: false` draws the
- * line only.
+ * Waypoints are [lon, lat] in the direction of flow, along the mean axis of each current as charted in the
+ * oceanographic literature (shelf-break jets kept just off the coast; the Kuroshio Extension on its 35° N mean axis,
+ * the Gulf Stream leaving the coast at Cape Hatteras, the Agulhas turning back on itself south of Africa). Speeds are
+ * typical surface speeds in m/s (textbook figures; the strong western boundary currents peak higher; the Somali Current
+ * runs in the summer monsoon). `major` labels appear first as you zoom in; `at` places the label along the line (0…1);
+ * `side` is the side of the flow the label sits on ('left' by default; 'right' keeps it off the coast); `free` is where
+ * the current leaves the coast and starts to meander (0…1, default 0); `meander` scales the meander.
  */
 export const CURRENTS = [
-  { name: 'Gulf Stream', side: 'right', strength: 'strong', speed: 2, warm: true, major: true, at: 0.62,
-    path: [[-80.5, 25.5], [-79.8, 28], [-79.3, 31], [-76.5, 34], [-73, 36.2], [-68, 38.5], [-60, 40.5], [-50, 42]] },
-  { name: 'North Atlantic Drift', strength: 'moderate', speed: 0.3, warm: true, at: 0.45,
-    path: [[-47, 44.5], [-40, 47.5], [-30, 51], [-20, 54.5], [-12, 57.5], [-5, 61], [3, 64.5]] },
-  { name: 'Labrador Current', strength: 'moderate', speed: 0.3, at: 0.4,
-    path: [[-60, 64], [-58, 60], [-55, 56], [-52, 52.5], [-50, 48.5], [-50.5, 45]] },
-  { name: 'East Greenland Current', strength: 'moderate', speed: 0.3, at: 0.5,
-    path: [[-12, 77], [-16, 73], [-19, 70], [-27, 66.5], [-35, 63.5], [-42, 59.5]] },
-  { name: 'Canary Current', side: 'right', strength: 'weak', speed: 0.2, at: 0.45,
-    path: [[-14, 42], [-15, 36], [-17, 30], [-19, 25], [-21, 20], [-23, 15.5]] },
-  { name: 'North Equatorial Current', strength: 'moderate', speed: 0.3, at: 0.5,
-    path: [[-25, 14], [-35, 14], [-45, 14.5], [-57, 15]] },
-  { name: 'South Equatorial Current', strength: 'moderate', speed: 0.5, at: 0.45,
-    path: [[5, -2], [-5, -2.5], [-15, -3.5], [-25, -4.5], [-32, -6]] },
-  { name: 'Brazil Current', strength: 'weak', speed: 0.3, warm: true, at: 0.5,
-    path: [[-34, -10], [-36.5, -15], [-38, -20], [-40.5, -24], [-45, -28], [-50, -33], [-53, -37]] },
+  // ---- North Atlantic: the subtropical gyre and its northern spill
+  { name: 'Caribbean Current', side: 'right', strength: 'moderate', speed: 0.4, warm: true, at: 0.4,
+    path: [[-63.5, 14.2], [-68, 14.3], [-73, 14], [-77, 14.2], [-80.5, 15.6], [-83, 17.6], [-85.5, 20.6], [-85.7, 21.7]] },
+  { name: 'Loop Current', side: 'right', strength: 'strong', speed: 1.5, warm: true, at: 0.5,
+    path: [[-85.7, 22.3], [-86.2, 24], [-86, 25.8], [-84.8, 26.5], [-83.8, 25.6], [-83.4, 24.4]] },
+  { name: 'Gulf Stream', side: 'right', strength: 'strong', speed: 2, warm: true, major: true, at: 0.66, free: 0.4, meander: 1.4,
+    path: [[-83, 24], [-81.5, 24.1], [-80, 25.1], [-79.85, 26], [-79.85, 27.5], [-79.9, 29], [-79.8, 30.3], [-78.9, 31.6],
+      [-77.6, 32.8], [-76.4, 33.9], [-75, 35.1], [-73.5, 36.2], [-71, 37.3], [-68, 38.2], [-65, 38.9], [-61, 39.7],
+      [-57, 40.4], [-53, 41.2], [-50, 42]] },
+  { name: 'North Atlantic Drift', strength: 'moderate', speed: 0.3, warm: true, at: 0.55, meander: 1.3,
+    path: [[-47.5, 42.8], [-45.5, 45], [-44, 47.5], [-43.5, 49.5], [-41, 51.2], [-36, 51.5], [-30, 51.8], [-24, 52.8],
+      [-18, 54.5], [-13, 56.5], [-9, 58.5], [-5, 60.5], [0, 61.8]] },
+  { name: 'Norwegian Current', strength: 'moderate', speed: 0.3, warm: true, at: 0.45,
+    path: [[2, 62.6], [5, 65], [9, 67.5], [13, 69.5], [17, 70.8], [22, 71.8], [30, 72.6]] },
+  { name: 'East Greenland Current', strength: 'moderate', speed: 0.3, at: 0.25,
+    path: [[-8, 79.5], [-11, 77], [-15, 74.5], [-17, 72], [-19.5, 69.5], [-24, 67.8], [-30, 66.4], [-35, 64.8],
+      [-39, 62.8], [-41.5, 60.2], [-43.5, 59.4], [-45.5, 59.2]] },
+  { name: 'Labrador Current', strength: 'moderate', speed: 0.3, at: 0.45,
+    path: [[-61, 61.5], [-60, 59.5], [-58.5, 57.5], [-56.5, 55.8], [-54, 54], [-52, 52.3], [-50.8, 50.3], [-50, 48.3],
+      [-49.8, 46.3], [-50.5, 44.3]] },
+  { name: 'Canary Current', side: 'right', strength: 'weak', speed: 0.2, at: 0.3,
+    path: [[-11, 40], [-12, 36.5], [-13, 33.5], [-14.5, 31], [-15.3, 29.6], [-17.2, 26.5], [-19.2, 23], [-20.5, 20.5],
+      [-21.5, 18.5]] },
+  { name: 'North Equatorial Current', strength: 'moderate', speed: 0.3, warm: true, at: 0.5,
+    path: [[-26, 18.5], [-32, 17.5], [-40, 16.5], [-48, 15.5], [-57, 14.8]] },
+  // ---- tropical and South Atlantic
+  { name: 'Equatorial Counter Current', strength: 'moderate', speed: 0.4, warm: true, at: 0.5,
+    path: [[-50, 6.5], [-42, 6.8], [-33, 7], [-24, 6.5], [-17, 5.5]] },
+  { name: 'Guinea Current', side: 'right', strength: 'moderate', speed: 0.5, warm: true, at: 0.5,
+    path: [[-14, 5.5], [-10, 4.6], [-6, 3.9], [-2, 3.9], [2, 4.6], [5.5, 3.6]] },
+  { name: 'South Equatorial Current', strength: 'moderate', speed: 0.5, warm: true, at: 0.45,
+    path: [[8, -1.5], [0, -1.8], [-10, -2.5], [-20, -3.5], [-28, -4.5], [-32.5, -5.2]] },
+  { name: 'North Brazil Current', side: 'right', strength: 'strong', speed: 1, warm: true, at: 0.5,
+    path: [[-34.3, -4.5], [-36.5, -2.6], [-40, -1.5], [-44, -0.6], [-47, 1], [-48.8, 3], [-50.5, 5.5], [-53.5, 8]] },
+  { name: 'Brazil Current', strength: 'weak', speed: 0.3, warm: true, at: 0.55,
+    path: [[-34.8, -11], [-36.8, -15], [-37.6, -19.5], [-39.8, -23.2], [-44.5, -25.8], [-47.5, -28.5], [-50, -32.5],
+      [-52.5, -36.5], [-53.5, -38.5]] },
+  { name: 'Falkland Current', side: 'right', strength: 'moderate', speed: 0.4, at: 0.5,
+    path: [[-57, -53], [-57, -51], [-58.8, -49.5], [-59.6, -47], [-59, -44], [-57.5, -41.5], [-56, -39.5]] },
   { name: 'Benguela Current', strength: 'weak', speed: 0.2, at: 0.45,
-    path: [[17, -35], [15.5, -30], [12.5, -25], [10.5, -20], [8, -15], [4, -11]] },
-  { name: 'Agulhas Current', strength: 'strong', speed: 2, warm: true, major: true, at: 0.45,
-    path: [[37.5, -25], [34.5, -29], [31.8, -32.3], [28.5, -34.6], [25, -36.6], [21, -37.6], [18, -38.5]] },
-  { name: 'Antarctic Circumpolar Current', group: 'acc', strength: 'moderate', speed: 0.5, major: true, at: 0.5,
-    path: [[-62, -57.5], [-45, -53.5], [-25, -51.5], [-5, -51], [15, -50], [38, -49]] },
-  { name: 'Antarctic Circumpolar Current', group: 'acc', strength: 'moderate', speed: 0.5, major: true, at: 0.5,
-    path: [[52, -48.5], [72, -50.5], [92, -50.5], [112, -50.5], [132, -52], [152, -54]] },
-  { name: 'Antarctic Circumpolar Current', group: 'acc', strength: 'moderate', speed: 0.5, major: true, at: 0.5,
-    path: [[168, -56], [-172, -57.5], [-150, -58.5], [-130, -59], [-110, -59], [-90, -58.5], [-74, -58.5]] },
-  { name: 'South Equatorial Current', strength: 'moderate', speed: 0.5, at: 0.5,
-    path: [[110, -12], [100, -12.5], [90, -13], [80, -13.5], [70, -14], [62, -14.5], [55, -14.5]] },
+    path: [[17, -34], [16, -32], [14.5, -29], [13, -26], [11.8, -22], [10.5, -18.5], [9.5, -16], [7.5, -14], [5, -12.5],
+      [2, -11]] },
+  // ---- Indian Ocean
+  { name: 'Agulhas Current', strength: 'strong', speed: 2, warm: true, major: true, at: 0.42, free: 0.75,
+    path: [[33.6, -27.5], [32.2, -29.6], [30.5, -31.6], [28.8, -33.3], [26.5, -34.5], [24, -35.5], [22, -36.6],
+      [20.5, -37.8], [19.5, -39.3]] },
+  { name: 'Agulhas Return Current', strength: 'moderate', speed: 0.5, warm: true, at: 0.45, meander: 1.6,
+    path: [[21, -40.2], [24, -40], [28, -39.7], [32, -40], [36, -39.8], [40, -40.5], [48, -41], [56, -41.8]] },
+  { name: 'South Equatorial Current', strength: 'moderate', speed: 0.5, warm: true, at: 0.5,
+    path: [[114, -11.5], [105, -12], [96, -13], [88, -13.5], [80, -14], [72, -14.5], [64, -15], [57.5, -15.5]] },
   { name: 'Somali Current', side: 'right', strength: 'strong', speed: 2, warm: true, major: true, at: 0.5,
-    path: [[43.5, -3], [47, 1.5], [50, 5.5], [52.5, 9.5], [55, 12.5]] },
-  { name: 'Kuroshio', side: 'right', strength: 'strong', speed: 1.5, warm: true, major: true, at: 0.5,
-    path: [[123, 22], [125, 25.5], [129, 29], [133, 31.8], [137, 33.6], [141.5, 35.3], [146, 36.5], [153, 37]] },
+    path: [[43.5, -2.5], [46, 0.8], [49, 3.8], [51, 6.8], [52.6, 9.6], [53.6, 11.5]] },
+  { name: 'Leeuwin Current', side: 'right', strength: 'moderate', speed: 0.5, warm: true, at: 0.3,
+    path: [[113, -22], [112.3, -26], [113.6, -30], [114.3, -33.5], [114.6, -35.2], [116.5, -35.6], [119, -35.5],
+      [122, -34.6], [125, -34.3]] },
+  // ---- Southern Ocean: the Antarctic Circumpolar Current, all the way round (in three stretches, one name each)
+  { name: 'Antarctic Circumpolar Current', group: 'acc', strength: 'moderate', speed: 0.5, major: true, at: 0.5, meander: 1.4,
+    path: [[-66, -58.2], [-62, -58], [-52, -55.8], [-40, -52.8], [-25, -50.5], [-5, -49.5], [15, -48.5], [30, -48], [42, -48]] },
+  { name: 'Antarctic Circumpolar Current', group: 'acc', strength: 'moderate', speed: 0.5, major: true, at: 0.5, meander: 1.4,
+    path: [[46, -48.2], [50, -48.5], [58, -47.5], [66, -46.5], [75, -45.5], [90, -46.5], [110, -48.5], [130, -51],
+      [152, -53.5]] },
+  { name: 'Antarctic Circumpolar Current', group: 'acc', strength: 'moderate', speed: 0.5, major: true, at: 0.5, meander: 1.4,
+    path: [[162, -56], [170, -56.3], [-170, -57], [-150, -58], [-130, -58.5], [-110, -58], [-90, -58], [-70, -58.5]] },
+  // ---- North Pacific
+  { name: 'Kuroshio', side: 'right', strength: 'strong', speed: 1.5, warm: true, major: true, at: 0.78,
+    path: [[123.5, 15.5], [122.6, 19], [122.4, 21.5], [122.8, 23.5], [123.8, 25.5], [126.5, 27.8], [129, 29.5],
+      [131.5, 31], [133.5, 32.4], [136, 33], [138.5, 33.8], [141, 35], [143, 35.5]] },
+  { name: 'Kuroshio Extension', side: 'right', strength: 'strong', speed: 1, warm: true, at: 0.45, free: 0.04, meander: 1.5,
+    path: [[143.6, 35.5], [147, 35.4], [151, 35.6], [155, 34.9], [160, 34.6], [165, 34.9], [170, 35.4], [175, 35.8],
+      [-178, 36.5], [-172, 37.5]] },
   { name: 'North Pacific Current', strength: 'weak', speed: 0.2, warm: true, at: 0.5,
-    path: [[158, 40], [170, 42], [-175, 43], [-160, 43.5], [-145, 44], [-134, 45]] },
+    path: [[-170, 39], [-160, 41.5], [-150, 43], [-140, 44], [-132, 45]] },
+  { name: 'Oyashio', strength: 'moderate', speed: 0.3, at: 0.4,
+    path: [[160.5, 52.5], [158.5, 50.5], [156, 48.5], [153.2, 46.6], [150, 45], [147, 42.4], [145.2, 41.4],
+      [143.5, 40], [143, 38.5]] },
+  { name: 'Alaska Current', strength: 'moderate', speed: 0.5, warm: true, at: 0.3,
+    path: [[-133, 49], [-136, 52.5], [-139, 55.5], [-142.5, 57.8], [-147, 58.7], [-150.8, 56.8], [-155, 55],
+      [-160, 54], [-165, 53.3], [-170, 52.2], [-175, 51.2]] },
   { name: 'California Current', side: 'right', strength: 'weak', speed: 0.2, at: 0.45,
-    path: [[-129, 47], [-127, 41], [-124.5, 36], [-121, 31], [-117, 26], [-114, 20.5]] },
-  { name: 'North Equatorial Current', strength: 'moderate', speed: 0.4, at: 0.5,
-    path: [[-110, 14], [-130, 13.5], [-150, 13.5], [-170, 14], [170, 14], [150, 14], [130, 13.5]] },
+    path: [[-128, 48], [-127.5, 44], [-126.5, 40], [-124.5, 36.5], [-122, 33], [-119.5, 29.5], [-117, 26],
+      [-115, 22.5], [-115, 19]] },
+  { name: 'North Equatorial Current', strength: 'moderate', speed: 0.4, warm: true, at: 0.5,
+    path: [[-112, 14], [-125, 13.5], [-140, 13], [-155, 13], [-170, 13], [175, 13.5], [160, 13.5], [152, 13],
+      [146, 12.5], [140, 12.8], [128, 13.5]] },
+  // ---- tropical and South Pacific
   { name: 'Equatorial Counter Current', strength: 'moderate', speed: 0.4, warm: true, at: 0.42,
-    path: [[135, 6], [155, 6.5], [180, 7], [-160, 7], [-130, 7.5], [-100, 7.5]] },
-  { name: 'South Equatorial Current', strength: 'moderate', speed: 0.6, at: 0.5,
-    path: [[-87, -2], [-100, -3], [-120, -3.5], [-140, -4], [-160, -5], [-180, -6], [168, -7.5]] },
+    path: [[130, 5.5], [140, 6], [150, 6.5], [160, 6.8], [170, 7], [180, 7], [-170, 7], [-150, 7], [-130, 7],
+      [-110, 7], [-95, 6.5], [-90, 7]] },
+  { name: 'South Equatorial Current', strength: 'moderate', speed: 0.6, warm: true, at: 0.5,
+    path: [[-87, -3], [-92, -2.6], [-100, -2.5], [-110, -2.5], [-125, -3], [-140, -4], [-155, -5], [-170, -6.5],
+      [178, -8], [172, -9]] },
   { name: 'Humboldt Current', strength: 'weak', speed: 0.2, at: 0.5,
-    path: [[-76, -42], [-76.5, -36], [-75, -30], [-74, -24], [-77, -17], [-80.5, -11], [-83, -6]] },
-  { name: 'East Australian Current', strength: 'strong', speed: 1, warm: true, major: true, at: 0.45,
-    path: [[156, -20], [155, -25], [154.4, -28.5], [153.6, -32], [152.2, -35.5], [151, -38]] },
+    path: [[-76.5, -44], [-75.5, -38], [-74, -32], [-73, -26], [-73, -20], [-76.5, -15], [-79.5, -10], [-82.3, -6.5],
+      [-84, -4], [-86.5, -3]] },
+  { name: 'East Australian Current', strength: 'strong', speed: 1, warm: true, major: true, at: 0.45, free: 0.55,
+    path: [[155, -22], [154.6, -24.5], [154.4, -27], [154.4, -29], [153.9, -31], [153.1, -32.8], [152.4, -34.6],
+      [151.4, -36.4], [150.8, -38]] },
 ];
 
 /** Ocean names: [lon, lat]; they follow the parallel through that point. */
@@ -75,29 +128,36 @@ export const OCEANS = [
 ];
 
 const R_LINE = 1.0016, R_TEXT = 1.0022;  // just above the sea, under the country fills
-const WIDTH = { strong: 0.0085, moderate: 0.0068, weak: 0.0054 }; // ribbon half-width (radians)
-const FLOW = { strong: 1.0, moderate: 0.6, weak: 0.4 };          // trail drift speed, relative
+const WIDTH = { strong: 0.012, moderate: 0.0095, weak: 0.0078 };  // ribbon half-width (radians)
+const FLOW = { strong: 1.0, moderate: 0.6, weak: 0.4 };          // streak drift speed, relative
+const MEANDER = { strong: 0.01, moderate: 0.006, weak: 0.004 };   // meander amplitude (radians), × c.meander
+const WAVE = { strong: 0.075, moderate: 0.12, weak: 0.16 };       // meander wavelength (radians)
 const TEXT_H = { current: 0.0125, ocean: 0.03 };                  // cap height on the globe (radians)
 const reduced = matchMedia('(prefers-reduced-motion: reduce)');
 const smooth = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
 const fmtSpeed = s => `${s < 1 ? s.toFixed(1) : s} m/s`;
 const NORTH = new THREE.Vector3(0, 1, 0);
 
-/** A smooth path through the waypoints on the sphere, with a gentle meander so it never runs ruler-straight. */
-function makePath(path, seed) {
-  const pts = path.map(([lon, lat]) => lonLatToVec3(lon, lat));
+/**
+ * A smooth path through the waypoints on the sphere, with meanders: still where the current hugs the coast, loops
+ * growing once it is `free` of it (like the Gulf Stream past Cape Hatteras), and two wavelengths mixed so they never
+ * repeat like a rule. `base` is the path without meanders (labels sit beside it).
+ */
+function makePath(c, seed) {
+  const pts = c.path.map(([lon, lat]) => lonLatToVec3(lon, lat));
   const curve = new THREE.CatmullRomCurve3(pts, false, 'centripetal');
   const len = curve.getLength();                                     // ≈ radians on the unit sphere
-  const waves = Math.max(1.5, len / 0.11), amp = 0.0042;
-  const at = u => {
-    const p = curve.getPointAt(Math.min(1, Math.max(0, u))).normalize();
-    const q = curve.getPointAt(Math.min(1, Math.max(0, u + 0.002))).normalize();
-    const side = new THREE.Vector3().crossVectors(p, q.sub(p)).normalize();  // left of the flow
-    const m = Math.sin(u * waves * 6.2832 + seed) * 0.7 + Math.sin(u * waves * 2.3 * 6.2832 + seed * 1.7) * 0.3;
-    return p.addScaledVector(side, amp * m * Math.sin(Math.PI * u)).normalize(); // still at the ends
-  };
+  const waves = Math.max(1.5, len / WAVE[c.strength]), amp = MEANDER[c.strength] * (c.meander ?? 1), free = c.free ?? 0;
   const base = u => curve.getPointAt(Math.min(1, Math.max(0, u))).normalize();
-  return { at, base, len };
+  const at = u => {
+    const p = base(u), q = base(u + 0.002);
+    const side = new THREE.Vector3().crossVectors(p, q.sub(p)).normalize();  // left of the flow
+    const ph = u * waves * 6.2832 + seed;
+    const m = Math.sin(ph + 0.6 * Math.sin(ph * 0.5 + seed)) * 0.75 + Math.sin(ph * 2.3 + seed * 1.7) * 0.25; // uneven loops
+    const env = smooth(free, free + 0.15, u) * smooth(0, 0.12, u) * smooth(1, 0.88, u); // still at the ends and the coast
+    return p.addScaledVector(side, amp * m * env).normalize();
+  };
+  return { at, base, len, amp };
 }
 
 /** Left-of-direction vector at p for a path heading along d (both on the unit sphere). */
@@ -153,13 +213,14 @@ export class Currents {
     this.visible = true;
     this.fade = { minor: 0, major: 0, ocean: 1, ui: 1 };
 
-    // ---- the currents: a whisper of light along the flow (lighter than the sea, never a dark band), with soft
-    // trails drifting slowly downstream like flecks on the water; a faint warm or cool tint, as on a printed globe.
+    // ---- the currents: a whisper of light along the flow (lighter than the sea, never a dark band), threaded with a
+    // few fine streamlines that weave across it, each carrying soft streaks downstream, fastest in the core, the way
+    // a real current reads from above; a faint warm or cool tint, as on a printed globe.
     const R = { pos: [], uv: [], idx: [], aLen: [], aFlow: [], aWarm: [], aSeed: [] };
     CURRENTS.forEach((c, i) => {
-      const p = makePath(c.path, i * 1.618);
+      const p = makePath(c, i * 1.618);
       c._path = p;
-      const n = Math.max(24, Math.round(p.len * 220));
+      const n = Math.max(32, Math.round(p.len * 320));
       strip(R, p.at, n, WIDTH[c.strength], R_LINE, [-1, 1], { aLen: p.len, aFlow: FLOW[c.strength], aWarm: c.warm ? 1 : 0, aSeed: (i * 0.618) % 1 });
     });
     const rg = new THREE.BufferGeometry();
@@ -177,19 +238,27 @@ export class Currents {
         varying vec2 vUv; varying float vFace; varying float vLen; varying float vFlow; varying float vWarm; varying float vSeed;
         void main(){
           if (vFace < 0.0) discard;
-          float y = vUv.y;
-          float ends = smoothstep(0.0, 0.1, vUv.x) * smoothstep(1.0, 0.82, vUv.x);
-          float sheen = (1.0 - y * y); sheen *= sheen;                      // the faintest lift of the water
-          // trails: one every ~0.07 rad, drifting downstream, bright at the head and fading behind it
-          float s = vUv.x * vLen * 14.0 - uTime * vFlow * 0.05 + vSeed * 7.0;
-          s += 0.18 * sin(s * 0.61 + vSeed * 6.0);                          // uneven spacing, not a dashed rule
-          float f = fract(s);
-          float trail = pow(f, 2.2) * smoothstep(1.0, 0.9, f);
-          float w = 0.12 + 0.3 * trail;                                      // narrows towards the tail
-          float core = exp(-y * y / (w * w));
+          float y = vUv.y, x = vUv.x * vLen;                                 // across −1…1; along, in radians
+          float ends = smoothstep(0.0, 0.08, vUv.x) * smoothstep(1.0, 0.86, vUv.x);
+          float sheen = 1.0 - y * y; sheen *= sheen;                         // the faintest lift of the water
+          float px = fwidth(y);                                              // one screen pixel, across
+          float a = sheen * 0.045;
+          for (int i = 0; i < 4; i++) {
+            float k = float(i), c = abs(k - 1.5) / 1.5;                      // 0 in the core, 1 at the edges
+            // each streamline weaves gently across the ribbon (two wavelengths, so the braid never repeats)
+            float lane = (k - 1.5) / 2.3 + 0.1 * sin(x * (31.0 + 7.0 * k) + vSeed * 9.0 + k * 2.1)
+                       + 0.05 * sin(x * (83.0 - 9.0 * k) + k * 4.0);
+            // streaks drifting downstream, fastest in the core, at uneven spacing
+            float s = x * (19.0 + 3.0 * k) - uTime * vFlow * 0.075 * (1.0 - 0.45 * c) + vSeed * 5.0 + k * 0.37;
+            s += 0.22 * sin(s * 0.57 + k * 1.3 + vSeed * 4.0);
+            float f = fract(s);
+            float streak = pow(f, 3.0) * smoothstep(1.0, 0.93, f);          // a bright head, a long fading tail
+            float w0 = 0.045 + 0.075 * streak, w = max(w0, px * 0.9);        // never thinner than a pixel
+            float d = (y - lane) / w;
+            a += exp(-d * d) * streak * (w0 / w) * 0.34 * (1.0 - 0.3 * c);
+          }
           vec3 tint = mix(vec3(0.72, 0.87, 1.0), vec3(1.0, 0.87, 0.76), vWarm);
-          float a = (sheen * 0.05 + core * trail * 0.42) * ends * uOpacity * smoothstep(0.0, 0.25, vFace);
-          gl_FragColor = vec4(tint, a);
+          gl_FragColor = vec4(tint, min(a, 0.6) * ends * uOpacity * smoothstep(0.0, 0.25, vFace));
         }`,
     });
     const ribbons = new THREE.Mesh(rg, this.ribbonMat);
@@ -281,7 +350,7 @@ export class Currents {
         const { c } = it, p = c._path, at = c.at ?? 0.5, du = Math.min(0.48, (wRad / p.len) / 2);
         const u0 = Math.max(0, Math.min(1 - 2 * du, at - du)), u1 = u0 + 2 * du;
         const sideSign = c.side === 'right' ? -1 : 1;                      // left of the flow by default
-        const off = (WIDTH[c.strength] + hRad * 0.55) * sideSign;
+        const off = (WIDTH[c.strength] + p.amp + hRad * 0.55) * sideSign;      // clear of the ribbon and its meanders
         // one smooth bow (no wiggles): a quadratic arc through the start, middle and end of the label's stretch
         const side = u => { const q = p.base(u), d = p.base(u + 0.004).sub(p.base(u - 0.004)); return q.addScaledVector(leftOf(q, d), off).normalize(); };
         const A = side(u0), M = side((u0 + u1) / 2), B = side(u1);

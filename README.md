@@ -10,7 +10,7 @@ An interactive, true-to-scale 3D globe for the browser. Spin it, open any countr
 
 | | |
 |---|---|
-| **Globe** | Three.js sphere with a satellite-style animated ocean (drifting swell lines, coastal shallows) and its major currents labelled with direction and strength, atmosphere, softly twinkling stars, real-time day & night from the Sun's position (switchable) |
+| **Globe** | Three.js sphere with a calm satellite-style ocean (coastal shallows, slowly shifting light) with its major currents drawn as meandering streamlines and labelled with direction and strength, cargo ships on the main sea lanes, light clouds (desktop), atmosphere, softly twinkling stars, real-time day & night from the Sun's position (switchable) |
 | **Three border views** | UN Standard · De Facto Control · Recognition Neutral — driven by an editable rules file ([docs/border-views.md](docs/border-views.md)) |
 | **Country cards** | Capital, population & area with world rank, density, GDP, languages, currency, clickable neighbours, deep link |
 | **True-size compare** | Countries lift out as curved puzzle pieces, sit side by side at the same latitude and can be dragged anywhere on the globe; pull up the compare bar for a side-by-side stats table, or make a square share image |
