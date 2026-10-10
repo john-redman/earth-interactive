@@ -116,6 +116,12 @@ and `android/app/src/main/res/values/strings.xml`:
 ```
 (These come from the [plugin README](https://www.npmjs.com/package/@capacitor-community/admob). The app crashes on start if the App ID is missing.)
 
+**Minimum OS versions.** The globe needs import maps and WebGL 2. On iOS, WKWebView has import maps only from **iOS 16.4**, so set the deployment target to 16.4:
+- Xcode → App target → General → Minimum Deployments;
+- `platform :ios, '16.4'` in `ios/App/Podfile`.
+
+Older devices then can't install it, rather than installing an app that only shows the website's "this browser is too old" message. Capacitor 8's own floor is iOS 15. On Android the system WebView (Chromium) updates through Google Play, so the default minSdk (API 24) is fine.
+
 Android also needs **orientation and back-button behaviour** checked in Android Studio. Leave orientation unlocked, since the globe works in both.
 
 ### 4.3 What to commit
