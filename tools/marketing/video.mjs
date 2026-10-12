@@ -10,7 +10,7 @@ const HEX = JSON.parse(fs.readFileSync(S + '/raw/hex.json'));
 const SCRIPTS = {
   v01: { name: 'v01-greenland-vs-drcongo', dur: 11, start: [-38, 40], zoom: 0.97, cmp: ['GRL', 'COD'], fit: 1.75, cmpAt: 2.6, ratio: HEX.GRL_COD[2],
     overlays: [[0, 2.6, 'Your map has been lying to you', 'Greenland vs DR Congo'], [2.6, 9.3, 'Pulled both off the globe', 'Greenland vs DR Congo', 'ratioAt:5']], endAt: 9.3, endLine: 'Compare any two countries' },
-  v02: { name: 'v02-usa-vs-australia', dur: 11, start: [-110, 25], zoom: 0.97, cmp: ['USA', 'AUS'], fit: 1.6, cmpAt: 2.6, ratio: HEX.USA_AUS[2] + '<br><span style="font-size:30px;opacity:.75">USA: contiguous 48 states, as in the app</span>',
+  v02: { name: 'v02-usa-vs-australia', dur: 11, start: [-110, 25], zoom: 0.97, cmp: ['USA', 'AUS'], fit: 1.6, cmpAt: 2.6, ratio: HEX.USA_AUS[2] + '<br><span style="font-size:30px;opacity:.75">USA with Alaska, as in the app (Hawaii stays home)</span>',
     overlays: [[0, 2.6, 'How big is Australia, really?', 'USA vs Australia'], [2.6, 9.3, 'Same latitude, side by side', 'USA vs Australia', 'ratioAt:5']], endAt: 9.3, endLine: 'Compare any two countries' },
   v03: { name: 'v03-data-lenses', dur: 12, start: [20, 22], zoom: 0.97, lenses: [[0, 'none', 'Political'], [2.5, 'pop', 'Population'], [5, 'density', 'People per km²'], [7.5, 'gdppc', 'GDP per person']],
     overlays: [[0, 2.5, 'One tap recolours the planet', 'Political'], [2.5, 5, 'One tap recolours the planet', 'Population'], [5, 7.5, 'One tap recolours the planet', 'People per km²'], [7.5, 10.2, 'One tap recolours the planet', 'GDP per person']], endAt: 10.2, endLine: 'See the world by data' },

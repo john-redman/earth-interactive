@@ -27,6 +27,7 @@ import { countryOfTheDay, factsFor, mountDailyChip } from './daily-country.js';
 import { flagImg } from './flags.js';
 import { shareCompareImage } from './share-image.js';
 import { track } from './analytics.js';
+import { createEgg } from './egg.js';
 import { TIER } from './perf.js';
 
 const canvas = document.getElementById('globe');
@@ -93,6 +94,7 @@ globe.controls.enableRotate = false; // rotation is ours (flywheel); OrbitContro
 const thrills = new Thrills(globe, spin);
 const pin = new Pin(document.getElementById('stage'));
 const sfx = createSfx({ muted: () => thrills.muted });
+const egg = createEgg(document.getElementById('egg'), { layer, sfx, track, announce }); // tap France five times
 const music = createMusic(document.getElementById('music-toggle'), { autostart: !EMBED });
 const missLine = new MissLine(globe, layer, stage);
 const currents = new Currents(globe);
@@ -158,7 +160,7 @@ let cmpState = null;
 /** Compare → Share image: a square post of the two countries at true size. */
 async function compareImage() {
   if (!cmpState) return;
-  const side = s => ({ ...s, shape: compare.shapeFor(s.o) });
+  const side = s => ({ ...s, shape: compare.pieceShapeFor(s.o) });
   const url = new URL(shareBase()); url.search = ''; url.searchParams.set('compare', `${cmpState.a.o.key},${cmpState.b.o.key}`);
   try {
     const how = await shareCompareImage({ a: side(cmpState.a), b: side(cmpState.b) }, url.toString().replace(/%2C/gi, ','));
@@ -574,6 +576,7 @@ function onClick(x, y) {
   }
   if (r?.o) { openCountry(r.o, { point: r.point }); sfx.play('tap'); }
   else closePopup();
+  egg.tapped(r?.o);
 }
 
 window.addEventListener('keydown', e => {
@@ -611,6 +614,7 @@ window.addEventListener('keydown', e => {
     }
     if (!heldArrows.size) arrowsSince = performance.now();
     heldArrows.add(e.key); e.preventDefault();
+    if (!arrowPiece()) aim(true); // the ring marks the middle while the arrows aim the globe
     if (!e.repeat) spinByKeys(performance.now()); // react to the press itself, even if it is let go before the next frame
     return;
   }
@@ -638,9 +642,17 @@ function arrowPiece() {
   return null;
 }
 let keyShift = false;
-window.addEventListener('keyup', e => { heldArrows.delete(e.key); keyShift = e.shiftKey; });
+window.addEventListener('keyup', e => { heldArrows.delete(e.key); keyShift = e.shiftKey; if (!heldArrows.size) aim(false); });
 window.addEventListener('keydown', e => { keyShift = e.shiftKey; });
-window.addEventListener('blur', () => { heldArrows.clear(); modZoom = null; });
+window.addEventListener('blur', () => { heldArrows.clear(); modZoom = null; aim(false); });
+// the aim ring in the middle of the view: shown while the arrow keys turn the globe, gone AIM_HIDE_MS after the last one
+const AIM_HIDE_MS = 1500;
+let aimTimer = 0;
+function aim(on) {
+  clearTimeout(aimTimer);
+  if (on) stage.classList.add('aiming');
+  else aimTimer = setTimeout(() => stage.classList.remove('aiming'), AIM_HIDE_MS);
+}
 
 // ---------- Shift on its own zooms in, Ctrl on its own zooms out ----------
 // A tap steps like + / −; holding glides. A modifier used with anything else (Shift+Tab, Shift+arrows, Ctrl+K, a click,

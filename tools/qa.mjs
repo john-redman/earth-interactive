@@ -178,7 +178,7 @@ for (const [dev, vp, touch] of [['desktop', { width: 1280, height: 800 }, false]
     await p.waitForTimeout(3000);
     const n1 = await E(() => +document.querySelector('#popclock .pc-n').textContent.replace(/,/g, ''));
     ok('a plausible estimate that ticks up', n0 > 8.2e9 && n0 < 8.6e9 && n1 > n0, { n0, n1 });
-    ok('births and deaths today shown', await E(() => /born today/.test(document.getElementById('popclock').textContent)));
+    ok('births today shown, no death counter', await E(() => { const t = document.getElementById('popclock').textContent; return /born today/.test(t) && !/died/.test(t); }));
     await E(() => { const X = window.EarthInteractive; X.globe.flyTo(X.globe.camera.position.clone(), X.globe.fitDistance * 0.6, 1); });
     ok('fades out zoomed in', await until(() => !window.EarthInteractive.globe.flight && !document.getElementById('popclock').classList.contains('on')));
     await E(() => { const X = window.EarthInteractive; X.globe.flyTo(X.globe.camera.position.clone(), X.globe.fitDistance, 1); });
@@ -438,6 +438,82 @@ for (const [dev, vp, touch] of [['desktop', { width: 1280, height: 800 }, false]
       return { hits, off };
     });
     ok('no overlapping controls, none off-screen', !o.hits.length && !o.off.length, o);
+  });
+
+  await t('pieces, aim ring, easter egg', async () => {
+    // a lifted piece carries the islands and exclaves near it: Alaska with the USA, all of the Galápagos with Ecuador
+    await go();
+    const pc = await E(() => { const C = window.EarthInteractive.compare, L = window.EarthInteractive.layer, usa = C.pieceShapeFor(L.get('USA')), ecu = C.pieceShapeFor(L.get('ECU')), fra = C.pieceShapeFor(L.get('FRA'));
+      return { usa: Math.round(usa.area), ecuParts: ecu.multi.length, ecuAll: C.partsOf(L.get('ECU')).length, fraTrimmed: fra.trimmed, usaPin: C.shapeFor(L.get('USA')).multi.length < usa.multi.length }; });
+    ok('pieces carry their islands (Alaska, Galápagos); far parts stay home (French Guiana); the pin stays on the mainland', pc.usa > 9.3e6 && pc.ecuParts === pc.ecuAll && pc.fraTrimmed && pc.usaPin, pc);
+    if (touch) return;
+    // the aim ring shows only while the arrow keys turn the globe
+    await E(() => document.getElementById('globe').focus());
+    const ring = () => E(() => document.getElementById('stage').classList.contains('aiming'));
+    const before = await ring();
+    await p.keyboard.down('ArrowRight'); await p.waitForTimeout(300); const during = await ring(); await p.keyboard.up('ArrowRight');
+    await p.waitForTimeout(2200); const after = await ring();
+    ok('aim ring only while the arrows are in use', !before && during && !after, { before, during, after });
+    // France, five taps in a row: the Nuke France chip
+    const fr = await aim('FRA');
+    for (let i = 0; i < 5; i++) { await tap(fr); await p.waitForTimeout(250); }
+    const egg = await E(() => ({ shown: !document.getElementById('egg').hidden, href: document.querySelector('#egg a')?.href, target: document.querySelector('#egg a')?.target }));
+    ok('five taps on France show the Nuke France link (new tab)', egg.shown && egg.href === 'https://de-jonkheer.itch.io/nuke-france' && egg.target === '_blank', egg);
+    await E(() => document.querySelector('#egg .cotd-x').click());
+    ok('…and ✕ hides it', await E(() => document.getElementById('egg').hidden && !document.body.classList.contains('egg-on')));
+  });
+
+  await t('other sizes', async () => {
+    // the in-between sizes the two main ones miss: small, standard and landscape phones; tablets; a short laptop
+    const sizes = touch ? [[320, 568], [390, 844], [844, 390]] : [[768, 1024], [1024, 768], [1366, 657]];
+    const hit = (a, b) => a.width && b.width && a.left < b.right - 1 && b.left < a.right - 1 && a.top < b.bottom - 1 && b.top < a.bottom - 1;
+    for (const [w, h] of sizes) {
+      const tag = `${w}×${h}`;
+      await p.setViewportSize({ width: w, height: h });
+      await go(); await p.waitForTimeout(1200);
+      const o = await E(() => {
+        const sel = ['.top-left', '.dock', '.brand', '.site-links', '#recenter', '#daynight-toggle', '#music-toggle', '#sound-toggle', '#popclock', '.credit', '#hint', '#clock'];
+        const rs = sel.map(s => [s, document.querySelector(s)]).filter(([, el]) => { if (!el || el.hidden || el.classList.contains('gone')) return false; const cs = getComputedStyle(el); return cs.display !== 'none' && cs.visibility !== 'hidden'; }).map(([s, el]) => [s, el.getBoundingClientRect()]);
+        const hits = [];
+        for (let i = 0; i < rs.length; i++) for (let j = i + 1; j < rs.length; j++) { const a = rs[i][1], b = rs[j][1]; if (a.width && b.width && a.left < b.right - 1 && b.left < a.right - 1 && a.top < b.bottom - 1 && b.top < a.bottom - 1) hits.push(rs[i][0] + ' × ' + rs[j][0]); }
+        return { hits, off: rs.filter(([, r]) => r.left < -1 || r.right > innerWidth + 1).map(([s]) => s) };
+      });
+      ok(`${tag}: no overlapping controls, none off-screen`, !o.hits.length && !o.off.length, o);
+      // the card: the phone sheet stays on screen; the docked card stops above the corner buttons (it scrolls inside)
+      await go('?c=BRA'); await until(() => !document.getElementById('pin-tag').hidden);
+      await E(() => document.querySelector('#pin-tag [data-act="info"]').click()); await p.waitForTimeout(600);
+      await until(() => !document.getElementById('popup').getAnimations({ subtree: true }).some(a => a.playState === 'running'), null, 20000); // the sheet slides in
+      const c = await E(() => {
+        const el = document.getElementById('popup'), r = el.getBoundingClientRect(), R = s => document.querySelector(s).getBoundingClientRect();
+        return { sheet: el.classList.contains('sheet'), top: r.top, right: r.right, bottom: r.bottom, btnTop: R('#sound-toggle').top, btnLeft: R('#recenter').left, w: innerWidth, h: innerHeight };
+      });
+      ok(`${tag}: card on screen${c.sheet ? '' : ', clear of the corner buttons'}`, c.top >= -1 && c.right <= c.w + 1 && c.bottom <= c.h + 1 && (c.sheet || c.bottom <= c.btnTop + 1 || c.right <= c.btnLeft + 1), c);
+      // games: the panel clears the view switch and the corner buttons
+      await E(() => window.EarthInteractive.quiz.start('classic')); await p.waitForTimeout(800);
+      const q = await E(() => {
+        const R = s => document.querySelector(s).getBoundingClientRect(), a = R('#quiz');
+        return { a: [a.left, a.top, a.right, a.bottom], sw: R('.view-switch'), corner: ['#daynight-toggle', '#music-toggle', '#sound-toggle'].map(R), w: innerWidth, h: innerHeight, r: a };
+      });
+      const qr = q.r;
+      ok(`${tag}: game panel clear of the view switch and the corner buttons`, !hit(qr, q.sw) && !q.corner.some(b => hit(qr, b)) && qr.left >= -1 && qr.right <= q.w + 1 && qr.bottom <= q.h + 1, q.a);
+      await E(() => window.EarthInteractive.quiz.exit());
+      if (touch && w < h) {
+        // portrait phones: a small pair side by side must not run off the sides (the field of view is vertical)
+        await E(() => window.EarthInteractive.compareKeys('GRL', 'COD'));
+        await until(() => !window.EarthInteractive.globe.flight && !window.EarthInteractive.compare.anim, null, 60000); await p.waitForTimeout(500);
+        const f = await E(() => {
+          const X = window.EarthInteractive, cam = X.globe.camera; let x0 = 9, x1 = -9, y0 = 9, y1 = -9;
+          for (const pc of X.compare.pieces) {
+            pc.top.updateWorldMatrix(true, false); const pos = pc.top.geometry.attributes.position, v = pc.center.clone();
+            for (let i = 0; i < pos.count; i += 5) { v.fromBufferAttribute(pos, i).applyMatrix4(pc.top.matrixWorld).project(cam); x0 = Math.min(x0, v.x); x1 = Math.max(x1, v.x); y0 = Math.min(y0, v.y); y1 = Math.max(y1, v.y); }
+          }
+          return { x0: +x0.toFixed(2), x1: +x1.toFixed(2), y0: +y0.toFixed(2), y1: +y1.toFixed(2) };
+        });
+        ok(`${tag}: both compare pieces fully on screen`, f.x0 > -1 && f.x1 < 1 && f.y0 > -1 && f.y1 < 1, f);
+        await E(() => document.querySelector('#compare-pill [data-act="done"]')?.click());
+      }
+    }
+    await p.setViewportSize(vp); await go();
   });
 
   await t('leaks', async () => {

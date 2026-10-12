@@ -387,8 +387,9 @@ marketing/
 
 - Every figure in the images comes from the current app data: World Bank population **2025**, GDP
   **2024** for most countries (a few older years, as the card shows), and Natural Earth areas. Compare
-  ratios come from the app's compare bar. It measures the *main territory* of each country, so far-off
-  parts stay home: the USA piece is the contiguous 48 states (7.95M km²), without Alaska and Hawaii.
+  ratios come from the app's compare bar. Each piece is a country's main landmass plus every island or
+  exclave within 1,500 km, so the USA piece includes Alaska (9.42M km²) but not Hawaii; far-off parts such as
+  French Guiana stay home, and the bar then says *main territory*.
 - If the data is refreshed again, re-read the numbers in the app before reusing a caption.
 - **Hold** the border-views carousel (`p16-*`) until the "About the borders" page is live and you have an
   audience (plan §10.1).

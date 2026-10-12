@@ -313,7 +313,7 @@ Rules for captions:
 | # | Format | Hook / on-screen text | Caption | Hashtags |
 |---|---|---|---|---|
 | 1 | Compare video | "Greenland vs Africa? Your map lied." | "Flat maps make Greenland look as big as Africa. On the globe it's smaller than DR Congo alone ({X} vs {X} km²). {domain}/?compare=GRL,COD" | #Geography #Maps #Mercator #TrueSize |
-| 2 | Compare video | "Is Alaska really that big?" | "Dropped Alaska on the lower 48. {X}." | #Alaska #USA #Maps |
+| 2 | Compare video | "Is Alaska really that big?" | "Dropped Alaska on the lower 48. {X}." (not possible in the app: Alaska moves with the rest of the US; pick another pair) | #Alaska #USA #Maps |
 | 3 | Compare video | "Texas vs France" | "Texans, prepare yourselves. Texas is {X}× France." | #Texas #France #Geography |
 | 4 | Compare video | "The UK on top of {US state}" | "Every Brit has wondered this." | #UK #Maps #TrueSize |
 | 5 | Compare video | "Russia moved to the equator" | "Dragged Russia to the equator with Move. On a globe it stays the same size; only flat maps blow it up." | #Russia #Mercator #MapFacts |

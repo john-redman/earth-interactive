@@ -12,6 +12,8 @@ const easeIO = k => (k < 0.5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2);
 const liftFor = span => THREE.MathUtils.clamp(span * 0.03, 0.004, 0.038);
 // the soft shadow: a few offset copies stacked, so its edge fades instead of ending in a hard line
 const SHADOW_LAYERS = [0.6, 0.75, 0.9, 1.05, 1.2], SHADOW_ALPHA = 0.095, SHADOW_REACH = 1.6;
+// islands and exclaves this close to the rest of a country (coast to coast) lift out with it
+export const PIECE_GAP_KM = 1500;
 const _L = new THREE.Vector3(), _T = new THREE.Vector3(), _S = new THREE.Vector3();
 
 export class Compare {
@@ -21,26 +23,57 @@ export class Compare {
     this.onChange = null;
   }
 
+  /** Every polygon of a country, triangulated once: area, centre, outline samples and their reach from the centre. */
+  partsOf(o) {
+    if (o._parts) return o._parts;
+    const A = new THREE.Vector3(), B = new THREE.Vector3(), C = new THREE.Vector3();
+    const triArea = t => { let a = 0;
+      for (let i = 0; i < t.index.length; i += 3) { A.fromArray(t.positions, t.index[i] * 3); B.fromArray(t.positions, t.index[i + 1] * 3); C.fromArray(t.positions, t.index[i + 2] * 3); a += B.sub(A).cross(C.sub(A)).length() / 2; } return a; };
+    return (o._parts = o.g.multi.map(poly => {
+      const t = triangulate([poly]), c = sphereCentroid(t.positions, t.index), ring = poly[0];
+      const step = Math.max(1, Math.floor(ring.length / 400)), pts = []; let r = 0;
+      for (let i = 0; i < ring.length; i += step) { const v = lonLatToVec3(ring[i][0], ring[i][1], 1, new THREE.Vector3()); pts.push(v); r = Math.max(r, v.angleTo(c)); }
+      return { poly, t, area: triArea(t), c, r, pts };
+    }));
+  }
+
+  /** A shape made of some of a country's parts; area is the country's official area scaled by the parts kept. */
+  shapeOf(o, kept) {
+    const parts = this.partsOf(o), total = parts.reduce((s, p) => s + p.area, 0), keptArea = kept.reduce((s, p) => s + p.area, 0);
+    const multi = kept.map(p => p.poly), tri = kept.length === parts.length ? o.g.tri : triangulate(multi);
+    return { multi, tri, centroid: sphereCentroid(tri.positions, tri.index), area: o.unit.area * keptArea / total, trimmed: keptArea < total * 0.995 };
+  }
+
   /**
-   * The part of a country that gets popped out: its main landmass plus anything close by.
-   * Far-flung overseas parts (e.g. French Guiana for France) stay home so the comparison reads clearly.
+   * The country's main landmass plus anything close by: where pins land, what fly-tos and the card framing aim at,
+   * and where game distances are measured from. Alaska doesn't pull the USA's pin into Canada.
    */
   shapeFor(o) {
     if (o._shape) return o._shape;
-    const triArea = t => { let a = 0; const A = new THREE.Vector3(), B = new THREE.Vector3(), C = new THREE.Vector3();
-      for (let i = 0; i < t.index.length; i += 3) { A.fromArray(t.positions, t.index[i] * 3); B.fromArray(t.positions, t.index[i + 1] * 3); C.fromArray(t.positions, t.index[i + 2] * 3); a += B.sub(A).cross(C.sub(A)).length() / 2; } return a; };
-    const polys = o.g.multi.map(poly => { const t = triangulate([poly]); return { poly, t, area: triArea(t), c: sphereCentroid(t.positions, t.index) }; });
-    const total = polys.reduce((s, p) => s + p.area, 0);
-    const main = polys.reduce((a, b) => (b.area > a.area ? b : a));
+    const parts = this.partsOf(o), main = parts.reduce((a, b) => (b.area > a.area ? b : a));
     let radius = 0; const v = new THREE.Vector3();
     for (const ring of main.t.rings) for (const [x, y] of ring) radius = Math.max(radius, lonLatToVec3(x, y, 1, v).angleTo(main.c));
     const reach = Math.max(radius * 1.6, 0.2);
-    const kept = polys.filter(p => p.c.angleTo(main.c) <= reach);
-    const multi = kept.map(p => p.poly);
-    const tri = kept.length === polys.length ? o.g.tri : triangulate(multi);
-    const keptArea = kept.reduce((s, p) => s + p.area, 0);
-    o._shape = { multi, tri, centroid: sphereCentroid(tri.positions, tri.index), area: o.unit.area * keptArea / total, trimmed: keptArea < total * 0.995 };
-    return o._shape;
+    return (o._shape = this.shapeOf(o, parts.filter(p => p.c.angleTo(main.c) <= reach)));
+  }
+
+  /**
+   * What lifts out when a country is moved or compared: the main landmass and every island or exclave within
+   * PIECE_GAP_KM of a part already in (coast to coast, hopping from island to island), so Alaska comes with the USA
+   * and all of the Galápagos with Ecuador. Far-flung overseas parts (Hawaii, French Guiana) stay home.
+   */
+  pieceShapeFor(o) {
+    if (o._piece) return o._piece;
+    const parts = this.partsOf(o), main = parts.reduce((a, b) => (b.area > a.area ? b : a));
+    const gap = PIECE_GAP_KM / 6371, cosGap = Math.cos(gap);
+    const near = (a, b) => {
+      if (a.c.angleTo(b.c) - a.r - b.r > gap) return false;      // their bounding caps are too far apart
+      for (const p of a.pts) for (const q of b.pts) if (p.dot(q) >= cosGap) return true;
+      return false;
+    };
+    const kept = new Set([main]), queue = [main];
+    while (queue.length) { const k = queue.shift(); for (const p of parts) if (!kept.has(p) && near(k, p)) { kept.add(p); queue.push(p); } }
+    return (o._piece = this.shapeOf(o, parts.filter(p => kept.has(p))));
   }
 
   /**
@@ -82,7 +115,7 @@ export class Compare {
 
   makePiece(o, hex, lift) {
     const thick = lift * 0.55;
-    const shape = this.shapeFor(o);
+    const shape = this.pieceShapeFor(o);
     const tri = shape.tri;
     const topGeom = new THREE.BufferGeometry();
     topGeom.setAttribute('position', new THREE.BufferAttribute(tri.positions, 3)); // unit sphere; group scale lifts it
@@ -165,7 +198,7 @@ export class Compare {
   preview(a) {
     this.flushEnd();
     if (this.active || this.previewPiece) this.end(true);
-    const ext = this.extent(this.shapeFor(a));
+    const ext = this.extent(this.pieceShapeFor(a));
     const lift = liftFor((ext.xmax - ext.xmin) * 2);
     const p = this.makePiece(a, this.hexFor(a), lift);
     this.pieces = [p]; this.previewPiece = p;
@@ -185,7 +218,7 @@ export class Compare {
     this.layer.setSelected(null); this.layer.setHover(null);
     this.layer.setDim([]); this.layer.setSockets([a.key, b.key]);
     // lift scales with the pair's size so tiny countries don't get towering walls
-    const tmp = [this.extent(this.shapeFor(a)), this.extent(this.shapeFor(b))];
+    const tmp = [this.extent(this.pieceShapeFor(a)), this.extent(this.pieceShapeFor(b))];
     const span = Math.max(tmp[0].xmax - tmp[0].xmin + tmp[1].xmax - tmp[1].xmin, 0.02);
     const lift = liftFor(span);
     this.pieces = [kept ? Object.assign(kept, { lift }) : this.makePiece(a, hexA, lift), this.makePiece(b, hexB, lift)];

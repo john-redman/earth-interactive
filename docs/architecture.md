@@ -28,8 +28,9 @@ Static site, no bundler. `index.html` loads `js/main.js` as an ES module; an imp
 | `clouds.js` | Light clouds over the open ocean, desktop only, masked away from big landmasses | `Clouds` |
 | `intro.js` | First visit: the animated finger that shows the globe can be spun | `showIntro` |
 | `site-menu.js` | Phones: the brand opens the site links as a small menu | `mountSiteMenu` |
-| `popclock.js` | World population, live (UN WPP 2024 estimate, births and deaths today); fades by zoom and around panels | `createPopClock`, `worldPopulation` |
+| `popclock.js` | World population, live (UN WPP 2024 estimate, births today); fades by zoom and around panels | `createPopClock`, `worldPopulation` |
 | `daily-country.js` | Country of the day (seeded by local date), its facts, the top chip | `countryOfTheDay`, `factsFor`, `mountDailyChip` |
+| `egg.js` | Easter egg: five taps on France arm a chip linking to the Nuke France game | `createEgg` |
 | `share-image.js` | Compare → 1080² share image (equal-area silhouettes on a 2D canvas), share sheet or download | `renderCompareImage`, `shareCompareImage` |
 | `sfx.js` | UI sounds: synthesised tones + recorded samples (`sounds/`), delegated button sounds | `createSfx` |
 | `flags.js` | Flag `<img>` markup from `vendor/flags/` with emoji fallback | `flagImg` |
