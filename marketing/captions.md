@@ -192,18 +192,18 @@ Platform keys:
   true-to-scale globe."
 
 ### p04 USA vs Australia
-- **Alt:** The contiguous United States (blue, 7.95 million km², main territory) and Australia (green,
-  7.71 million km²) side by side on a 3D globe. Caption: United States is 3% larger than Australia.
-- **X/Threads:** Closer than you think: the contiguous US is only 3% larger than Australia.
-  SITE?compare=USA,AUS #Geography #Australia #USA
-- **Bsky:** USA vs Australia at true scale. The lower 48 are only 3% larger than Australia. (Alaska and
-  Hawaii stay home in this compare.) SITE?compare=USA,AUS
-- **Masto:** The contiguous USA vs Australia: only 3% apart. SITE?compare=USA,AUS #Geography #Maps
+- **Alt:** The United States with Alaska (blue, 9.42 million km²) and Australia (green, 7.71 million km²)
+  side by side on a 3D globe. Caption: United States is 22% larger than Australia.
+- **X/Threads:** Closer than you think: put Australia next to the whole United States, Alaska included, and
+  the US is only 22% larger. SITE?compare=USA,AUS #Geography #Australia #USA
+- **Bsky:** USA vs Australia at true scale. Alaska comes along, and the US is still only 22% larger than
+  Australia. (Hawaii stays home in this compare.) SITE?compare=USA,AUS
+- **Masto:** The USA (Alaska included) vs Australia: only 22% apart. SITE?compare=USA,AUS #Geography #Maps
   #Australia #USA
-- **IG/FB:** How big is Australia, really? Almost exactly the size of the contiguous United States: the US
-  (without Alaska and Hawaii) is just 3% larger. #australia #usa #geography #maps #travel
-- **Pin:** *USA vs Australia: true size.* "Australia is almost the size of the contiguous United States (the
-  US is only 3% larger)."
+- **IG/FB:** How big is Australia, really? Set it beside the United States, Alaska and all: the US is only
+  about a fifth bigger. #australia #usa #geography #maps #travel
+- **Pin:** *USA vs Australia: true size.* "Australia is nearly as big as the United States: the US, Alaska
+  included, is only 22% larger."
 
 ### p05 UK vs Madagascar
 - **Alt:** The United Kingdom (orange) and Madagascar (green) side by side on a 3D globe. Caption:
@@ -241,15 +241,15 @@ Platform keys:
 - **Pin:** *Brazil vs Australia size.* "Brazil is 10% larger than Australia."
 
 ### p08 Japan vs Germany
-- **Alt:** Japan (purple) and Germany (pink) side by side on a 3D globe. Caption: Japan is 3% larger than
+- **Alt:** Japan (purple) and Germany (pink) side by side on a 3D globe. Caption: Japan is 4% larger than
   Germany.
-- **X/Threads:** Japan is not small. It's 3% larger than Germany. SITE?compare=JPN,DEU #Japan #Germany
+- **X/Threads:** Japan is not small. It's 4% larger than Germany. SITE?compare=JPN,DEU #Japan #Germany
   #Geography
-- **Bsky / Masto:** Japan vs Germany at true scale: Japan is 3% larger. SITE?compare=JPN,DEU #Geography
+- **Bsky / Masto:** Japan vs Germany at true scale: Japan is 4% larger. SITE?compare=JPN,DEU #Geography
   #Maps #Japan
-- **IG/FB:** Japan is not small. Laid next to Germany, Japan comes out 3% larger. #japan #germany #geography
+- **IG/FB:** Japan is not small. Laid next to Germany, Japan comes out 4% larger. #japan #germany #geography
   #travel #maps
-- **Pin:** *Japan vs Germany size.* "Japan is 3% larger than Germany."
+- **Pin:** *Japan vs Germany size.* "Japan is 4% larger than Germany."
 
 ### p09 Population lens
 - **Alt:** A 3D globe centred on Asia, countries coloured from dark brown (fewer people) to pale gold (more
@@ -351,7 +351,7 @@ inside the safe zone (250 px top, 340 px bottom are clear).
 | File | Sticker / link | Alt |
 |---|---|---|
 | `s01-greenland-vs-drcongo` | `?compare=GRL,COD` | Greenland and DR Congo pieces side by side; DR Congo is 8% larger. |
-| `s02-usa-vs-australia` | `?compare=USA,AUS` | Contiguous US and Australia side by side; US is 3% larger. |
+| `s02-usa-vs-australia` | `?compare=USA,AUS` | The US (with Alaska) and Australia side by side; US is 22% larger. |
 | `s03-russia-vs-canada` | `?compare=RUS,CAN` | Russia and Canada side by side; Russia is 1.7× Canada. |
 | `s04-density-lens` | `SITE` | Globe coloured by people per km². |
 | `s05-poll-iran-or-mongolia` | add a **poll sticker** in the dashed box: Iran / Mongolia | Question: which is bigger? |
@@ -374,9 +374,9 @@ the channel links.
   - **Alt / description for X and Bluesky:** Animation: a slowly turning globe; Greenland and DR Congo lift
     off as pieces and settle side by side; text says DR Congo is 8% larger.
 - **v02 USA vs Australia** (11 s)
-  - **TikTok / Reels:** How big is Australia, really? Next to the contiguous US it's only 3% smaller.
+  - **TikTok / Reels:** How big is Australia, really? Next to the whole US, Alaska and all, it's only about a fifth smaller.
     #australia #usa #geography #maps #truesize
-  - **Shorts title:** `USA vs Australia: almost the same size? #shorts`
+  - **Shorts title:** `USA vs Australia: closer than you think #shorts`
 - **v03 Data lenses** (12 s)
   - **TikTok / Reels:** One tap recolours the planet: population, people per km², GDP per person (World Bank
     2025/2024). #dataviz #maps #geography #population
