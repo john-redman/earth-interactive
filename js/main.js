@@ -736,10 +736,12 @@ function frame(now) {
   thrills.tick(now);
   tiny.setHidden(!!lensKey && lensKey !== 'none' || mode === 'compare'); tiny.tick();
   if (egg.active) { // the easter egg's button stands on France
-    const a = compare.anchorFor(layer.get('FRA')), { x: W, y: H } = globe.size;
+    const fra = layer.get('FRA'), a = compare.anchorFor(fra), { x: W, y: H } = globe.size;
     camDir.copy(globe.camera.position).normalize();
+    const focal = H / 2 / Math.tan(THREE.MathUtils.degToRad(globe.camera.fov / 2));
+    const rPx = Math.sqrt(fra.unit.area / Math.PI) / 6371 * focal / globe.camera.position.distanceTo(a); // France's radius on screen
     tmp.copy(a).multiplyScalar(1.002).project(globe.camera);
-    egg.place((tmp.x + 1) / 2 * W, (1 - tmp.y) / 2 * H, a.dot(camDir) > 0.2);
+    egg.place((tmp.x + 1) / 2 * W, (1 - tmp.y) / 2 * H, rPx, a.dot(camDir) > 0.2);
   }
   if (anchor) {
     camDir.copy(globe.camera.position).normalize();

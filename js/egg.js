@@ -39,10 +39,14 @@ export function createEgg(stage, { track, muted }) {
       track('egg/nuke-france');
       return true;
     },
-    /** Every frame while active: France's anchor on screen (CSS px) and whether it faces the camera. */
-    place(x, y, visible) {
+    /**
+     * Every frame while active: France's anchor on screen (CSS px), France's radius on screen (CSS px) and whether
+     * it faces the camera. The button stays a small thing inside France: about 60% of its radius, 16 to 40 px wide.
+     */
+    place(x, y, radiusPx, visible) {
       if (!active) return;
-      el.style.transform = `translate(${(x - W / 2).toFixed(1)}px, ${(y - H + 14).toFixed(1)}px)`;
+      const k = Math.min(40, Math.max(16, radiusPx * 0.6)) / W;   // scale about the base's centre (on the anchor)
+      el.style.transform = `translate(${(x - W / 2).toFixed(1)}px, ${(y - H + 14).toFixed(1)}px) scale(${k.toFixed(3)})`;
       el.classList.toggle('away', !visible);
     },
     hide,
