@@ -20,8 +20,7 @@ export function worldPopulation(t = Date.now()) {
 
 export function createPopClock(el, globe) {
   el.innerHTML = `
-    <span class="pc-live" aria-hidden="true"></span>
-    <span class="pc-k">World population</span>
+    <span class="pc-k"><span class="pc-live" aria-hidden="true"></span>World population</span>
     <b class="pc-n"></b>
     <span class="pc-day"><span class="pc-b"></span> born today</span>`;
   const n = el.querySelector('.pc-n'), b = el.querySelector('.pc-b');
@@ -31,7 +30,7 @@ export function createPopClock(el, globe) {
   function paint() {
     const p = worldPopulation();
     n.textContent = int.format(p.now);
-    b.textContent = int.format(p.born);
+    b.textContent = '+' + int.format(p.born);
   }
   function set(on) {
     if (on === shown) return;

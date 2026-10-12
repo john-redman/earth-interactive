@@ -579,16 +579,15 @@ function onClick(x, y) {
     } else if (r?.o === pickFrom) ui.showToast('Pick a different country');
     return;
   }
-  // France, tapped again and again (the easter egg): the pin stays put instead of dropping in on every tap
-  const now = performance.now(), again = r?.o && r.o.key === 'FRA' && r.o === selected && now - lastFranceTap < REDROP_MS;
-  if (r?.o?.key === 'FRA') lastFranceTap = now;
-  if (again) { /* already pinned: no new drop, no plop */ }
+  // France, tapped again and again (the easter egg): no new pin drop while France is pinned or its button is up;
+  // a tap anywhere else (which also puts the button away) starts afresh
+  const again = r?.o?.key === 'FRA' && (r.o === selected || egg.active);
+  if (again) { /* no new drop, no plop */ }
   else if (r?.o) { openCountry(r.o, { point: r.point }); sfx.play('tap'); }
   else closePopup();
   if (egg.tapped(r?.o)) { closePopup(); announce('A big red button appeared on France.'); } // it stands where the pin was
 }
-const REDROP_MS = 1200; // a tap on the pinned France sooner than this after the last one doesn't drop the pin again
-let lastFranceTap = -Infinity;
+
 
 window.addEventListener('keydown', e => {
   if (search.isOpen) { if (e.key === 'Escape') search.close(); return; } // Escape from outside the box, or the app's back button
