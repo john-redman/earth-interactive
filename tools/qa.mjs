@@ -481,7 +481,8 @@ for (const [dev, vp, touch] of [['desktop', { width: 1280, height: 800 }, false]
       ok(`${tag}: no overlapping controls, none off-screen`, !o.hits.length && !o.off.length, o);
       // the card: the phone sheet stays on screen; the docked card stops above the corner buttons (it scrolls inside)
       await go('?c=BRA'); await until(() => !document.getElementById('pin-tag').hidden);
-      await E(() => document.querySelector('#pin-tag [data-act="info"]').click()); await p.waitForTimeout(1500);
+      await E(() => document.querySelector('#pin-tag [data-act="info"]').click()); await p.waitForTimeout(600);
+      await until(() => !document.getElementById('popup').getAnimations({ subtree: true }).some(a => a.playState === 'running'), null, 20000); // the sheet slides in
       const c = await E(() => {
         const el = document.getElementById('popup'), r = el.getBoundingClientRect(), R = s => document.querySelector(s).getBoundingClientRect();
         return { sheet: el.classList.contains('sheet'), top: r.top, right: r.right, bottom: r.bottom, btnTop: R('#sound-toggle').top, btnLeft: R('#recenter').left, w: innerWidth, h: innerHeight };
