@@ -178,7 +178,7 @@ for (const [dev, vp, touch] of [['desktop', { width: 1280, height: 800 }, false]
     await p.waitForTimeout(3000);
     const n1 = await E(() => +document.querySelector('#popclock .pc-n').textContent.replace(/,/g, ''));
     ok('a plausible estimate that ticks up', n0 > 8.2e9 && n0 < 8.6e9 && n1 > n0, { n0, n1 });
-    ok('births and deaths today shown', await E(() => /born today/.test(document.getElementById('popclock').textContent)));
+    ok('births today shown, no death counter', await E(() => { const t = document.getElementById('popclock').textContent; return /born today/.test(t) && !/died/.test(t); }));
     await E(() => { const X = window.EarthInteractive; X.globe.flyTo(X.globe.camera.position.clone(), X.globe.fitDistance * 0.6, 1); });
     ok('fades out zoomed in', await until(() => !window.EarthInteractive.globe.flight && !document.getElementById('popclock').classList.contains('on')));
     await E(() => { const X = window.EarthInteractive; X.globe.flyTo(X.globe.camera.position.clone(), X.globe.fitDistance, 1); });
@@ -438,6 +438,29 @@ for (const [dev, vp, touch] of [['desktop', { width: 1280, height: 800 }, false]
       return { hits, off };
     });
     ok('no overlapping controls, none off-screen', !o.hits.length && !o.off.length, o);
+  });
+
+  await t('pieces, aim ring, easter egg', async () => {
+    // a lifted piece carries the islands and exclaves near it: Alaska with the USA, all of the Galápagos with Ecuador
+    await go();
+    const pc = await E(() => { const C = window.EarthInteractive.compare, L = window.EarthInteractive.layer, usa = C.pieceShapeFor(L.get('USA')), ecu = C.pieceShapeFor(L.get('ECU')), fra = C.pieceShapeFor(L.get('FRA'));
+      return { usa: Math.round(usa.area), ecuParts: ecu.multi.length, ecuAll: C.partsOf(L.get('ECU')).length, fraTrimmed: fra.trimmed, usaPin: C.shapeFor(L.get('USA')).multi.length < usa.multi.length }; });
+    ok('pieces carry their islands (Alaska, Galápagos); far parts stay home (French Guiana); the pin stays on the mainland', pc.usa > 9.3e6 && pc.ecuParts === pc.ecuAll && pc.fraTrimmed && pc.usaPin, pc);
+    if (touch) return;
+    // the aim ring shows only while the arrow keys turn the globe
+    await E(() => document.getElementById('globe').focus());
+    const ring = () => E(() => document.getElementById('stage').classList.contains('aiming'));
+    const before = await ring();
+    await p.keyboard.down('ArrowRight'); await p.waitForTimeout(300); const during = await ring(); await p.keyboard.up('ArrowRight');
+    await p.waitForTimeout(2200); const after = await ring();
+    ok('aim ring only while the arrows are in use', !before && during && !after, { before, during, after });
+    // France, five taps in a row: the Nuke France chip
+    const fr = await aim('FRA');
+    for (let i = 0; i < 5; i++) { await tap(fr); await p.waitForTimeout(250); }
+    const egg = await E(() => ({ shown: !document.getElementById('egg').hidden, href: document.querySelector('#egg a')?.href, target: document.querySelector('#egg a')?.target }));
+    ok('five taps on France show the Nuke France link (new tab)', egg.shown && egg.href === 'https://de-jonkheer.itch.io/nuke-france' && egg.target === '_blank', egg);
+    await E(() => document.querySelector('#egg .cotd-x').click());
+    ok('…and ✕ hides it', await E(() => document.getElementById('egg').hidden && !document.body.classList.contains('egg-on')));
   });
 
   await t('other sizes', async () => {

@@ -4,6 +4,14 @@ All notable changes to EarthInteractive are documented here.
 
 ## [Unreleased]
 
+### Changed (owner requests, 12 October)
+- **Moved countries bring their islands**: in Move and Compare a country lifts out with every island and exclave within 1,500 km of the rest of it, so Ecuador carries all of the Galápagos, the USA carries Alaska, Spain the Canaries, Portugal the Azores and Madeira, Malaysia its half of Borneo, and Indonesia all of its islands (half of Indonesia used to stay behind). Areas and ratios follow the piece; far-off parts (Hawaii, French Guiana) still stay home and the card says "main territory".
+- **Aim ring**: the ring in the middle of the globe only shows while the arrow keys turn it, and fades a moment after the last one.
+- **Population strip**: shows births today; the death counter is gone.
+
+### Added (owner request)
+- A small secret involving France.
+
 ### Changed
 - **Tablets, small laptops and landscape phones**: the credit line no longer runs into the site links between 721 and 1179 px wide (a Credits link stands in, as on phones), the first-visit hint no longer covers the clock, and in games the panel moves to the top-right corner instead of covering the border-view switch.
 - **Short screens**: the country card on the right never runs off the bottom of the window or over the corner buttons; it scrolls inside instead (landscape phones, 768 px-tall laptops).

@@ -23,5 +23,6 @@ test('world population: the UN base on 1 July 2025, rising about 70 million a ye
   const growth = worldPopulation(epoch + year).now - worldPopulation(epoch).now;
   assert.ok(growth > 68e6 && growth < 71e6, String(growth));
   const p = worldPopulation(Date.UTC(2026, 9, 9, 15));
-  assert.ok(p.born >= 0 && p.died >= 0 && p.born > p.died && p.born < 400_000);
+  assert.ok(p.born >= 0 && p.born < 400_000);
+  assert.equal(p.died, undefined); // no death counter
 });

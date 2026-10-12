@@ -43,7 +43,7 @@ function lighten(hex, k) {
 }
 
 /**
- * pair: { a: { o, hex, area, shape }, b: { … } } (shape: compare.shapeFor(o)); url: link printed at the bottom.
+ * pair: { a: { o, hex, area, shape }, b: { … } } (shape: compare.pieceShapeFor(o)); url: link printed at the bottom.
  * Returns a PNG Blob.
  */
 export async function renderCompareImage(pair, url) {
