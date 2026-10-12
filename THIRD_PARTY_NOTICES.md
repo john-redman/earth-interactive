@@ -61,6 +61,7 @@ Supplied by the owner as licence-free files (Pixabay Content License: free for c
 | `sounds/click.mp3` | "Click sound" (justsomesounds, Pixabay #432501) | Compare pieces snapping out (reversed when snapping back) |
 | `sounds/game-correct.mp3` | "Correct choice" (freesound_community, Pixabay #43861) | Right answer in the games |
 | `sounds/game-wrong.mp3` | "Error notification 08" (Universfield, Pixabay #206492) | Wrong answer in the games |
+| `sounds/egg.mp3` | "Error sound" (rikk_nextsoft, Pixabay #221445) | The France easter egg: plays as the big red button appears |
 | `sounds/celestial-drift.mp3` | "Celestial Drift" (lilliben, Pixabay #365162) | Optional background music |
 
 All other interface tones are synthesised in the browser.
