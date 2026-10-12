@@ -5,6 +5,10 @@ All notable changes to EarthInteractive are documented here.
 ## [Unreleased]
 
 ### Changed
+- **Tablets, small laptops and landscape phones**: the credit line no longer runs into the site links between 721 and 1179 px wide (a Credits link stands in, as on phones), the first-visit hint no longer covers the clock, and in games the panel moves to the top-right corner instead of covering the border-view switch.
+- **Short screens**: the country card on the right never runs off the bottom of the window or over the corner buttons; it scrolls inside instead (landscape phones, 768 px-tall laptops).
+- **320 px phones**: the brand menu and the four corner buttons fit side by side again.
+- **Install dialog**: the app manifest now offers two screenshots (desktop and phone) for the browser's richer install sheet, and separate plain and maskable icons.
 - **No empty ad boxes**: until an ad network is connected, visitors no longer see grey "Advertisement" placeholders; the globe gets the space (phones gain the bottom strip). The layout can still be checked with `?ads=preview`.
 - **Faster hover**: moving the mouse over the globe restyles only the two countries involved, not all of them.
 - **Lighter updates**: after a new deploy, returning visitors only download the files that changed (the offline copy used to fetch everything again, about 2 MB).

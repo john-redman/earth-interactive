@@ -954,7 +954,7 @@ for (const p of pairs) {
     <p class="cta"><a class="btn" href="${sitePath}">Open the globe</a></p>
     <form class="find" action="${sitePath}countries/" method="get" role="search">
       <label for="q">Find a country</label>
-      <div><input id="q" name="q" list="countries" autocomplete="off" placeholder="e.g. France"><button type="submit">Go</button></div>
+      <div><input id="q" name="q" type="text" list="countries" autocomplete="off" placeholder="e.g. France"><button type="submit">Go</button></div>
       <datalist id="countries">${all.map(k => `<option value="${esc(nameOf(k))}">`).join('')}</datalist>
     </form>
     <p id="guess" hidden></p>

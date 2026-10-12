@@ -109,6 +109,7 @@ Unit tests run on Node's built-in runner (`npm test`, `tools/test/*.test.mjs`; `
 5. `npm run qa` (`tools/qa.mjs`, BASE = a running dev server): ~65 checks per size with real taps on the globe (selection, card, compare UI + drag + share image, lenses, search, keyboard, games with Confirm/Enter and the miss line, daily, toggles, deep links, resizes, overlapping controls) and a warm-up leak check. ~20 min headless; wait on state (`globe.flight`, body classes), never fixed timeouts.
 
 Layout rule: phones and desktop show the same controls and links (on phones the links sit in the brand's menu); panels (legend, quiz, compare) sit above the footer row and corner buttons, never over them.
+Check the in-between sizes too after layout changes: 320×568 (the footer is tightened below 360 px), 844×390 (landscape phone), 768×1024 and 1024×768. From 721 to 1179 px wide the credit line gives way to the Credits link, the game panel sits top-right (the dock is hidden in games) and the first-visit hint sits above the brand; the docked card never runs past the corner buttons (it scrolls inside).
 
 ## Open items
 

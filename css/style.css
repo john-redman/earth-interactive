@@ -96,6 +96,9 @@ body.ads-on .ad-slot { display: block; }
 @keyframes sheetIn { from { translate: 0 110%; } }
 @keyframes sheetOut { to { translate: 0 110%; } }
 .popup.away { opacity: 0; pointer-events: none; }
+/* docked card (not the phone sheet): never taller than the space between the dock and the corner buttons; it scrolls
+   inside instead (short windows, landscape phones, 768 px laptops) */
+.popup:not(.sheet) { max-height: calc(100% - 144px); overflow-y: auto; overscroll-behavior: contain; }
 @keyframes popIn { from { opacity: 0; scale: 0.95; } to { opacity: 1; scale: 1; } }
 .pop-x { position: absolute; top: 10px; right: 10px; width: 28px; height: 28px; border: 0; border-radius: 50%; background: rgba(255,255,255,0.08); color: #fff; cursor: pointer; font-size: 12px; }
 .pop-x:hover { background: rgba(255,255,255,0.16); }
@@ -561,6 +564,20 @@ html { -webkit-tap-highlight-color: transparent; text-rendering: optimizeLegibil
   .cmp-actions [data-act="image"] { padding: 0 10px; }
 }
 @media (max-width: 380px) { .vs-ico { display: none; } }
+@media (min-width: 721px) and (max-width: 1179px) { /* tablets and small laptops: the links row needs the whole footer */
+  .credit { display: none; }
+  .site-links .sl-narrow { display: inline; }   /* the Credits link stands in for the credit line, as on phones */
+  .site-links .sl-long { display: none; } .site-links .sl-short { display: inline; }
+  .hint { bottom: 64px; }                       /* above the brand and the clock */
+  /* games hide the dock, so its corner is free: the panel moves there instead of covering the view switch */
+  body:not(.ads-on) .quiz { left: auto; right: 16px; transform: none; width: min(440px, calc(100% - 366px)); }
+}
+@media (min-width: 721px) and (max-width: 819px) { .site-links { font-size: 11px; gap: 0 8px; } } /* clear of the corner buttons */
+@media (max-width: 359px) { /* 320–359 px phones: the brand and the four corner buttons still share one row */
+  .brand { left: 6px; font-size: 12px; }
+  .brand-btn { gap: 6px; padding: 0 6px 0 4px; }
+  .sound-toggle { right: 10px; } .music-toggle { right: 48px; } .daynight-toggle { right: 86px; } .recenter { right: 124px; }
+}
 /* ───────────── Low-power rendering (phones, tablets, weak machines — set by js/perf.js) ─────────────
    backdrop-filter re-blurs the live WebGL canvas behind every panel on every frame, which costs
    phones more than the globe itself. Swap the frosted glass for near-solid panels instead. */

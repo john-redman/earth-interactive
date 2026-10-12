@@ -245,8 +245,9 @@ Timing and rules: marketing plan §3.4. Ask people to "check it out", never to u
 > I'm one person and I read every comment. What would you compare first?
 
 **Gallery:** compare, country card, data lens, Daily Challenge, phone. `marketing/banners/producthunt-gallery-*.jpg`
-were made on 5 October, before the calm ocean, ships, clouds and redrawn currents. Re-shoot them first. Leave the
-border-view image out, or put it last.
+were re-shot on 12 October with the current look (calm ocean, ships, clouds, redrawn currents). Re-run
+`node tools/marketing/run.mjs compose` after the domain switch so they print the new address. Leave the border-view
+image out, or put it last.
 
 ---
 
@@ -416,8 +417,8 @@ John
 ### 8.2 Three screenshots
 
 Shoot at 1280×800 (desktop) or 390×844 (phone), or larger at the same ratio. Replace the address with the domain
-once it's live. The images in `marketing/screenshots/` date from 5 October, before the calm ocean, ships, clouds
-and redrawn currents, so re-shoot them before sending.
+once it's live. The images in `marketing/screenshots/` were re-shot on 12 October with the current look
+(`node tools/marketing/run.mjs screenshots` makes them again).
 
 1. **True size: Greenland and DR Congo** (desktop)
    `https://john-redman.github.io/earth-interactive/?compare=GRL,COD`
