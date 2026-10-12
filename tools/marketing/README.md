@@ -1,11 +1,11 @@
 # Marketing kit pipeline
 
 Rebuilds everything in `marketing/` (posts, stories, banners, the Product Hunt gallery, profile images, screenshots,
-three short videos, the contact sheet) and the link-preview image `og-image.png` from the live app. Captions and
-the posting plan are in `marketing/captions.md`.
+three short videos and their covers, the contact sheet), the link-preview image `og-image.png` and the install-dialog
+screenshots `icons/screenshot-*.jpg` from the live app. Captions and the posting plan are in `marketing/captions.md`.
 
 ```bash
-node tools/marketing/run.mjs                   # everything: capture → compose → video → og → contact
+node tools/marketing/run.mjs                   # everything: capture → compose → screenshots → video → og → contact
 node tools/marketing/run.mjs compose contact   # only re-render the composed images (minutes, not an hour)
 ```
 
@@ -25,8 +25,9 @@ node tools/marketing/run.mjs compose contact   # only re-render the composed ima
 | Step | Scripts | Output |
 |---|---|---|
 | capture | `capture.mjs` (heroes, comparisons, lenses, cards, daily, views, phone UI, story raws), `recap.mjs` (views, desktop UI), `stories.mjs`, `hex.mjs` (comparison colours and ratios) | `.work/raw/` |
-| compose | `brand.mjs` (profile images, banners), `gallery.mjs` (Product Hunt gallery, stories, screenshots), `posts.mjs` (square and portrait posts) | `marketing/…` |
-| video | `video.mjs v01 \| v02 \| v03` (virtual clock, every frame stepped, overlays composited with ffmpeg) | `marketing/video/` |
+| compose | `brand.mjs` (profile images, banners), `gallery.mjs` (Product Hunt gallery, stories), `posts.mjs` (square and portrait posts) | `marketing/…` |
+| screenshots | `screenshots.mjs` (the app with its interface, desktop 2560×1600 and phone 1170×2532; ads, tips and toasts hidden) | `marketing/screenshots/`, `icons/screenshot-wide.jpg`, `icons/screenshot-narrow.jpg` |
+| video | `video.mjs v01 \| v02 \| v03` (virtual clock, every frame stepped, overlays composited with ffmpeg; the cover is the frame with the ratio showing) | `marketing/video/` |
 | og | `og.mjs` | `og-image.png` |
 | contact | `contact.mjs` | `marketing/contact-sheet.png` |
 

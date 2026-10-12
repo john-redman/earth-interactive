@@ -22,5 +22,5 @@
 - [ ] Accounts + daily streaks (needs a backend)
 - [ ] Historical borders time slider (1914 / 1945 / 1991)
 - [x] Unit tests in CI (`npm test`: geo maths, triangulated areas, Sun position, population clock, lens breaks, currents table, game pool, country of the day)
-- [ ] Playwright smoke test in CI (`tools/smoke.mjs` and `tools/qa.mjs` exist for local runs)
+- [x] Playwright smoke test on GitHub: Actions → **Smoke** → Run workflow (`.github/workflows/smoke.yml`, on demand; `tools/qa.mjs` stays a local run)
 - [x] Fewer draw calls on phones: the country layer is ~3 draw calls on every device (was ~400)

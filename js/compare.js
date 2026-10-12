@@ -146,7 +146,9 @@ export class Compare {
     // shift so the pair as a whole is centred on M
     const total = wA + gap + wB, left = -total / 2;
     const thA = left - A.ext.xmin, thB = left + wA + gap - B.ext.xmin;
-    const half = Math.max(total / 2, (Math.max(A.ext.ymax - A.ext.ymin, B.ext.ymax - B.ext.ymin)) * 0.75);
+    // a portrait screen sees less across than up and down: the pair sits side by side, so widen for it (phones)
+    const narrow = Math.min(1, this.globe.camera.aspect);
+    const half = Math.max(total / 2 / narrow, (Math.max(A.ext.ymax - A.ext.ymin, B.ext.ymax - B.ext.ymin)) * 0.75);
     return { M, a: at(thA), b: at(thB), half };
   }
 

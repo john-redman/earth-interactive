@@ -6,7 +6,7 @@ needs your phone, email and a captcha. This kit gives you the handle ideas, bios
 so each account takes minutes.
 
 - **Images and videos** are real screenshots of the app (headless Chromium + Playwright), composed into
-  each platform's size. Numbers on them were read from the app or from `data/world.js`: World Bank 2025
+  each platform's size, re-shot on 12 October 2026 with `tools/marketing` (see its README to make them again). Numbers on them were read from the app or from `data/world.js`: World Bank 2025
   population, mostly 2024 GDP (the data refresh of 5 Oct 2026), and Natural Earth areas.
 - **Captions** for every asset, plus the posting schedule, are in [`captions.md`](captions.md).
 - **Review everything quickly** with [`contact-sheet.png`](contact-sheet.png).

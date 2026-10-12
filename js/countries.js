@@ -506,7 +506,6 @@ export class CountryLayer {
 
   tickRaised(now) {
     if (!this.raised?.size) return;
-    const pulse = 0.5 + 0.5 * Math.sin(now * 0.0055);
     for (const [o, r] of this.raised) {
       const target = r.kind ? LIFT[r.kind] : 1;
       r.s += (target - r.s) * 0.16;

@@ -1,12 +1,11 @@
 import { page } from './tpl.mjs';
 import { renderAll } from './render.mjs';
-import fs from 'node:fs'; import path from 'node:path'; import { execFileSync } from 'node:child_process';
+import fs from 'node:fs'; import { execFileSync } from 'node:child_process';
 import { ROOT, S, BASE } from './lib.mjs';
 const M = ROOT + 'marketing/';
 const groups = ['profile', 'banners', 'posts/square', 'posts/portrait', 'stories', 'video', 'screenshots'];
 const dims = f => execFileSync('identify', ['-format', '%wx%h', f]).toString();
 let html = `<div style="padding:40px 48px"><div class="brand" style="font-size:34px;color:#fff;margin-bottom:6px"><span class="mark"></span>EarthInteractive marketing kit</div><p class="sub" style="font-size:18px;margin-bottom:24px">Contact sheet: every asset in marketing/ with its file name and pixel size.</p>`;
-let rows = 0;
 for (const g of groups) {
   if (!fs.existsSync(M + g)) continue;
   const files = fs.readdirSync(M + g).filter(f => /\.(png|jpe?g)$/.test(f)).sort();
@@ -18,7 +17,7 @@ for (const g of groups) {
     const tw = Math.round(th * w / h);
     html += `<figure style="margin:0;width:${Math.max(tw, 150)}px"><img src="${BASE}marketing/${g}/${f}" style="display:block;height:${th}px;width:${tw}px;object-fit:contain;border-radius:8px;background:#000;border:1px solid rgba(255,255,255,.15)"><figcaption style="font-size:12.5px;line-height:1.3;margin-top:6px;color:#dfe3ff;word-break:break-all">${f}<br><span style="color:#8f95b8">${d}</span></figcaption></figure>`;
   }
-  html += '</div>'; rows++;
+  html += '</div>';
 }
 html += '</div>';
 // measure height in the browser by rendering at a generous height, then crop with ImageMagick

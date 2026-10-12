@@ -2,8 +2,9 @@
 //   node tools/marketing/run.mjs                 everything (about an hour headless: the app renders in software)
 //   node tools/marketing/run.mjs compose contact  only re-render the composed images (fast; e.g. after a domain
 //                                                 change, since every image prints SITE.url from tools/site.config.mjs)
-// Steps: capture (raw app shots into .work/raw) · compose (posts, stories, banners, gallery, profile) · video
-// (3 vertical clips, needs ffmpeg) · og (og-image.png) · contact (contact sheet, needs ImageMagick).
+// Steps: capture (raw app shots into .work/raw) · compose (posts, stories, banners, gallery, profile) · screenshots
+// (plain app screenshots + the manifest's install-dialog images) · video (3 vertical clips and their covers, needs
+// ffmpeg) · og (og-image.png) · contact (contact sheet, needs ImageMagick).
 // Needs Playwright (PLAYWRIGHT=/path/to/playwright/index.mjs if it isn't installed here). Serves the repo itself.
 import http from 'node:http'; import fs from 'node:fs'; import path from 'node:path'; import { spawn } from 'node:child_process';
 
@@ -25,11 +26,12 @@ const env = { ...process.env, MK_BASE: `http://127.0.0.1:${PORT}/` };
 const STEPS = {
   capture: ['capture.mjs', 'recap.mjs', 'stories.mjs', 'hex.mjs'],
   compose: ['brand.mjs', 'gallery.mjs', 'posts.mjs'],
+  screenshots: ['screenshots.mjs'],
   video: [['video.mjs', 'v01'], ['video.mjs', 'v02'], ['video.mjs', 'v03']],
   og: ['og.mjs'],
   contact: ['contact.mjs'],
 };
-const ORDER = ['capture', 'compose', 'video', 'og', 'contact'];
+const ORDER = ['capture', 'compose', 'screenshots', 'video', 'og', 'contact'];
 const want = process.argv.slice(2);
 const todo = want.length && !want.includes('all') ? ORDER.filter(k => want.includes(k)) : ORDER;
 const runStep = (file, args) => new Promise(res => spawn(process.execPath, [new URL(file, import.meta.url).pathname, ...args], { stdio: 'inherit', env }).on('exit', res));

@@ -1,4 +1,4 @@
-// Product Hunt gallery (1270x760) + stories (1080x1920) + screenshots folder
+// Product Hunt gallery (1270x760) + stories (1080x1920)
 import { page, footer, R, URL_TXT, esc } from './tpl.mjs';
 import { renderAll } from './render.mjs';
 import fs from 'node:fs';
