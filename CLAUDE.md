@@ -105,7 +105,7 @@ Unit tests run on Node's built-in runner (`npm test`, `tools/test/*.test.mjs`; `
 2. Running the page and exercising the feature (Playwright works headless with `--use-gl=angle --use-angle=swiftshader --enable-unsafe-swiftshader`; it renders ~1 fps, so wait on frames, not time).
    `window.EarthInteractive` exposes `globe, layer, compare, spin, thrills, quiz, search, setView(), setLens(), compareKeys()` for scripted checks.
 3. Checking desktop (1280×800) and phone (390×844) layouts.
-4. `npm run preview:pages` then `npm run smoke` (`tools/smoke.mjs`, needs Playwright): 24 scripted checks over search, pin/tag, card, compare, lenses, views, quiz, recenter and deep links on both sizes.
+4. `npm run preview:pages` then `npm run smoke` (`tools/smoke.mjs`, needs Playwright): 24 scripted checks over search, pin/tag, card, compare, lenses, views, quiz, recenter and deep links on both sizes. The same test runs on GitHub from Actions → Smoke → Run workflow (`.github/workflows/smoke.yml`; on demand, and on PRs that touch it, not on every PR: it waits on fixed times).
 5. `npm run qa` (`tools/qa.mjs`, BASE = a running dev server): ~65 checks per size with real taps on the globe (selection, card, compare UI + drag + share image, lenses, search, keyboard, games with Confirm/Enter and the miss line, daily, toggles, deep links, resizes, overlapping controls) and a warm-up leak check. ~20 min headless; wait on state (`globe.flight`, body classes), never fixed timeouts.
 
 Layout rule: phones and desktop show the same controls and links (on phones the links sit in the brand's menu); panels (legend, quiz, compare) sit above the footer row and corner buttons, never over them.
