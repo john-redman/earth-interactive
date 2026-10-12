@@ -4,8 +4,10 @@
 import * as THREE from 'three';
 
 export const THRILLS = {
-  screamSpeed: 10,      // rad/s of momentum where the crowd is fully screaming (a hard flick)
-  screamFrom: 7,        // rad/s where it starts to rise
+  screamSpeed: 20,      // rad/s of momentum where the crowd is fully screaming (built up over a few swipes)
+  screamFrom: 12,       // rad/s where it starts to rise: one ordinary flick only gets a murmur
+  riseTau: 0.6,         // s, how slowly the screams swell (they still die away quickly: fallTau)
+  fallTau: 0.22,
   wakeFrom: 5,          // rad/s where the audio engine wakes up, so the loop is running before it is heard
   volume: 0.7,
   samples: ['sounds/crowd-panic.mp3'], // the screams: recorded crowd, seamless loop
@@ -36,7 +38,10 @@ export class RideAudio {
   drive(t, speed) {
     if (!this.ready) return 0;
     const x = smooth(THRILLS.screamFrom, THRILLS.screamSpeed, speed);
-    for (const src of this.sources) src.g.gain.setTargetAtTime(x * src.mix, t, 0.22); // ~0.7 s fade in/out
+    for (const src of this.sources) {
+      const up = x * src.mix > src.g.gain.value;          // swell slowly, fade fast (~2 s in, ~0.7 s out)
+      src.g.gain.setTargetAtTime(x * src.mix, t, up ? THRILLS.riseTau : THRILLS.fallTau);
+    }
     return x;
   }
 }

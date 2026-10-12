@@ -28,6 +28,7 @@ import { flagImg } from './flags.js';
 import { shareCompareImage } from './share-image.js';
 import { track } from './analytics.js';
 import { createEgg } from './egg.js';
+import { TinyMarkers } from './tiny.js';
 import { TIER } from './perf.js';
 
 const canvas = document.getElementById('globe');
@@ -94,7 +95,8 @@ globe.controls.enableRotate = false; // rotation is ours (flywheel); OrbitContro
 const thrills = new Thrills(globe, spin);
 const pin = new Pin(document.getElementById('stage'));
 const sfx = createSfx({ muted: () => thrills.muted });
-const egg = createEgg(document.getElementById('egg'), { layer, sfx, track, announce }); // tap France five times
+const egg = createEgg(stage, { track, muted: () => thrills.muted }); // tap France five times
+const tiny = new TinyMarkers(globe, layer, compare); // dots for Monaco & co., and taps that snap to them
 const music = createMusic(document.getElementById('music-toggle'), { autostart: !EMBED });
 const missLine = new MissLine(globe, layer, stage);
 const currents = new Currents(globe);
@@ -455,6 +457,9 @@ function rayAt(x, y) {
   return raycaster.ray;
 }
 function countryAt(x, y) {
+  // a tiny country's dot within reach wins: Monaco is under a pixel even fully zoomed in
+  const t = mode !== 'compare' && tiny.near(x, y, canvas.getBoundingClientRect(), matchMedia('(pointer: coarse)').matches ? 20 : 14);
+  if (t) return { o: t.o, point: t.at.clone() };
   const hit = raySphere(rayAt(x, y), 1); if (!hit) return null;
   const [lon, lat] = vec3ToLonLat(hit);
   const o = layer.pick(lon, lat);
@@ -574,10 +579,16 @@ function onClick(x, y) {
     } else if (r?.o === pickFrom) ui.showToast('Pick a different country');
     return;
   }
-  if (r?.o) { openCountry(r.o, { point: r.point }); sfx.play('tap'); }
+  // France, tapped again and again (the easter egg): the pin stays put instead of dropping in on every tap
+  const now = performance.now(), again = r?.o && r.o.key === 'FRA' && r.o === selected && now - lastFranceTap < REDROP_MS;
+  if (r?.o?.key === 'FRA') lastFranceTap = now;
+  if (again) { /* already pinned: no new drop, no plop */ }
+  else if (r?.o) { openCountry(r.o, { point: r.point }); sfx.play('tap'); }
   else closePopup();
-  egg.tapped(r?.o);
+  if (egg.tapped(r?.o)) { closePopup(); announce('A big red button appeared on France.'); } // it stands where the pin was
 }
+const REDROP_MS = 1200; // a tap on the pinned France sooner than this after the last one doesn't drop the pin again
+let lastFranceTap = -Infinity;
 
 window.addEventListener('keydown', e => {
   if (search.isOpen) { if (e.key === 'Escape') search.close(); return; } // Escape from outside the box, or the app's back button
@@ -723,6 +734,15 @@ function frame(now) {
   tickNight(dt);
   if (guess && !quiz.waiting) cancelGuess(); // the round moved on (hint, Show me, next)
   thrills.tick(now);
+  tiny.setHidden(!!lensKey && lensKey !== 'none' || mode === 'compare'); tiny.tick();
+  if (egg.active) { // the easter egg's button stands on France
+    const fra = layer.get('FRA'), a = compare.anchorFor(fra), { x: W, y: H } = globe.size;
+    camDir.copy(globe.camera.position).normalize();
+    const focal = H / 2 / Math.tan(THREE.MathUtils.degToRad(globe.camera.fov / 2));
+    const rPx = Math.sqrt(fra.unit.area / Math.PI) / 6371 * focal / globe.camera.position.distanceTo(a); // France's radius on screen
+    tmp.copy(a).multiplyScalar(1.002).project(globe.camera);
+    egg.place((tmp.x + 1) / 2 * W, (1 - tmp.y) / 2 * H, rPx, a.dot(camDir) > 0.2);
+  }
   if (anchor) {
     camDir.copy(globe.camera.position).normalize();
     const vis = anchor.dot(camDir) > 0.2;
@@ -765,7 +785,7 @@ requestAnimationFrame(() => setTimeout(async () => {
 
 // Small public API for later integrations / debugging
 window.EarthInteractive = {
-  globe, layer, compare, ads, data, thrills, spin, quiz, search, native, sfx, music, currents, ships, clouds,
+  globe, layer, compare, ads, data, thrills, spin, quiz, search, native, sfx, music, currents, ships, clouds, tiny, egg,
   setLens: k => { lensKey = LENSES[k] ? k : 'none'; applyLens(); },
   setView: k => { if (!data.views[k]) return false; ui.setViewSilently(k); switchView(k); return true; },
   compareKeys: (a, b) => { const A = layer.get(a), B = layer.get(b); if (!A || !B || A === B) return false; closePopup(); cancelPick(); mode = 'compare'; compare.start(A, B); return true; },

@@ -1,41 +1,53 @@
-// Easter egg: tap France five times in a row and it arms a launch button: France blinks red to a two-tone siren
-// and a chip offers the Nuke France browser game (opens in a new tab). Only in normal browsing, never in a game.
+// Easter egg: tap France five times in a row and a big red 3D button rises out of it, with the owner's sound. Press
+// it (the cap sinks) and the Nuke France browser game opens in a new tab. Only in normal browsing.
 const GAME = 'https://de-jonkheer.itch.io/nuke-france';
 const TAPS = 5, WITHIN = 6000;          // five taps on France within this many ms (unhurried taps still count)
-const SHOW_MS = 15000;                  // the chip leaves by itself after this long
+const SHOW_MS = 20000;                  // the button sinks away by itself after this long
+const W = 92, H = 70;                   // button box (CSS px); the base sits on France's anchor
 
-export function createEgg(el, { layer, sfx, track, announce }) {
-  el.innerHTML = `
-    <a class="cotd-main" href="${GAME}" target="_blank" rel="noopener">
-      <span class="cotd-k">Secret</span><span class="egg-say">France has a launch button.</span><b>Play Nuke France</b><span class="cotd-go" aria-hidden="true">↗</span>
-    </a>
-    <button type="button" class="cotd-x" aria-label="Hide the secret">✕</button>`;
-  let taps = [], hideT = 0, flashT = [];
-  const hide = () => { clearTimeout(hideT); el.classList.remove('in'); el.hidden = true; document.body.classList.remove('egg-on'); };
-  el.querySelector('.cotd-x').onclick = hide;
-  el.querySelector('a').onclick = () => { track('egg/nuke-france/play'); hide(); };
+export function createEgg(stage, { track, muted }) {
+  const el = document.createElement('a');
+  el.className = 'egg-btn'; el.hidden = true;
+  el.href = GAME; el.target = '_blank'; el.rel = 'noopener';
+  el.setAttribute('aria-label', 'A big red button on France. Press it to play Nuke France (opens a new tab)');
+  el.innerHTML = '<span class="eb-base"></span><span class="eb-cap"><span class="eb-wall"></span><span class="eb-top"></span></span>';
+  stage.append(el);
+  const sound = new Audio('sounds/egg.mp3'); sound.preload = 'none';
+  let taps = [], hideT = 0, active = false;
 
-  // France blinks red three times with the siren (unless a game takes over meanwhile: its marks win)
-  function flash() {
-    flashT.forEach(clearTimeout);
-    const set = kind => { if (!document.body.classList.contains('quiz-on')) layer.setMark('FRA', kind); };
-    flashT = [0, 250, 500, 750, 1000, 1250, 1500].map((ms, i) => setTimeout(() => set(i % 2 || i === 6 ? null : 'bad'), ms));
-  }
+  const hide = () => { clearTimeout(hideT); active = false; el.hidden = true; el.classList.remove('down', 'in'); };
+  const press = () => el.classList.add('down');
+  const ding = () => { if (!muted()) { try { sound.currentTime = 0; sound.play().catch(() => {}); } catch { /* no audio */ } } };
+  el.addEventListener('pointerdown', e => { e.stopPropagation(); press(); });
+  el.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') press(); });
+  el.addEventListener('pointerleave', () => el.classList.remove('down'));
+  // the link itself opens the game (a real click, so no pop-up blocker); the button pops back up a moment later
+  el.addEventListener('click', () => { track('egg/nuke-france/play'); setTimeout(() => { el.classList.remove('down'); hide(); }, 350); });
 
   return {
-    /** A country (or the sea: null) was tapped while browsing. */
+    get active() { return active; },
+    /** A country (or the sea: null) was tapped while browsing. Returns true when the button appears. */
     tapped(o) {
-      if (o?.key !== 'FRA') { taps = []; return; }
+      if (o?.key !== 'FRA') { taps = []; if (active) hide(); return false; }
       const now = performance.now();
       taps = taps.filter(t => now - t < WITHIN); taps.push(now);
-      if (taps.length < TAPS) return;
-      taps = [];
-      flash(); sfx.play('siren');
+      if (taps.length < TAPS || active) return false;
+      taps = []; active = true;
       el.hidden = false; el.classList.remove('in'); void el.offsetWidth; el.classList.add('in');
-      document.body.classList.add('egg-on');
+      ding(); // the fifth tap is a user gesture, so the sound may play
       clearTimeout(hideT); hideT = setTimeout(hide, SHOW_MS);
-      announce('Secret found: France has a launch button. The Nuke France game link is at the top of the screen.');
       track('egg/nuke-france');
+      return true;
+    },
+    /**
+     * Every frame while active: France's anchor on screen (CSS px), France's radius on screen (CSS px) and whether
+     * it faces the camera. The button stays a small thing inside France: about 60% of its radius, 16 to 40 px wide.
+     */
+    place(x, y, radiusPx, visible) {
+      if (!active) return;
+      const k = Math.min(40, Math.max(16, radiusPx * 0.6)) / W;   // scale about the base's centre (on the anchor)
+      el.style.transform = `translate(${(x - W / 2).toFixed(1)}px, ${(y - H + 14).toFixed(1)}px) scale(${k.toFixed(3)})`;
+      el.classList.toggle('away', !visible);
     },
     hide,
   };

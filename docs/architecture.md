@@ -30,7 +30,8 @@ Static site, no bundler. `index.html` loads `js/main.js` as an ES module; an imp
 | `site-menu.js` | Phones: the brand opens the site links as a small menu | `mountSiteMenu` |
 | `popclock.js` | World population, live (UN WPP 2024 estimate, births today); fades by zoom and around panels | `createPopClock`, `worldPopulation` |
 | `daily-country.js` | Country of the day (seeded by local date), its facts, the top chip | `countryOfTheDay`, `factsFor`, `mountDailyChip` |
-| `egg.js` | Easter egg: five taps on France arm a chip linking to the Nuke France game | `createEgg` |
+| `egg.js` | Easter egg: five taps on France raise a red 3D button linking to the Nuke France game | `createEgg` |
+| `tiny.js` | Dots for tiny countries (Monaco & co.) and taps that snap to them | `TinyMarkers` |
 | `share-image.js` | Compare → 1080² share image (equal-area silhouettes on a 2D canvas), share sheet or download | `renderCompareImage`, `shareCompareImage` |
 | `sfx.js` | UI sounds: synthesised tones + recorded samples (`sounds/`), delegated button sounds | `createSfx` |
 | `flags.js` | Flag `<img>` markup from `vendor/flags/` with emoji fallback | `flagImg` |

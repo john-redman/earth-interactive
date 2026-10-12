@@ -81,8 +81,6 @@ const SOUNDS = {
   // games: a confirmed answer was right / wrong
   correct(t) { sample(t, 'correct', 1); },
   wrong(t) { sample(t, 'wrong', 1); },
-  // the France easter egg (egg.js): a French two-tone siren, pin-pon pin-pon pin-pon (B4 / A4, as on the real ones)
-  siren(t) { for (let i = 0; i < 3; i++) { tone(t + i * 0.5, 488, { dur: 0.24, gain: 0.2, type: 'triangle' }); tone(t + i * 0.5 + 0.25, 435, { dur: 0.24, gain: 0.2, type: 'triangle' }); } },
   // any other button: a quiet tick
   tick(t) { tone(t, 420, { dur: 0.07, gain: 0.22, type: 'triangle', glide: 0.8 }); whoosh(t, { from: 1800, to: 3000, dur: 0.05, gain: 0.05, q: 2 }); },
 };

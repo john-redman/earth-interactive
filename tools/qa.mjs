@@ -454,13 +454,18 @@ for (const [dev, vp, touch] of [['desktop', { width: 1280, height: 800 }, false]
     await p.keyboard.down('ArrowRight'); await p.waitForTimeout(300); const during = await ring(); await p.keyboard.up('ArrowRight');
     await p.waitForTimeout(2200); const after = await ring();
     ok('aim ring only while the arrows are in use', !before && during && !after, { before, during, after });
-    // France, five taps in a row: the Nuke France chip
+    // France, five taps in a row: the pin drops once, then a big red button stands on France and links to the game
     const fr = await aim('FRA');
-    for (let i = 0; i < 5; i++) { await tap(fr); await p.waitForTimeout(250); }
-    const egg = await E(() => ({ shown: !document.getElementById('egg').hidden, href: document.querySelector('#egg a')?.href, target: document.querySelector('#egg a')?.target }));
-    ok('five taps on France show the Nuke France link (new tab)', egg.shown && egg.href === 'https://de-jonkheer.itch.io/nuke-france' && egg.target === '_blank', egg);
-    await E(() => document.querySelector('#egg .cotd-x').click());
-    ok('…and ✕ hides it', await E(() => document.getElementById('egg').hidden && !document.body.classList.contains('egg-on')));
+    await E(() => { const S = window.EarthInteractive.sfx, f = S.play; window.__plops = 0; S.play = n => { if (n === 'tap') window.__plops++; return f(n); }; });
+    for (let i = 0; i < 5; i++) { await tap(fr); await p.waitForTimeout(150); }
+    const egg = await E(() => { const b = document.querySelector('.egg-btn'); return { shown: !b.hidden, href: b.href, target: b.target, plops: window.__plops }; });
+    ok('five taps on France: one pin drop, then the red button (game link, new tab)', egg.shown && egg.plops === 1 && egg.href === 'https://de-jonkheer.itch.io/nuke-france' && egg.target === '_blank', egg);
+    await tap(await aim('DEU'));
+    ok('…and tapping another country puts it away', await E(() => document.querySelector('.egg-btn').hidden));
+    // tiny countries: Monaco is a dot at the closest zoom, and a tap next to it picks it
+    const mc = await aim('MCO', 1.3); await p.waitForTimeout(1500);
+    await tap({ x: mc.x + 8, y: mc.y + 5 }); await p.waitForTimeout(600);
+    ok('a tap 8 px from Monaco picks Monaco', (await E(() => document.querySelector('#pin-tag b')?.textContent)) === 'Monaco');
   });
 
   await t('other sizes', async () => {
