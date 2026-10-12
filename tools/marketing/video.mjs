@@ -1,7 +1,7 @@
 // Deterministic vertical video: the app runs on a virtual clock, every frame is stepped and captured,
 // then crisp text overlays (rendered separately at 1080x1920) are composited with ffmpeg.
 import { launch, openApp, frames, S } from './lib.mjs';
-import { page as tplPage, R } from './tpl.mjs';
+import { page as tplPage } from './tpl.mjs';
 import { renderAll, OUT } from './render.mjs';
 import fs from 'node:fs'; import { execFileSync } from 'node:child_process';
 const id = process.argv[2], maxFrames = +process.argv[3] || 0, DSF = +process.argv[4] || 1.5;
@@ -77,5 +77,7 @@ layers.forEach((l, j) => {
 });
 f += `;[b${layers.length}]format=yuv420p[v]`;
 execFileSync('ffmpeg', ['-y', '-loglevel', 'error', ...inputs, '-filter_complex', f, '-map', '[v]', '-t', String(sc.dur), '-r', String(FPS), '-c:v', 'libx264', '-preset', 'slow', '-crf', '20', '-movflags', '+faststart', '-an', out]);
-// cover image for the post (the frame where the ratio is showing)
-console.log('wrote', out);
+// cover image for the post: the frame where the ratio is showing (or the last lens)
+const coverAt = sc.ratio ? +sc.overlays.find(o => o[4])[4].split(':')[1] + 1.5 : sc.endAt - 1.5;
+execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-ss', String(coverAt), '-i', out, '-frames:v', '1', '-q:v', '3', `${OUT}video/${sc.name}-cover.jpg`]);
+console.log('wrote', out, '+ cover');

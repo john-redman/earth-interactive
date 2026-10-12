@@ -4,7 +4,6 @@ export const OUT = ROOT + 'marketing/';
 /** jobs: [{ out, w, h, html, dsf=1, q=88 }] — .png or .jpg by extension */
 export async function renderAll(jobs) {
   const b = await launch();
-  const ctx = await b.newContext({ viewport: { width: 100, height: 100 } });
   const byDsf = new Map();
   for (const j of jobs) {
     const dsf = j.dsf || 1;
