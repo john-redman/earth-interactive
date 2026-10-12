@@ -7,7 +7,8 @@ All notable changes to EarthInteractive are documented here.
 ### Changed (owner requests, 12 October)
 - **Tiny countries you can find**: Monaco, San Marino, Malta, Singapore and other small countries and islands show as a dot in their colour once you zoom in, and a tap near the dot selects them.
 - **Screams build up**: one flick only gets a murmur; the crowd screams once you keep the globe spinning hard. Dragging feels the same.
-- **France, tapped again and again**: the pin stays put instead of dropping in on every tap.
+- **France, tapped again and again**: the pin drops once and stays put until you tap somewhere else.
+- **Population strip, redrawn**: no more pill box; a small spaced "World population" label with the live dot, the number large and light, and today's births beneath.
 - **Moved countries bring their islands**: in Move and Compare a country lifts out with every island and exclave within 1,500 km of the rest of it, so Ecuador carries all of the Galápagos, the USA carries Alaska, Spain the Canaries, Portugal the Azores and Madeira, Malaysia its half of Borneo, and Indonesia all of its islands (half of Indonesia used to stay behind). Areas and ratios follow the piece; far-off parts (Hawaii, French Guiana) still stay home and the card says "main territory".
 - **Aim ring**: the ring in the middle of the globe only shows while the arrow keys turn it, and fades a moment after the last one.
 - **Population strip**: shows births today; the death counter is gone.

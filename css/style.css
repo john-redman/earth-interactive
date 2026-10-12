@@ -298,17 +298,20 @@ body .app-links:not(.inline) { bottom: 62px; }
 .tag-tip { margin: 8px 2px 0; max-width: 260px; font-size: 11.5px; line-height: 1.4; color: var(--muted); }
 .tag-tip b { color: #fff; font-weight: 700; }
 /* World population, live (js/popclock.js): a quiet strip above the footer row, only while the whole globe is in view */
-.popclock { position: absolute; left: 50%; bottom: 44px; z-index: 10; display: flex; align-items: baseline; gap: 8px; padding: 8px 14px; border-radius: 999px;
+.popclock { position: absolute; left: 50%; bottom: 40px; z-index: 10; display: flex; flex-direction: column; align-items: center; gap: 3px;
   transform: translateX(-50%); translate: 0 8px; opacity: 0; visibility: hidden; pointer-events: none; white-space: nowrap;
-  background: rgba(14, 16, 38, 0.42); border: 1px solid rgba(255, 255, 255, 0.08); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
-  font-size: 11.5px; color: var(--muted); font-variant-numeric: tabular-nums; text-shadow: 0 1px 2px rgba(3, 4, 11, 0.75);
+  font-variant-numeric: tabular-nums; text-shadow: 0 1px 2px rgba(3, 4, 11, 0.85), 0 0 18px rgba(3, 4, 11, 0.7);
   transition: opacity 0.7s ease, translate 0.7s ease, visibility 0s linear 0.7s; }
 .popclock.on { opacity: 1; translate: 0 0; visibility: visible; transition: opacity 0.7s ease, translate 0.7s ease, visibility 0s; }
-.pc-live { width: 6px; height: 6px; border-radius: 50%; align-self: center; background: var(--accent-2); box-shadow: 0 0 8px var(--accent); animation: pcLive 2.4s ease-in-out infinite; }
+/* small spaced caps with the live dot · a big light number · the births in the accent */
+.pc-k { display: inline-flex; align-items: center; gap: 7px; font-size: 9.5px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: rgba(214, 220, 255, 0.55); }
+.pc-live { width: 6px; height: 6px; border-radius: 50%; background: var(--accent-2); box-shadow: 0 0 8px var(--accent); animation: pcLive 2.4s ease-in-out infinite; }
+.pc-n { font-size: 24px; font-weight: 300; line-height: 1.05; letter-spacing: 0.01em; color: #fff; text-shadow: none;
+  background: linear-gradient(180deg, #ffffff 30%, #cdbdff); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 1px 2px rgba(3, 4, 11, 0.8)); }
+.pc-day { font-size: 11px; font-weight: 500; color: rgba(214, 220, 255, 0.6); }
+.pc-b { color: var(--accent-2); font-weight: 700; }
 @keyframes pcLive { 50% { opacity: 0.35; } }
-.pc-k { font-weight: 600; letter-spacing: 0.02em; }
-.pc-n { font-size: 14px; font-weight: 800; color: #fff; letter-spacing: 0.01em; }
-.pc-b { color: rgba(214, 190, 255, 0.95); font-weight: 600; }
 @media (prefers-reduced-motion: reduce) { .pc-live { animation: none; } .popclock, .popclock.on { translate: none; } }
 .credit { position: absolute; right: 198px; bottom: 18px; z-index: 10; font-size: 10.5px; color: rgba(255,255,255,0.36); pointer-events: none; }
 .loader { position: absolute; inset: 0; display: grid; place-content: center; justify-items: center; gap: 16px; z-index: 50; color: var(--muted); font-size: 13px; transition: opacity 0.6s ease; pointer-events: none; }
@@ -545,10 +548,8 @@ html { -webkit-tap-highlight-color: transparent; text-rendering: optimizeLegibil
   .quiz { top: auto; bottom: max(76px, calc(var(--links-h, 33px) + 44px)); } /* above the brand and the corner buttons */
   .legend { bottom: max(76px, calc(var(--links-h, 33px) + 44px)); width: calc(100% - 90px); left: 16px; transform: none; }
   .clock { display: none; }
-  .popclock { left: 14px; transform: none; bottom: 56px; max-width: calc(100% - 84px); gap: 6px; padding: 7px 12px; font-size: 10.5px; }
-  .popclock { display: grid; grid-template-columns: auto auto auto; width: max-content; column-gap: 6px; row-gap: 1px; border-radius: 14px; padding: 7px 12px; }
-  .pc-day { grid-column: 2 / -1; }
-  .pc-n { font-size: 13px; }
+  .popclock { left: 16px; transform: none; bottom: 58px; align-items: flex-start; gap: 2px; max-width: calc(100% - 84px); }
+  .pc-n { font-size: 20px; }
   .qz-ask b { font-size: 22px; }
   /* the brand opens the site links as a small menu above it (same links as desktop) */
   .brand { left: 8px; bottom: 12px; font-size: 13px; pointer-events: auto; }
@@ -596,7 +597,7 @@ html { -webkit-tap-highlight-color: transparent; text-rendering: optimizeLegibil
 :root[data-quality="low"] .view-switch, :root[data-quality="low"] .ad-slot, :root[data-quality="low"] .popup,
 :root[data-quality="low"] .pick-banner, :root[data-quality="low"] .compare-bar, :root[data-quality="low"] .toast,
 :root[data-quality="low"] .tooltip, :root[data-quality="low"] .corner-btn, :root[data-quality="low"] .dock-btn,
-:root[data-quality="low"] .menu, :root[data-quality="low"] .quiz, :root[data-quality="low"] .legend, :root[data-quality="low"] .popclock {
+:root[data-quality="low"] .menu, :root[data-quality="low"] .quiz, :root[data-quality="low"] .legend {
   backdrop-filter: none; -webkit-backdrop-filter: none;
 }
 :root[data-quality="low"] .view-switch, :root[data-quality="low"] .corner-btn, :root[data-quality="low"] .dock-btn:not(:hover):not(.on):not([aria-expanded="true"]) {
