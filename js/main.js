@@ -221,7 +221,8 @@ function flyToBoth(point, o) {
   const a = point.clone().normalize(), b = compare.anchorFor(o).clone();
   const r = Math.sqrt(o.unit.area / Math.PI) / 6371, half = a.angleTo(b) / 2 + r;
   const mid = a.clone().add(b); if (mid.lengthSq() < 1e-6) mid.copy(b);
-  const dist = THREE.MathUtils.clamp(1 + half * 3.2, 2.1, Math.max(2.1, globe.fitDistance));
+  const narrow = Math.min(1, globe.camera.aspect); // portrait phones see less across: keep both ends on screen
+  const dist = THREE.MathUtils.clamp(1 + half / narrow * 3.2, 2.1, Math.max(2.1, globe.fitDistance));
   spin.stop(); globe.flyTo(mid.normalize(), dist, 1200);
 }
 // Games: a tap drops the pin on your guess and asks to confirm it, so a stray tap never costs a round

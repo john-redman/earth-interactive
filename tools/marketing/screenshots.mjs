@@ -12,7 +12,7 @@ const SHOTS = [
   // [size, name, query, camera [lon, lat] or null, action]
   ['desktop', 'home', '', [15, 24], null],
   ['desktop', 'card', 'c=FRA&view=un', null, 'info'],
-  ['desktop', 'compare', 'compare=GRL,COD', null, 'stats'],
+  ['desktop', 'compare', 'compare=GRL,COD', null, null],
   ['desktop', 'lens', 'lens=pop', [88, 26], null],
   ['phone', 'home', '', [15, 18], null],
   ['phone', 'card', 'c=KAZ&view=un', null, 'info'],
@@ -20,7 +20,7 @@ const SHOTS = [
   ['phone', 'lens', 'lens=density', [88, 24], null],
 ];
 const settle = async page => {
-  await page.waitForFunction(() => !window.EarthInteractive.globe.flight, null, { timeout: 300000 });
+  await page.waitForFunction(() => !window.EarthInteractive.globe.flight && !window.EarthInteractive.compare.anim, null, { timeout: 300000 });
   await frames(page, 4);
 };
 
@@ -32,7 +32,6 @@ for (const [size, name, query, cam, act] of SHOTS) {
   await settle(page);
   if (cam) await look(page, cam[0], cam[1], await page.evaluate(() => window.EarthInteractive.globe.camera.position.length()));
   if (act === 'info') { await page.click('#pin-tag [data-act="info"]'); await frames(page, 6); await settle(page); }
-  if (act === 'stats') { await page.click('#compare-pill [data-act="stats"]'); await frames(page, 6); }
   await frames(page, 6);
   const file = `${OUT}${size}-${name}-${s.w * s.dsf}x${s.h * s.dsf}.jpg`;
   await page.screenshot({ path: file, type: 'jpeg', quality: 88 });

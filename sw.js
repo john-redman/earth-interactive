@@ -58,7 +58,7 @@ self.addEventListener('fetch', e => {
   }));
 });
 
-/** Text pages: try the network, keep a copy for offline, fall back to the copy (or the 404 page). */
+/** Text pages: try the network, keep a copy for offline, fall back to the copy (or a page pointing to the globe). */
 async function networkFirst(req) {
   const cache = await caches.open(CACHE);
   try {
@@ -66,7 +66,16 @@ async function networkFirst(req) {
     if (res.ok) cache.put(req, res.clone());
     return res;
   } catch {
-    return (await cache.match(req, { ignoreSearch: true })) || (await cache.match(new URL('404.html', self.registration.scope).href))
-      || new Response('You are offline and this page is not saved yet.', { status: 503, headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
+    return (await cache.match(req, { ignoreSearch: true })) || offlinePage();
   }
+}
+
+/** Offline and never visited: say so, and offer the globe, which always works offline (not "page not found"). */
+function offlinePage() {
+  const home = self.registration.scope;
+  return new Response(`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Offline · EarthInteractive</title><style>body{margin:0;min-height:100vh;display:grid;place-items:center;padding:24px;box-sizing:border-box;
+background:#03040b;color:#e8eaff;font:16px/1.5 system-ui,sans-serif;text-align:center}h1{font-size:22px;margin:0 0 8px}a{color:#c9a6ff}</style></head>
+<body><main><h1>You're offline</h1><p>This page isn't saved on this device yet.<br>The globe works offline: <a href="${home}">open the globe</a>.</p></main></body></html>`,
+  { status: 503, headers: { 'Content-Type': 'text/html; charset=utf-8' } });
 }
