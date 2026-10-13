@@ -5,6 +5,7 @@ All notable changes to EarthInteractive are documented here.
 ## [Unreleased]
 
 ### Changed (owner requests, 12 October)
+- **Suez and Panama canals**: ships no longer sail across Egypt and Panama; both canals are drawn as water along their real courses, about a ship's width wide at any zoom.
 - **Tiny countries you can find**: Monaco, San Marino, Malta, Singapore and other small countries and islands show as a dot in their colour once you zoom in, and a tap near the dot selects them.
 - **Screams build up**: one flick only gets a murmur; the crowd screams once you keep the globe spinning hard. Dragging feels the same.
 - **France, tapped again and again**: the pin drops once and stays put until you tap somewhere else.

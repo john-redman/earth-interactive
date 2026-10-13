@@ -17,7 +17,7 @@ export const ROUTES = [
     [122.6, 30.9], [122.4, 28], [120.2, 24.6], [117.8, 22.6], [114.6, 21.7], [111.5, 18.2], [110, 13], [107, 7.5], [104.8, 3],
     [104.5, 1.28], [103.9, 1.24], [103.2, 1.25], [102.3, 2.0], [100.6, 3.3], [98.4, 5.4], [95.2, 6.3], [88, 5.8], [81, 5.2], [76, 6.6], [66, 11.5], [55, 13.4],
     [49, 12.4], [44.6, 12.2], [43.3, 12.7], [41.6, 15.2], [39.2, 19.4], [36.6, 23.6], [34.2, 27.2], [33.55, 27.95], [32.95, 28.9], [32.56, 29.85],
-    [32.35, 31.3], [30, 32.4], [25, 33.6], [19, 35.2], [14.2, 36.6], [11.6, 37.55], [7.5, 37.9], [2, 37.4], [-2.5, 36.3],
+    [32.57, 30.05], [32.45, 30.3], [32.33, 30.55], [32.31, 30.85], [32.31, 31.12], [32.35, 31.3], [30, 32.4], [25, 33.6], [19, 35.2], [14.2, 36.6], [11.6, 37.55], [7.5, 37.9], [2, 37.4], [-2.5, 36.3],
     [-5.6, 35.95], [-8.5, 36.4], [-9.9, 38.5], [-10, 42.5], [-8.6, 45.5], [-5.6, 48.4], [-3, 49.7], [0, 50.15], [1.6, 50.9],
     [3.2, 51.75], [3.9, 52.05]] },
   { name: 'Shanghai – Los Angeles', ships: 9, path: [
@@ -31,7 +31,7 @@ export const ROUTES = [
     [-58, 41.5], [-66, 40.6], [-71, 40.2], [-73.7, 40.3]] },
   { name: 'New York – Los Angeles via Panama', ships: 8, path: [
     [-73.7, 40.3], [-72.2, 37], [-71, 31], [-69, 24], [-67.9, 19.6], [-67.9, 18.3], [-70, 16.2], [-74.5, 13.4], [-78.2, 10.6],
-    [-79.85, 9.5], [-79.55, 8.8], [-79.4, 8.1], [-80.4, 7.0], [-84, 8.6], [-88, 11.6], [-94, 14.6], [-101, 16.6],
+    [-79.9, 9.5], [-79.92, 9.3], [-79.8, 9.18], [-79.69, 9.12], [-79.62, 9.03], [-79.56, 8.9], [-79.5, 8.6], [-79.4, 8.1], [-80.4, 7.0], [-84, 8.6], [-88, 11.6], [-94, 14.6], [-101, 16.6],
     [-106, 19.2], [-110.6, 21.6], [-114.4, 25.4], [-117.2, 30.6], [-117.6, 32.3], [-118.25, 33.66]] },
   { name: 'Houston – New York', ships: 5, path: [
     [-94.7, 29.0], [-91, 27.4], [-86.5, 25.6], [-83, 24.2], [-81, 24.1], [-79.7, 25.0], [-79.6, 27.2], [-79.6, 29.6],
@@ -55,6 +55,13 @@ export const ROUTES = [
   { name: 'Panama – Valparaíso', ships: 4, path: [
     [-79.4, 8.1], [-79.25, 7.2], [-80.3, 6.6], [-81.4, 3], [-82.4, -2], [-82, -6.5], [-79.2, -11.4], [-77.9, -13.4], [-75, -17], [-72.8, -22], [-72.2, -28],
     [-72.0, -33.0]] },
+];
+
+// The two canals the lanes cross, drawn as water (the coastline data has no canals): [lon, lat] from sea to sea,
+// on the same course as the lanes above. Their width follows the ships on screen (see Canals).
+export const CANALS = [
+  { name: 'Suez Canal', path: [[32.57, 29.9], [32.57, 30.05], [32.45, 30.3], [32.33, 30.55], [32.31, 30.85], [32.31, 31.12], [32.34, 31.28]] },
+  { name: 'Panama Canal', path: [[-79.91, 9.42], [-79.92, 9.3], [-79.8, 9.18], [-79.69, 9.12], [-79.62, 9.03], [-79.56, 8.9], [-79.53, 8.82]] },
 ];
 
 // length on screen: 6 px with the whole globe in view (radius ~335 px), growing with the globe as you zoom in, so they
@@ -152,6 +159,67 @@ function lane(path) {
   return { pts: curve.getSpacedPoints(n).map(p => p.normalize()), len };
 }
 
+/**
+ * The canals as water ribbons over the land (one merged mesh, renderOrder 2.45: after the fills, before the ships).
+ * Half-width is set every frame: the lanes' keep-right offset plus a ship's beam, so two-way traffic always has
+ * water under it (about a ship's length across in all, at any zoom). Facing the camera only; darker at night like the sea.
+ */
+class Canals {
+  constructor(world) {
+    const pos = [], nrm = [], side = [], idx = [];
+    const a = new THREE.Vector3(), b = new THREE.Vector3(), t = new THREE.Vector3(), n = new THREE.Vector3();
+    for (const { path } of CANALS) {
+      const pts = [];
+      for (let i = 0; i < path.length - 1; i++) for (let k = 0; k < 8; k++) {
+        const f = k / 8; pts.push([path[i][0] + (path[i + 1][0] - path[i][0]) * f, path[i][1] + (path[i + 1][1] - path[i][1]) * f]);
+      }
+      pts.push(path[path.length - 1]);
+      const base = pos.length / 3;
+      pts.forEach(([lon, lat], i) => {
+        lonLatToVec3(lon, lat, 1, a);
+        lonLatToVec3(...pts[Math.min(pts.length - 1, i + 1)], 1, b);
+        if (i === pts.length - 1) { lonLatToVec3(...pts[i - 1], 1, b); t.subVectors(a, b); } else t.subVectors(b, a);
+        n.crossVectors(t, a).normalize();
+        for (const sd of [-1, 1]) { pos.push(a.x, a.y, a.z); nrm.push(n.x, n.y, n.z); side.push(sd); }
+        if (i) { const q = base + (i - 1) * 2; idx.push(q, q + 1, q + 2, q + 1, q + 3, q + 2); }
+      });
+    }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    g.setAttribute('aNormal', new THREE.Float32BufferAttribute(nrm, 3));
+    g.setAttribute('aSide', new THREE.Float32BufferAttribute(side, 1));
+    g.setIndex(idx);
+    this.mat = new THREE.ShaderMaterial({
+      transparent: true, depthTest: false, depthWrite: false,
+      uniforms: { uHalf: { value: 0.002 }, uNight: SKY.uNight },
+      vertexShader: `
+        attribute vec3 aNormal; attribute float aSide; uniform float uHalf;
+        varying float vSide, vFacing;
+        void main() {
+          vec3 p = normalize(position + aNormal * aSide * uHalf) * 1.0005;
+          vec4 wp = modelMatrix * vec4(p, 1.0);
+          vFacing = dot(normalize(wp.xyz), normalize(cameraPosition));
+          vSide = aSide;
+          gl_Position = projectionMatrix * viewMatrix * wp;
+        }`,
+      fragmentShader: `
+        uniform float uNight; varying float vSide, vFacing;
+        void main() {
+          if (vFacing < 0.05) discard;
+          float e = abs(vSide);
+          vec3 water = vec3(0.114, 0.306, 0.584), bank = vec3(0.62, 0.70, 0.84);   // the sea's blue, a light bank like the coasts
+          vec3 c = mix(water, bank, smoothstep(0.72, 0.9, e)) * mix(1.0, 0.38, uNight);
+          gl_FragColor = vec4(c, 1.0 - smoothstep(0.9, 1.0, e));
+        }`,
+    });
+    this.mesh = new THREE.Mesh(g, this.mat);
+    this.mesh.renderOrder = 2.45; this.mesh.frustumCulled = false;
+    world.add(this.mesh);
+  }
+  /** halfWidth: radians on the sphere. */
+  set(halfWidth) { this.mat.uniforms.uHalf.value = halfWidth; }
+}
+
 export class Ships {
   constructor(globe) {
     this.globe = globe;
@@ -232,6 +300,7 @@ export class Ships {
     this.wake.frustumCulled = false;
     this.wake.renderOrder = 2.45;
     globe.world.add(this.wake, this.mesh);
+    this.canals = new Canals(globe.world);
     this._m = new THREE.Matrix4(); this._f = new THREE.Vector3(); this._s = new THREE.Vector3(); this._p = new THREE.Vector3();
     this.t0 = performance.now();
   }
@@ -246,6 +315,7 @@ export class Ships {
     const radiusPx = H / 2 / tanH / Math.sqrt(Math.max(1e-4, D * D - 1));     // the globe's radius on screen
     const P0 = SHIP_PX, px = Math.min(P0.max, Math.max(P0.min, P0.base * (radiusPx / P0.radius) ** P0.power));
     this.mesh.material.uniforms.uScale.value = px / 2 * perPx;
+    this.canals.set(LANE + px * 0.22 * perPx); // both lanes plus a ship's beam: never sailing on land, no wider than needed
     const t = reduced.matches ? 0 : (now - this.t0) / 1000;
     this.wake.material.uniforms.uTime.value = t;
     this.wake.material.uniforms.uShow.value = Math.min(1, Math.max(0, (px - 9) / 8)); // wakes only once ships are big enough to read
