@@ -11,9 +11,9 @@ const RUST_MS = 6000;                    // the hull darkens to rust after it st
 const WRECK_SCALE = 2.2;                 // a little larger than the passing ships, so the scene reads
 const ORYX_AT = 3600, ORYX_MS = 7000, ORYX_STAY = 2600; // the oryx set off, run, then stand looking before they go
 const HERD = [                           // start → end [lon, lat], delay (ms): from inland to the dunes behind the wreck
-  { from: [18.6, -21.3], to: [13.9, -20.55], delay: 0 },
-  { from: [19.0, -20.5], to: [14.5, -19.85], delay: 300 },
-  { from: [19.3, -22.1], to: [14.6, -21.3], delay: 650 },
+  { from: [18.6, -21.3], to: [14.35, -20.6], delay: 0 },
+  { from: [19.0, -20.5], to: [14.8, -19.9], delay: 300 },
+  { from: [19.3, -22.1], to: [14.9, -21.3], delay: 650 },
 ];
 const RUST = new THREE.Color('#6b3a22').convertLinearToSRGB(), HULL = new THREE.Color('#22344f').convertLinearToSRGB();
 const reduced = matchMedia('(prefers-reduced-motion: reduce)');
@@ -39,8 +39,15 @@ export function createNamibiaEgg({ globe, layer, ships, stage, track, muted, onF
   const since = now => frozen ?? now - t0;   // ms into the show (frozen: scripted checks hold one moment)
   const sound = new Audio('sounds/foghorn.mp3'); sound.preload = 'none'; sound.volume = 0.85;
 
-  // the wreck: one more of the ships (same geometry and shader, so it has their size and light)
-  const wreck = new THREE.InstancedMesh(ships.mesh.geometry, ships.mesh.material, 1);
+  // the wreck: one more of the ships (same geometry and shader, so it has their size and light). Its material is
+  // a transparent copy sharing their uniforms: the land fills draw in the transparent pass, after every opaque
+  // object, so an opaque ship lying on the beach would be painted over by Namibia. As a tanker (aKind 1) it has a
+  // bare deck, no container stacks standing out sideways.
+  const mat = ships.mesh.material.clone();
+  mat.uniforms = ships.mesh.material.uniforms; mat.transparent = true;
+  const geo = ships.mesh.geometry.clone();
+  geo.setAttribute('aKind', new THREE.InstancedBufferAttribute(new Float32Array([1]), 1));
+  const wreck = new THREE.InstancedMesh(geo, mat, 1);
   wreck.frustumCulled = false; wreck.renderOrder = 2.5; wreck.visible = false;
   wreck.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
   wreck.setColorAt(0, HULL);
@@ -68,7 +75,7 @@ export function createNamibiaEgg({ globe, layer, ships, stage, track, muted, onF
   function start() {
     coast ??= findCoast();
     lonLatToVec3(coast - 2.7, LAT + 1.1, 1, A);      // out at sea, north-west
-    lonLatToVec3(coast + 0.03, LAT, 1, B);            // the bow on the sand
+    lonLatToVec3(coast + 0.02, LAT, 1, B);            // on the shoreline
     t0 = performance.now(); frozen = null;
     wreck.setColorAt(0, HULL); wreck.instanceColor.needsUpdate = true;
     for (const h of herd) h.el.hidden = true;
@@ -85,15 +92,19 @@ export function createNamibiaEgg({ globe, layer, ships, stage, track, muted, onF
     P.copy(A).lerp(B, k).normalize();
     F.copy(B).sub(A); F.addScaledVector(P, -F.dot(P)).normalize();
     S.crossVectors(F, P).normalize();
-    // aground: heel over to starboard and lift the bow, with a little shudder as it hits
+    // aground: it slews round broadside to the beach and falls over onto its side, with a shudder as it hits
     const tip = Math.max(0, Math.min(1, (t - SAIL_MS) / TIP_MS));
-    const ease = 1 - Math.pow(1 - tip, 3), shudder = tip > 0 && tip < 1 ? Math.sin(tip * 30) * 0.04 * (1 - tip) : 0;
-    const roll = 0.42 * ease + shudder, pitch = -0.12 * ease;
+    const ease = 1 - Math.pow(1 - tip, 3), shudder = tip > 0 && tip < 1 ? Math.sin(tip * 30) * 0.05 * (1 - tip) : 0;
+    const yaw = -0.55 * ease, roll = 1.3 * ease + shudder, pitch = -0.06 * ease;
     const fwd = F.clone(), up = P.clone(), side = S.clone();
+    q.setFromAxisAngle(up, yaw); fwd.applyQuaternion(q); side.applyQuaternion(q);
     q.setFromAxisAngle(fwd, roll); up.applyQuaternion(q); side.applyQuaternion(q);
     q.setFromAxisAngle(side, pitch); fwd.applyQuaternion(q); up.applyQuaternion(q);
-    const sink = 1 - 0.0004 * ease;                   // settles a touch into the sand
-    m.makeBasis(fwd, up, side).scale(_k.setScalar(WRECK_SCALE)).setPosition(P.x * sink, P.y * sink, P.z * sink);
+    // afloat it sits at the sea's surface; on its side it rests on the sand (the land is drawn just above the sea,
+    // and the hull's side lies half a beam from its centre line)
+    const s = mat.uniforms.uScale.value * WRECK_SCALE;
+    const r = 1 + ease * (0.0015 + 0.2 * s);
+    m.makeBasis(fwd, up, side).scale(_k.setScalar(WRECK_SCALE)).setPosition(P.x * r, P.y * r, P.z * r);
     wreck.setMatrixAt(0, m); wreck.instanceMatrix.needsUpdate = true;
     wake.visible = u < 1 && ships.wake.visible;
     if (t >= SAIL_MS) {

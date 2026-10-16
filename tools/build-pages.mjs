@@ -41,7 +41,7 @@ const STATIC_PAGES = [
   { file: 'contact.html', type: 'ContactPage' },
 ];
 /** The app files the Pages workflow publishes (used only with --with-app). */
-const APP_FILES = ['index.html', 'manifest.webmanifest', 'sw.js', 'og-image.png', 'css', 'js', 'data', 'vendor', 'icons', 'sounds', 'LICENSE', 'THIRD_PARTY_NOTICES.md'];
+const APP_FILES = ['index.html', 'manifest.webmanifest', 'sw.js', 'og-image.png', 'ads.txt', 'css', 'js', 'data', 'vendor', 'icons', 'sounds', 'LICENSE', 'THIRD_PARTY_NOTICES.md'];
 
 // ───────────── consistency with the browser copies of the config ─────────────
 const fail = msg => { console.error('✗ ' + msg); process.exit(1); };

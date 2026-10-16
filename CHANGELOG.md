@@ -7,6 +7,8 @@ All notable changes to EarthInteractive are documented here.
 ### Added (owner requests, 16 October, later)
 - **Rankings**: a new Rankings button ranks every country by population (the default), area, density, GDP or GDP per person, highest or lowest first, with each rank and value. Tap a country to fly there. Links like `?rank=gdp` open it ready.
 - A little something in southern Africa.
+- `ads.txt` at the site root (comments only until an ad network is approved).
+- The globe holds still while an easter egg plays.
 
 ### Changed (owner requests, 16 October)
 - **Sharper borders up close**: zoom in and coasts and borders switch to Natural Earth 1:10m (fjords, Greek islands, river borders), downloaded the first time you zoom in. The whole-globe view is unchanged.
