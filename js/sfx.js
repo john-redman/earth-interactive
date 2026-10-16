@@ -114,7 +114,8 @@ export function createSfx({ muted }) {
   addEventListener('pointerdown', () => { if (!muted() && setup()) sleepSoon(); }, { once: true, capture: true });
   const MAP = [
     ['.pop-grab', 'sheet'],                 // the card's handle: only the swipe (sheetUp / sheetDown)
-    ['[data-act="info"], .pill-main, .cmp-grab, [data-act="stats"]', 'open'],
+    ['[data-act="info"], .pill-main, .cmp-grab, [data-act="stats"], [data-dock="rank"]', 'open'],
+    ['.rk-x', 'close'],
     ['.pop-x:not(.pop-link), .pill-x, [data-act="done"], .qz-x', 'close'],
     ['[data-act="compare"]', null],         // the piece's snap-out click is its sound (a dedicated one comes later)
     ['#sound-toggle', null],                // the mute button speaks for itself

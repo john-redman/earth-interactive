@@ -10,7 +10,7 @@ const YEAR = 365.2425 * 864e5;
 const BIRTHS = 132.0e6 / YEAR, DEATHS = 62.5e6 / YEAR;          // per millisecond
 const SHOW_AT = 0.84, HIDE_AT = 0.8;                              // camera distance / fit distance, with hysteresis
 const int = new Intl.NumberFormat('en-US');
-const BUSY = ['quiz-on', 'comparing', 'picking', 'measuring', 'lens-on', 'card-open', 'menu-open'];
+const BUSY = ['quiz-on', 'comparing', 'picking', 'measuring', 'lens-on', 'card-open', 'menu-open', 'ranking-open'];
 
 /** People alive at time t (ms since the epoch), and births since local midnight. */
 export function worldPopulation(t = Date.now()) {

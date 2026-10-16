@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import { CURRENTS, OCEANS } from '../../js/currents.js';
 import { buildLens, LENSES, LENS_ORDER, RAMP } from '../../js/lens.js';
 import { countryOfTheDay } from '../../js/daily-country.js';
+import { rankList, RANK_BY, RANK_ORDER } from '../../js/rankings.js';
 import data from '../../data/world.js';
 
 test('currents: valid waypoints, no jumps that would bend the spline, sane labels', () => {
@@ -46,6 +47,26 @@ test('data lenses: quantile breaks rise, the extremes get the end colours, no da
   assert.equal(buildLens('pop', objects).year, 2025);
   assert.equal(buildLens('gdppc', objects).year, 2024);
   assert.equal(buildLens('area', objects).year, null);
+});
+
+test('rankings: every statistic ranks countries highest first, ties share a rank, population by default', () => {
+  const objects = data.views.defacto.units.map(u => ({ key: u.k, unit: u, info: data.info[u.k] || {} }));
+  assert.equal(RANK_ORDER[0], 'pop');
+  for (const k of RANK_ORDER) {
+    const rows = rankList(objects, k);
+    assert.ok(rows.length > 150, `${k}: ${rows.length} countries`);
+    assert.equal(rows[0].rank, 1);
+    for (let i = 1; i < rows.length; i++) {
+      assert.ok(rows[i].v <= rows[i - 1].v, `${k} falls`);
+      assert.equal(rows[i].rank, rows[i].v === rows[i - 1].v ? rows[i - 1].rank : i + 1);
+    }
+    assert.ok(rows.every(r => r.o.unit.t === 'country' || r.o.unit.t === 'limited'), `${k}: countries only`);
+    assert.ok(!rows.some(r => r.o.key === 'ATA'), `${k}: no Antarctica`);
+    assert.equal(typeof RANK_BY[k].fmt(rows[0].v), 'string');
+  }
+  assert.equal(rankList(objects, 'pop')[0].o.key, 'IND');
+  assert.equal(rankList(objects, 'area')[0].o.key, 'RUS');
+  assert.equal(rankList(objects, 'gdp')[0].o.key, 'USA');
 });
 
 test('games: a large question pool of countries that exist in all three views', () => {

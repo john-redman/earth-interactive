@@ -55,6 +55,8 @@
   <!-- the whole module graph at once, instead of one import level at a time (tools/check.mjs keeps this list complete) -->
   <link rel="modulepreload" href="vendor/three/three.module.min.js">
   <link rel="modulepreload" href="js/load.js">
+  <link rel="modulepreload" href="js/rankings.js">
+  <link rel="modulepreload" href="js/namibia.js">
   <link rel="modulepreload" href="vendor/three/controls/OrbitControls.js">
   <link rel="modulepreload" href="js/geo.js">
   <link rel="modulepreload" href="js/sun.js">
@@ -125,7 +127,10 @@
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 18V11M9.5 18V6M15 18v-9M20.5 18V13"/></svg><span>Data</span></button>
         <div id="lens-menu" class="menu" role="menu" hidden></div>
       </div>
+      <button type="button" class="dock-btn" data-dock="rank" aria-expanded="false" aria-controls="rankings" title="Rank the countries">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h16M6 20v-6h4v6M10 20V8h4v12M14 20v-9h4v9"/></svg><span>Rankings</span></button>
     </nav>
+    <section id="rankings" class="rankings" aria-labelledby="rk-title" hidden></section>
     <div id="search" class="search" hidden></div>
     <section id="quiz" class="quiz" aria-label="Geography game" hidden></section>
     <div id="legend" class="legend" aria-live="polite" hidden></div>
