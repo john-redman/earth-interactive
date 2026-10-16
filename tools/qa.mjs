@@ -527,6 +527,8 @@ for (const [dev, vp, touch] of [['desktop', { width: 1280, height: 800 }, false]
     ok('a tap on Namibia reaches the easter egg', await until(() => window.__namTaps >= 1, null, 5000));
     await E(() => { const X = window.EarthInteractive; for (let i = 0; i < 5; i++) X.namibia.tapped(X.layer.get('NAM')); });
     ok('five taps on Namibia start the show', await E(() => window.EarthInteractive.namibia.running));
+    await E(() => window.EarthInteractive.globe.resumeAuto());
+    ok('…and the globe holds still while it runs', await until(() => !window.EarthInteractive.globe.autoRotate, null, 5000));
     await until(() => !window.EarthInteractive.globe.flight);
     await E(() => window.EarthInteractive.namibia.seek(9000, true));
     ok('…a wreck on the coast and three oryx running', await until(() => window.EarthInteractive.namibia.wreck.visible && [...document.querySelectorAll('.oryx')].filter(e => !e.hidden).length === 3, null, 20000),

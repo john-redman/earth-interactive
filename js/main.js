@@ -619,6 +619,15 @@ window.addEventListener('pointerup', endPointer);
 canvas.addEventListener('contextmenu', e => { if (e.pointerType !== 'mouse') e.preventDefault(); }); // press-and-hold lifts a country, no menu
 window.addEventListener('pointercancel', endPointer);
 
+// The globe holds still while an easter egg is on (France's button is up, Namibia's show runs); afterwards the
+// idle auto-rotate comes back after the usual delay
+let eggHeld = false;
+function holdForEggs() {
+  const on = egg.active || namibia.running;
+  if (on === eggHeld) return;
+  eggHeld = on;
+  if (on) { globe.hold('egg', true); spin.stop(); } else if (globe.hold('egg', false)) globe.pauseAuto();
+}
 const NAMIBIA_SAYS = 'A ship sounded its horn and ran aground on the Skeleton Coast. Three oryx come running to look.';
 function onClick(x, y) {
   ui.showTip(null);
@@ -809,6 +818,7 @@ function frame(now) {
   popClock.tick();
   ships.tick(now);
   namibia.tick(now);
+  holdForEggs();
   clouds?.tick(now);
   tickNight(dt);
   if (guess && !quiz.waiting) cancelGuess(); // the round moved on (hint, Show me, next)

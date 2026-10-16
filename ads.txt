@@ -1,0 +1,2 @@
+# ads.txt: lists who may sell ads on this site. Empty until an ad network is approved; then add its line here
+# (AdSense gives it, e.g. "google.com, pub-XXXXXXXXXXXXXXXX, DIRECT, f08c47fec0942fa0").
