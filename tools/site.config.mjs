@@ -16,6 +16,11 @@ export const SITE = {
   contactEmail: '',
   repoUrl: 'https://github.com/john-redman/earth-interactive',
   issuesUrl: 'https://github.com/john-redman/earth-interactive/issues',
+  /**
+   * The studio this site belongs to: adds an "A <name> project ↗" link to the app's links and every page footer.
+   * Empty name = the link stays hidden (fill both in once the studio's domain is live).
+   */
+  studio: { name: '', url: '' },
   /** Ko-fi page name (https://ko-fi.com/<kofi>). Empty = every "Support" link stays hidden. */
   kofi: '',
   /** GoatCounter site code (https://<code>.goatcounter.com). Empty = no analytics anywhere. */

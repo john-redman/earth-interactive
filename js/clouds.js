@@ -1,4 +1,4 @@
-// Very light clouds drifting slowly over the open ocean (desktop only). They follow the prevailing winds (westward in
+// Very light clouds drifting slowly over the open ocean (phones get a lighter version: two noise octaves, a coarser shell). They follow the prevailing winds (westward in
 // the trade-wind belts, eastward in the westerlies) and thin out well before the big landmasses; small islands
 // don't count as land, so clouds drift over them instead of parting round every speck (G of data/ocean.png).
 // One shell just above the sea, drawn after the country fills so it can veil a small island the way a real cloud does.
@@ -11,7 +11,7 @@ const PERIOD = 300;            // s; the drift restarts each period, crossfaded 
 const reduced = matchMedia('(prefers-reduced-motion: reduce)');
 
 export class Clouds {
-  constructor(globe) {
+  constructor(globe, { octaves = 4, segments = [128, 96] } = {}) {
     this.globe = globe;
     this.mat = new THREE.ShaderMaterial({
       transparent: true, depthWrite: false,
@@ -29,7 +29,7 @@ export class Clouds {
         uniform float uTime; uniform float uOpacity; uniform sampler2D uMap; uniform vec3 uSun; uniform float uNight; uniform vec3 uLight;
         varying vec3 vPos; varying float vFace; varying vec3 vN;
         ${NOISE}
-        float fbm(vec3 p){ float s = 0.0, a = 0.5; for (int i = 0; i < 4; i++) { s += a * snoise(p); p = p * 2.07 + vec3(3.1, 7.7, 1.3); a *= 0.5; } return s; }
+        float fbm(vec3 p){ float s = 0.0, a = 0.5; for (int i = 0; i < ${octaves}; i++) { s += a * snoise(p); p = p * 2.07 + vec3(3.1, 7.7, 1.3); a *= 0.5; } return s; }
         vec3 turn(vec3 p, float a){ float c = cos(a), s = sin(a); return vec3(c * p.x + s * p.z, p.y, -s * p.x + c * p.z); }
         float sky(vec3 P, float drift, float evolve){ vec3 q = turn(P, drift) * 3.4; return fbm(q + vec3(0.0, evolve, 0.0)); }
         void main(){
@@ -55,7 +55,7 @@ export class Clouds {
           gl_FragColor = vec4(col, alpha * mix(1.0, 0.45 + 0.55 * day, uNight));
         }`,
     });
-    this.mesh = new THREE.Mesh(new THREE.SphereGeometry(R, 128, 96), this.mat);
+    this.mesh = new THREE.Mesh(new THREE.SphereGeometry(R, ...segments), this.mat);
     this.mesh.renderOrder = 2.9;       // after the fills (so a small island can sit under a cloud), under highlights
     globe.world.add(this.mesh);
   }

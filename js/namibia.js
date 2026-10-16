@@ -1,6 +1,6 @@
 // Easter egg: tap Namibia five times and a cargo ship comes in from the Atlantic, sounds its fog horn and runs
-// aground on the Skeleton Coast (the wreck stays for the visit, rusting), then three oryx gallop across the desert to
-// look at it. Only in normal browsing.
+// aground on the Skeleton Coast (the wreck stays for the visit, rusting), then three oryx gallop across the desert
+// towards it, ease to a stop and fade away. Only in normal browsing.
 import * as THREE from 'three';
 import { lonLatToVec3 } from './geo.js';
 
@@ -9,11 +9,11 @@ const LAT = -20.4;                       // where on the Skeleton Coast it runs 
 const SAIL_MS = 4200, TIP_MS = 900;      // sailing in, then heeling over on the sand
 const RUST_MS = 6000;                    // the hull darkens to rust after it stops
 const WRECK_SCALE = 2.2;                 // a little larger than the passing ships, so the scene reads
-const ORYX_AT = 3600, ORYX_MS = 7000, ORYX_STAY = 2600; // the oryx set off, run, then stand looking before they go
+const ORYX_AT = 3600, ORYX_MS = 7000, ORYX_STAY = 500;  // the oryx set off, run, ease to a stop and fade away
 const HERD = [                           // start → end [lon, lat], delay (ms): from inland to the dunes behind the wreck
-  { from: [18.6, -21.3], to: [14.35, -20.6], delay: 0 },
-  { from: [19.0, -20.5], to: [14.8, -19.9], delay: 300 },
-  { from: [19.3, -22.1], to: [14.9, -21.3], delay: 650 },
+  { from: [18.6, -21.7], to: [14.35, -21.0], delay: 0 },
+  { from: [19.0, -20.9], to: [14.8, -20.3], delay: 300 },
+  { from: [19.3, -22.5], to: [14.9, -21.7], delay: 650 },
 ];
 const RUST = new THREE.Color('#6b3a22').convertLinearToSRGB(), HULL = new THREE.Color('#22344f').convertLinearToSRGB();
 const reduced = matchMedia('(prefers-reduced-motion: reduce)');
@@ -133,9 +133,9 @@ export function createNamibiaEgg({ globe, layer, ships, stage, track, muted, onF
       // west (where it is heading) lies to the left
       lonLatToVec3(lon - 0.2, lat, 1.003, w).applyMatrix4(globe.world.matrixWorld).project(cam);
       const left = w.x < v.x;
-      const fade = Math.min(1, t / 300, (end - t) / 500);
+      const fade = Math.min(1, t / 300, (end - t) / (ORYX_STAY + 400));
       h.el.hidden = !facing;
-      h.el.classList.toggle('still', u >= 1 || reduced.matches);
+      h.el.classList.toggle('still', reduced.matches);
       h.el.style.opacity = fade.toFixed(2);
       h.el.style.width = size.toFixed(1) + 'px';
       h.el.style.transform = `translate(${(x - size / 2).toFixed(1)}px, ${(y - size * 0.68).toFixed(1)}px) scaleX(${left ? -1 : 1})`;
