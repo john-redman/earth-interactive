@@ -4,6 +4,10 @@ All notable changes to EarthInteractive are documented here.
 
 ## [Unreleased]
 
+### Changed (owner requests, 16 October, evening)
+- **Phones get everything desktop has**: the live day & night clock (top right), the border view's description when you switch views, the compare tip, and the drifting clouds (a lighter version).
+- **Messages** wrap neatly on phones and stay clear of the buttons on the right.
+
 ### Added (owner requests, 16 October, later)
 - **Rankings**: a new Rankings button ranks every country by population (the default), area, density, GDP or GDP per person, highest or lowest first, with each rank and value. Tap a country to fly there. Links like `?rank=gdp` open it ready.
 - A little something in southern Africa.

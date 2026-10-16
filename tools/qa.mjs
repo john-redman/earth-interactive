@@ -544,10 +544,11 @@ for (const [dev, vp, touch] of [['desktop', { width: 1280, height: 800 }, false]
       await p.setViewportSize({ width: w, height: h });
       await go(); await p.waitForTimeout(1200);
       const o = await E(() => {
-        const sel = ['.top-left', '.dock', '.brand', '.site-links', '#recenter', '#daynight-toggle', '#music-toggle', '#sound-toggle', '#popclock', '.credit', '#hint', '#clock'];
-        const rs = sel.map(s => [s, document.querySelector(s)]).filter(([, el]) => { if (!el || el.hidden || el.classList.contains('gone')) return false; const cs = getComputedStyle(el); return cs.display !== 'none' && cs.visibility !== 'hidden'; }).map(([s, el]) => [s, el.getBoundingClientRect()]);
+        const sel = ['.top-left', '#view-switch', '#view-caption', '.dock', '.brand', '.site-links', '#recenter', '#daynight-toggle', '#music-toggle', '#sound-toggle', '#popclock', '.credit', '#hint', '#clock'];
+        const rs = sel.map(s => [s, document.querySelector(s)]).filter(([, el]) => { if (!el || el.hidden || el.classList.contains('gone')) return false; const cs = getComputedStyle(el); return cs.display !== 'none' && cs.visibility !== 'hidden'; }).map(([s, el]) => [s, el.getBoundingClientRect(), el]);
         const hits = [];
-        for (let i = 0; i < rs.length; i++) for (let j = i + 1; j < rs.length; j++) { const a = rs[i][1], b = rs[j][1]; if (a.width && b.width && a.left < b.right - 1 && b.left < a.right - 1 && a.top < b.bottom - 1 && b.top < a.bottom - 1) hits.push(rs[i][0] + ' × ' + rs[j][0]); }
+        // (a group and what sits inside it don't count: on phones the clock is part of the top-left group)
+        for (let i = 0; i < rs.length; i++) for (let j = i + 1; j < rs.length; j++) { const a = rs[i][1], b = rs[j][1]; if (rs[i][2].contains(rs[j][2]) || rs[j][2].contains(rs[i][2])) continue; if (a.width && b.width && a.left < b.right - 1 && b.left < a.right - 1 && a.top < b.bottom - 1 && b.top < a.bottom - 1) hits.push(rs[i][0] + ' × ' + rs[j][0]); }
         return { hits, off: rs.filter(([, r]) => r.left < -1 || r.right > innerWidth + 1).map(([s]) => s) };
       });
       ok(`${tag}: no overlapping controls, none off-screen`, !o.hits.length && !o.off.length, o);

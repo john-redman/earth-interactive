@@ -243,7 +243,7 @@ img.tag-flag { width: 24px; height: 18px; flex: none; object-fit: cover; border-
 .cs-row.txt span:not(.cs-k) { font-weight: 500; font-size: 12px; color: rgba(240,240,255,0.88); }
 
 .tooltip { top: 0; left: 0; padding: 5px 10px; border-radius: 8px; font-size: 12px; font-weight: 600; pointer-events: none; box-shadow: 0 6px 18px rgba(0,0,0,0.35); }
-.toast { bottom: 110px; left: 50%; transform: translateX(-50%); padding: 9px 16px; border-radius: 999px; font-size: 13px; }
+.toast { bottom: 110px; left: 50%; transform: translateX(-50%); padding: 9px 16px; border-radius: 20px; font-size: 13px; width: max-content; max-width: min(440px, calc(100% - 32px)); text-align: center; text-wrap: balance; }
 .toast.in { animation: riseIn 0.3s ease; }
 
 /* ───────────── Hint, brand, credit, loader ───────────── */
@@ -566,6 +566,7 @@ html { -webkit-tap-highlight-color: transparent; text-rendering: optimizeLegibil
   .top-left { top: 12px; left: 12px; right: 12px; }
   .vs-opt { padding: 0 11px 0 8px; font-size: 12.5px; height: 34px; gap: 5px; }
   .vs-ico { width: 22px; height: 22px; }
+  .view-caption { display: inline-block; } /* only as wide as the view's name: the clock sits beside it */
   .view-caption span { display: none; }
   .pick-banner { top: 96px; left: 12px; transform: none; font-size: 12.5px; white-space: normal; width: max-content; max-width: calc(100% - 24px); border-radius: 20px; } /* under the view switch: the footer row and dock stay clear */
   .cotd { top: 96px; left: 12px; }
@@ -581,6 +582,7 @@ html { -webkit-tap-highlight-color: transparent; text-rendering: optimizeLegibil
   .recenter { right: 140px; }
   .sl-long { display: none; } .sl-short { display: inline; }
   .dock { top: auto; right: 12px; bottom: 54px; flex-direction: column; }
+  .toast { left: 16px; transform: none; max-width: calc(100% - 84px); text-align: left; } /* clear of the dock column */
   .rankings { top: 18%; left: 8px; right: 8px; bottom: max(8px, env(safe-area-inset-bottom)); width: auto; max-width: none; padding-top: 16px; }
   .rankings.in { animation: sheetIn 0.38s cubic-bezier(0.2, 0.8, 0.25, 1) backwards; }
   .dock-btn { width: 44px; height: 44px; padding: 0; justify-content: center; }
@@ -588,7 +590,7 @@ html { -webkit-tap-highlight-color: transparent; text-rendering: optimizeLegibil
   .menu { top: auto; bottom: 0; right: calc(100% + 8px); }
   .quiz { top: auto; bottom: max(76px, calc(var(--links-h, 33px) + 44px)); } /* above the brand and the corner buttons */
   .legend { bottom: max(76px, calc(var(--links-h, 33px) + 44px)); width: calc(100% - 90px); left: 16px; transform: none; }
-  .clock { display: none; }
+  .clock { left: auto; right: 4px; bottom: auto; top: 59px; font-size: 10.5px; color: rgba(255,255,255,0.5); } /* inside .top-left, level with the view's name */
   .popclock { left: 16px; transform: none; bottom: 58px; align-items: flex-start; gap: 2px; max-width: calc(100% - 84px); }
   .pc-n { font-size: 20px; }
   .qz-ask b { font-size: 22px; }
@@ -617,6 +619,7 @@ html { -webkit-tap-highlight-color: transparent; text-rendering: optimizeLegibil
   .cmp-actions [data-act="image"] { padding: 0 10px; }
 }
 @media (max-width: 380px) { .vs-ico { display: none; } }
+@media (max-width: 359px) { .ck-l { display: none; } } /* the smallest phones: just the time */
 /* tablets and small windows: the four dock buttons as icons, so they clear the border-view switch */
 @media (min-width: 721px) and (max-width: 899px) { .dock-btn { width: 44px; padding: 0; justify-content: center; } .dock-btn span, .dock-btn kbd { display: none; } }
 /* the tag's four buttons on phones: tighter, and below 380 px words only */

@@ -53,7 +53,11 @@ export function createUI({ data, initialView, onView, onCompareRequest, onMoveRe
     if (e.key === 'ArrowRight' || e.key === 'ArrowDown') { e.preventDefault(); setView(order[(i + 1) % 3], true); }
     if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') { e.preventDefault(); setView(order[(i + 2) % 3], true); }
   });
-  function setView(k, focus) { current = k; paintSwitch(); if (focus) vs.querySelector(`[data-view="${k}"]`).focus(); onView(k); }
+  function setView(k, focus) {
+    current = k; paintSwitch(); if (focus) vs.querySelector(`[data-view="${k}"]`).focus();
+    if (innerWidth <= 720) showToast(`${data.views[k].label}: ${data.views[k].blurb}`, 4500); // phones: the caption only has room for the name
+    onView(k);
+  }
   requestAnimationFrame(paintSwitch);
   window.addEventListener('resize', paintSwitch);
   document.fonts?.ready.then(paintSwitch);
@@ -349,7 +353,7 @@ export function createUI({ data, initialView, onView, onCompareRequest, onMoveRe
 
   // ---------- toast ----------
   const toast = $('#toast'); let toastT;
-  function showToast(msg) { toast.textContent = msg; toast.hidden = false; toast.classList.remove('in'); void toast.offsetWidth; toast.classList.add('in'); clearTimeout(toastT); toastT = setTimeout(() => (toast.hidden = true), 2600); }
+  function showToast(msg, ms = 2600) { toast.textContent = msg; toast.hidden = false; toast.classList.remove('in'); void toast.offsetWidth; toast.classList.add('in'); clearTimeout(toastT); toastT = setTimeout(() => (toast.hidden = true), ms); }
 
   return { showPopup, hidePopup, placePopup, get popFor() { return popFor; }, showTag, hideTag, showConfirm, placeTag, get tagFor() { return tagFor; }, showPick, hidePick, showMeasure, showCompare, showTip, dismissHint, showToast, setViewSilently(k) { current = k; paintSwitch(); } };
 }

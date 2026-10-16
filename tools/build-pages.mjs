@@ -301,6 +301,8 @@ const contactHref = SITE.contactEmail ? `mailto:${SITE.contactEmail}` : SITE.iss
 const contactText = SITE.contactEmail || 'GitHub issues';
 const analytics = SITE.goatcounter
   ? `<script data-goatcounter="https://${esc(SITE.goatcounter)}.goatcounter.com/count" async src="https://gc.zgo.at/count.js"></script>` : '';
+const studioOn = !!(SITE.studio?.name && SITE.studio?.url);
+const studioLink = () => (studioOn ? `<a data-site="studio" href="${esc(SITE.studio.url)}" rel="noopener">A ${esc(SITE.studio.name)} project ↗</a>` : '');
 const kofiLink = (text = 'Support') => (SITE.kofi ? `<a href="https://ko-fi.com/${esc(SITE.kofi)}" rel="noopener">${text}</a>` : '');
 
 const OG_ALT = 'A 3D globe with colourful country borders over Africa and Europe';
@@ -359,7 +361,7 @@ function footer(base) {
       <a href="${base}terms.html">Terms</a>
       <a href="${base}contact.html">Contact</a>
       <a href="https://www.youtube.com/watch?v=pvuN_WvF1to" target="_blank" rel="noopener" title="Lil Dicky, Earth (music video on YouTube)">We love the Earth ↗</a>
-      ${kofiLink()}
+      ${kofiLink()}${studioLink()}
     </nav>
     <p class="fine">© ${new Date().getFullYear()} ${esc(SITE.name)}. Borders: <a href="https://www.naturalearthdata.com/">Natural Earth</a> (public domain).
       Country facts: <a href="https://github.com/mledoze/countries">mledoze/countries</a>, under the <a href="https://opendatacommons.org/licenses/odbl/1-0/">ODbL</a>.
@@ -435,6 +437,7 @@ function applySite(html, { file, type } = {}) {
   html = html.replace(/<a data-site="contact"[^>]*>[\s\S]*?<\/a>/g, `<a data-site="contact" href="${esc(contactHref)}">${esc(contactText)}</a>`);
   html = html.replace(/<a data-site="kofi"[^>]*>([\s\S]*?)<\/a>/g, (_, t) => (SITE.kofi ? `<a data-site="kofi" href="https://ko-fi.com/${esc(SITE.kofi)}" rel="noopener">${t}</a>` : `<a data-site="kofi" href="https://ko-fi.com/" hidden>${t}</a>`));
   html = html.replace(/(data-site="kofi-block")( hidden)?/g, SITE.kofi ? '$1' : '$1 hidden');
+  html = html.replace(/<a data-site="studio"[^>]*>[\s\S]*?<\/a>/g, () => studioLink() || '<a data-site="studio" href="#" hidden>A studio project ↗</a>');
   return html;
 }
 

@@ -107,7 +107,8 @@ const popClock = createPopClock(document.getElementById('popclock'), globe);
 const ships = new Ships(globe);
 const namibia = createNamibiaEgg({ globe, layer, ships, stage, track, muted: () => thrills.muted, // tap Namibia five times
   onFly: (dir, dist) => { spin.stop(); globe.flyTo(dir, dist, 1400); } });
-const clouds = TIER === 'high' ? new Clouds(globe) : null; // desktop only: a full-globe noise shader is too much for phones
+// phones: two noise octaves instead of four and a coarser shell (a full-globe noise shader is the costly part)
+const clouds = new Clouds(globe, TIER === 'high' ? {} : { octaves: 2, segments: [64, 48] });
 const cotdKey = countryOfTheDay(data);
 /** Fly to today's country and open its card (from the chip or the Play menu). */
 function goDaily() { const o = layer.get(cotdKey); if (!o || mode === 'quiz') return; if (mode === 'compare') endCompare(true); openCountry(o, { fly: true }); openInfo(o); }
@@ -185,13 +186,15 @@ async function compareImage() {
   } catch (e) { console.warn(e); ui.showToast('Could not make the image'); }
 }
 
-let trackedPair = '';
+let trackedPair = '', cmpTipShown = false;
 compare.onChange = state => {
   const pair = state ? `${state.a.o.key},${state.b.o.key}` : '';
   if (pair && pair !== trackedPair) {
     track('compare', pair); // counted once per pair, not on every drag
     const [big, small] = state.a.area >= state.b.area ? [state.a, state.b] : [state.b, state.a], r = big.area / Math.max(1, small.area);
     announce(`${big.o.unit.n} is ${r >= 10 ? Math.round(r) : r.toFixed(1)} times the size of ${small.o.unit.n}.`);
+    // phones: the compare bar has no room for its tip, so say it once per visit
+    if (innerWidth <= 720 && !cmpTipShown) { cmpTipShown = true; setTimeout(() => ui.showToast('Drag a piece to move it. Drag the ocean to spin.', 4000), 1200); }
   }
   trackedPair = pair; cmpState = state;
   ui.showCompare(state); document.body.classList.toggle('comparing', !!state); setParam('compare', state ? `${state.a.o.key},${state.b.o.key}` : null); };
@@ -415,6 +418,10 @@ document.addEventListener('pointerdown', e => { if (!e.target.closest('.dock')) 
 
 // ---------- live day & night ----------
 const clock = document.getElementById('clock');
+// phones: the clock joins the top-left group, level with the view's name (desktop: beside the brand)
+const phoneMq = matchMedia('(max-width: 720px)'), clockHome = clock.parentElement;
+const placeClock = () => (phoneMq.matches ? document.querySelector('.top-left') : clockHome).append(clock);
+placeClock(); phoneMq.addEventListener('change', placeClock);
 const NIGHT = 1; // day & night fully on (the shaders set how dark night is)
 let dayNight = true;
 try { dayNight = localStorage.getItem('ei-daynight') !== '0'; } catch { /* storage unavailable */ }
@@ -436,7 +443,7 @@ function tickNight(dt) {
 }
 function tickSun() {
   const now = new Date(); updateSun(now);
-  clock.textContent = `Live day & night · ${String(now.getUTCHours()).padStart(2, '0')}:${String(now.getUTCMinutes()).padStart(2, '0')} UTC`;
+  clock.innerHTML = `<span class="ck-l">Live day & night · </span>${String(now.getUTCHours()).padStart(2, '0')}:${String(now.getUTCMinutes()).padStart(2, '0')} UTC`;
 }
 tickSun(); setInterval(tickSun, 30000);
 
@@ -626,7 +633,7 @@ function holdForEggs() {
   const on = egg.active || namibia.running;
   if (on === eggHeld) return;
   eggHeld = on;
-  if (on) { globe.hold('egg', true); spin.stop(); } else if (globe.hold('egg', false)) globe.pauseAuto();
+  if (on) { globe.hold('egg', true); spin.stop(); spin.auto = 0; } else if (globe.hold('egg', false)) globe.pauseAuto(); // the idle countdown starts now
 }
 const NAMIBIA_SAYS = 'A ship sounded its horn and ran aground on the Skeleton Coast. Three oryx come running to look.';
 function onClick(x, y) {
