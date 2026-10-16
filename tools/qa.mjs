@@ -334,6 +334,10 @@ for (const [dev, vp, touch] of [['desktop', { width: 1280, height: 800 }, false]
     await E(() => window.EarthInteractive.quiz.start('classic'));
     ok('game on UN view, dock hidden', (await E(() => window.EarthInteractive.layer.view.key)) === 'un' && !(await vis('#dock')));
     ok('game in political colours, globe held still', await E(() => !document.body.classList.contains('lens-on') && !window.EarthInteractive.globe.autoRotate && window.EarthInteractive.setLens('density') === false));
+    await E(() => window.EarthInteractive.quiz.exit()); await p.waitForTimeout(400);
+    ok('quit: the data lens comes back', await E(() => document.body.classList.contains('lens-on') && /lens=pop/.test(location.search)));
+    await E(() => { window.EarthInteractive.setLens('none'); window.EarthInteractive.quiz.start('classic'); });
+    await until(() => document.querySelector('.qz-prog')?.textContent === '1 / 10');
     let firstName = null;
     for (let i = 0; i < 3; i++) {
       const name = await E(() => document.querySelector('#quiz .qz-ask b').textContent);
@@ -373,7 +377,6 @@ for (const [dev, vp, touch] of [['desktop', { width: 1280, height: 800 }, false]
     }
     await E(() => document.querySelector('#quiz .qz-x').click()); await p.waitForTimeout(600);
     ok('quit: back to De facto, no leftovers', (await E(() => window.EarthInteractive.layer.view.key)) === 'defacto' && await vis('#dock'));
-    ok('quit: the data lens comes back', await E(() => document.body.classList.contains('lens-on') && /lens=pop/.test(location.search)));
     // daily: yesterday's already played (a streak), finish today's, reload, still done
     await E(() => { const d = new Date(); d.setDate(d.getDate() - 1); const k = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; localStorage.setItem('ei-daily-' + k, JSON.stringify({ results: [], qs: [] })); });
     await go('?play=daily');
