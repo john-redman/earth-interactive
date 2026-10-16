@@ -617,6 +617,8 @@ html { -webkit-tap-highlight-color: transparent; text-rendering: optimizeLegibil
   .cmp-actions [data-act="image"] { padding: 0 10px; }
 }
 @media (max-width: 380px) { .vs-ico { display: none; } }
+/* tablets and small windows: the four dock buttons as icons, so they clear the border-view switch */
+@media (min-width: 721px) and (max-width: 899px) { .dock-btn { width: 44px; padding: 0; justify-content: center; } .dock-btn span, .dock-btn kbd { display: none; } }
 /* the tag's four buttons on phones: tighter, and below 380 px words only */
 @media (max-width: 480px) { .tag-acts { gap: 5px; } .tag-btn { padding: 0 9px; gap: 4px; } }
 @media (max-width: 380px) { .tag-btn { padding: 0 8px; font-size: 12px; } .tag-btn svg { display: none; } }
