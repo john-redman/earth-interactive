@@ -418,6 +418,10 @@ document.addEventListener('pointerdown', e => { if (!e.target.closest('.dock')) 
 
 // ---------- live day & night ----------
 const clock = document.getElementById('clock');
+// phones: the clock joins the top-left group, level with the view's name (desktop: beside the brand)
+const phoneMq = matchMedia('(max-width: 720px)'), clockHome = clock.parentElement;
+const placeClock = () => (phoneMq.matches ? document.querySelector('.top-left') : clockHome).append(clock);
+placeClock(); phoneMq.addEventListener('change', placeClock);
 const NIGHT = 1; // day & night fully on (the shaders set how dark night is)
 let dayNight = true;
 try { dayNight = localStorage.getItem('ei-daynight') !== '0'; } catch { /* storage unavailable */ }

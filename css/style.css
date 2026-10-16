@@ -566,6 +566,7 @@ html { -webkit-tap-highlight-color: transparent; text-rendering: optimizeLegibil
   .top-left { top: 12px; left: 12px; right: 12px; }
   .vs-opt { padding: 0 11px 0 8px; font-size: 12.5px; height: 34px; gap: 5px; }
   .vs-ico { width: 22px; height: 22px; }
+  .view-caption { display: inline-block; } /* only as wide as the view's name: the clock sits beside it */
   .view-caption span { display: none; }
   .pick-banner { top: 96px; left: 12px; transform: none; font-size: 12.5px; white-space: normal; width: max-content; max-width: calc(100% - 24px); border-radius: 20px; } /* under the view switch: the footer row and dock stay clear */
   .cotd { top: 96px; left: 12px; }
@@ -589,7 +590,7 @@ html { -webkit-tap-highlight-color: transparent; text-rendering: optimizeLegibil
   .menu { top: auto; bottom: 0; right: calc(100% + 8px); }
   .quiz { top: auto; bottom: max(76px, calc(var(--links-h, 33px) + 44px)); } /* above the brand and the corner buttons */
   .legend { bottom: max(76px, calc(var(--links-h, 33px) + 44px)); width: calc(100% - 90px); left: 16px; transform: none; }
-  .clock { left: auto; right: 16px; bottom: auto; top: 71px; font-size: 10.5px; color: rgba(255,255,255,0.5); } /* level with the view's name */
+  .clock { left: auto; right: 4px; bottom: auto; top: 59px; font-size: 10.5px; color: rgba(255,255,255,0.5); } /* inside .top-left, level with the view's name */
   .popclock { left: 16px; transform: none; bottom: 58px; align-items: flex-start; gap: 2px; max-width: calc(100% - 84px); }
   .pc-n { font-size: 20px; }
   .qz-ask b { font-size: 22px; }
