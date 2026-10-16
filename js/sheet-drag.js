@@ -60,7 +60,8 @@ export function attachSheetDrag(el, { enabled, states, current, settle, dismiss 
     quietUntil = now() + 350; // a drag that ends on a button must not also press it
   };
   let quietUntil = 0;
-  el.addEventListener('click', ev => { if (now() < quietUntil) { ev.stopPropagation(); ev.preventDefault(); } }, { capture: true });
+  // on window, so it runs before the delegated sound listener on the document
+  addEventListener('click', ev => { if (now() < quietUntil && el.contains(ev.target)) { ev.stopPropagation(); ev.preventDefault(); } }, { capture: true });
   el.addEventListener('touchend', end, { passive: true });
   el.addEventListener('touchcancel', end, { passive: true });
 }

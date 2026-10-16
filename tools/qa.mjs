@@ -227,7 +227,7 @@ for (const [dev, vp, touch] of [['desktop', { width: 1280, height: 800 }, false]
     ok('tapping elsewhere closes it', await until(() => !document.getElementById('site-links').classList.contains('open')));
   });
 
-  await t('first visit, keyboard select, game auto-advance', async () => {
+  await t('first visit, keyboard select, game Next button', async () => {
     await go(); await E(() => { try { localStorage.removeItem('ei-intro'); localStorage.removeItem('ei-music'); localStorage.removeItem('ei-tip-tag'); } catch {} });
     await go();
     ok('first visit: the finger shows how to spin', await until(() => !!document.querySelector('.intro-hand:not(.out) .intro-finger'))); // a point-sized anchor, so not vis()
@@ -239,13 +239,14 @@ for (const [dev, vp, touch] of [['desktop', { width: 1280, height: 800 }, false]
       ok('Enter on the globe selects the country in the middle', await until(() => document.querySelector('#pin-tag b')?.textContent === 'Brazil'));
       ok('…announced for screen readers, with a one-time tip', await until(() => /Brazil selected/.test(document.getElementById('sr-live').textContent)) && await vis('.tag-tip'));
       ok('the finger has gone after the first key press', await until(() => !document.querySelector('.intro-hand:not(.out)')));
-      // keyboard flow: Move is focused, Tab goes round the three buttons, Info opens the card, Escape steps back
+      // keyboard flow: Move is focused, Tab goes round the four buttons, Info opens the card, Escape steps back
       const act = () => E(() => document.activeElement?.dataset?.act || document.activeElement?.className || document.activeElement?.id);
       ok('Enter puts focus on Move', (await act()) === 'move', await act());
       const order = [];
-      for (let i = 0; i < 3; i++) { await p.keyboard.press('Tab'); order.push(await act()); }
-      ok('Tab goes round Move, Compare, Info', order.join() === 'compare,info,move', order);
-      await p.keyboard.press('Tab'); await p.keyboard.press('Tab'); await p.keyboard.press('Enter'); // → Info
+      for (let i = 0; i < 4; i++) { await p.keyboard.press('Tab'); order.push(await act()); }
+      ok('Tab goes round Move, Compare, Distance, Info', order.join() === 'compare,measure,info,move', order);
+      for (let i = 0; i < 3; i++) await p.keyboard.press('Tab');
+      await p.keyboard.press('Enter'); // → Info
       ok('Enter on Info opens the card with focus inside it', await until(() => document.body.classList.contains('card-open')) && await until(() => !!document.activeElement?.closest?.('#popup')));
       await p.keyboard.press('Escape');
       ok('Escape: card → tag, focus back on Info', await until(() => !document.body.classList.contains('card-open') && document.activeElement?.dataset?.act === 'info'));
@@ -259,9 +260,11 @@ for (const [dev, vp, touch] of [['desktop', { width: 1280, height: 800 }, false]
     await E(() => window.EarthInteractive.quiz.start('classic'));
     await until(() => document.querySelector('.qz-prog')?.textContent === '1 / 10');
     await E(() => { const X = window.EarthInteractive, w = X.layer.view.objects.find(o => o.unit.t === 'country'); X.quiz.answer(w, X.compare.anchorFor(w).clone()); });
-    ok('a result shows a filling Next button', await until(() => !!document.querySelector('.qz-next .qz-fill')));
-    if (!touch) await p.mouse.move(2, 2); // not over the panel (pointing at it holds the timer)
-    ok('…and the game moves on by itself', await until(() => document.querySelector('.qz-prog')?.textContent === '2 / 10', null, 60000));
+    ok('a result shows a big Next button', await until(() => !!document.querySelector('.qz-next')) && await E(() => document.querySelector('.qz-next').getBoundingClientRect().height >= 44));
+    await p.waitForTimeout(4000);
+    ok('…and the game waits for it (no auto-advance)', await E(() => document.querySelector('.qz-prog')?.textContent === '1 / 10'));
+    await E(() => document.querySelector('.qz-next').click());
+    ok('…which moves on', await until(() => document.querySelector('.qz-prog')?.textContent === '2 / 10'));
     await E(() => window.EarthInteractive.quiz.exit());
   });
 
@@ -327,9 +330,14 @@ for (const [dev, vp, touch] of [['desktop', { width: 1280, height: 800 }, false]
   });
 
   await t('games', async () => {
-    await go('?view=defacto');
+    await go('?view=defacto&lens=pop');
     await E(() => window.EarthInteractive.quiz.start('classic'));
     ok('game on UN view, dock hidden', (await E(() => window.EarthInteractive.layer.view.key)) === 'un' && !(await vis('#dock')));
+    ok('game in political colours, globe held still', await E(() => !document.body.classList.contains('lens-on') && !window.EarthInteractive.globe.autoRotate && window.EarthInteractive.setLens('density') === false));
+    await E(() => window.EarthInteractive.quiz.exit()); await p.waitForTimeout(400);
+    ok('quit: the data lens comes back', await E(() => document.body.classList.contains('lens-on') && /lens=pop/.test(location.search)));
+    await E(() => { window.EarthInteractive.setLens('none'); window.EarthInteractive.quiz.start('classic'); });
+    await until(() => document.querySelector('.qz-prog')?.textContent === '1 / 10');
     let firstName = null;
     for (let i = 0; i < 3; i++) {
       const name = await E(() => document.querySelector('#quiz .qz-ask b').textContent);
@@ -444,9 +452,16 @@ for (const [dev, vp, touch] of [['desktop', { width: 1280, height: 800 }, false]
     // a lifted piece carries the islands and exclaves near it: Alaska with the USA, all of the Galápagos with Ecuador
     await go();
     const pc = await E(() => { const C = window.EarthInteractive.compare, L = window.EarthInteractive.layer, usa = C.pieceShapeFor(L.get('USA')), ecu = C.pieceShapeFor(L.get('ECU')), fra = C.pieceShapeFor(L.get('FRA'));
-      return { usa: Math.round(usa.area), ecuParts: ecu.multi.length, ecuAll: C.partsOf(L.get('ECU')).length, fraTrimmed: fra.trimmed, usaPin: C.shapeFor(L.get('USA')).multi.length < usa.multi.length }; });
-    ok('pieces carry their islands (Alaska, Galápagos); far parts stay home (French Guiana); the pin stays on the mainland', pc.usa > 9.3e6 && pc.ecuParts === pc.ecuAll && pc.fraTrimmed && pc.usaPin, pc);
-    if (touch) return;
+      return { usa: Math.round(usa.area), usaAll: usa.multi.length === C.partsOf(L.get('USA')).length, ecuParts: ecu.multi.length, ecuAll: C.partsOf(L.get('ECU')).length, fraTrimmed: fra.trimmed, usaPin: C.shapeFor(L.get('USA')).multi.length < usa.multi.length }; });
+    ok('pieces carry their islands (Alaska and Hawaii, Galápagos); far parts stay home (French Guiana); the pin stays on the mainland', pc.usa > 9.43e6 && pc.usaAll && pc.ecuParts === pc.ecuAll && pc.fraTrimmed && pc.usaPin, pc);
+    if (touch) {
+      // phones: the tag can cover France, so taps on it count as taps on France
+      await tap(await aim('FRA')); await until(() => !document.getElementById('pin-tag').hidden);
+      for (let i = 0; i < 4; i++) { await E(() => document.querySelector('#pin-tag .tag-name').click()); await p.waitForTimeout(100); }
+      ok('phone: France, then four taps on its tag: the red button', await until(() => !document.querySelector('.egg-btn').hidden, null, 5000));
+      await tap(await aim('DEU'));
+      return;
+    }
     // the aim ring shows only while the arrow keys turn the globe
     await E(() => document.getElementById('globe').focus());
     const ring = () => E(() => document.getElementById('stage').classList.contains('aiming'));
@@ -466,6 +481,24 @@ for (const [dev, vp, touch] of [['desktop', { width: 1280, height: 800 }, false]
     const mc = await aim('MCO', 1.3); await p.waitForTimeout(1500);
     await tap({ x: mc.x + 8, y: mc.y + 5 }); await p.waitForTimeout(600);
     ok('a tap 8 px from Monaco picks Monaco', (await E(() => document.querySelector('#pin-tag b')?.textContent)) === 'Monaco');
+  });
+
+  await t('distance and close-zoom detail', async () => {
+    await go('?c=FRA');
+    await until(() => !document.getElementById('pin-tag').hidden);
+    await E(() => document.querySelector('#pin-tag [data-act="measure"]').click());
+    ok('Distance: a banner asks for the second country', await until(() => document.body.classList.contains('measuring')) && await vis('#pick-banner'));
+    await tap(await aim('ESP', 2.4));
+    ok('…a tap on Spain draws the line with the distance', await until(() => [...document.querySelectorAll('.miss-km')].some(e => !e.hidden && /France to Spain: [\d,]+ km/.test(e.textContent)), null, 30000));
+    ok('…and leaves nothing to pick', await E(() => !document.body.classList.contains('measuring') && document.getElementById('pick-banner').hidden));
+    await p.keyboard.press('Escape');
+    ok('Escape clears the line', await until(() => [...document.querySelectorAll('.miss-km')].every(e => e.hidden)));
+    // close zoom: the 1:10m shapes load, build and take over; zoomed out, the 1:50m ones come back
+    await aim('NOR', 1.5);
+    ok('close zoom switches to the 1:10m borders', await until(() => window.EarthInteractive.layer.view.hiShown, null, 120000));
+    ok('…drawn in the same 3 calls', await E(() => { const v = window.EarthInteractive.layer.view; return !v.batch.fill.visible && v.hiBatch.fill.visible && v.hiBatch.lines.length + 1 <= 3; }));
+    await E(() => { const X = window.EarthInteractive; X.globe.flyTo(X.globe.camera.position.clone().normalize(), 3, 1); });
+    ok('zoomed out: back to the 1:50m ones', await until(() => !window.EarthInteractive.layer.view.hiShown && window.EarthInteractive.layer.view.batch.fill.visible));
   });
 
   await t('other sizes', async () => {

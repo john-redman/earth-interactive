@@ -47,7 +47,7 @@ const story = ({ bg, kicker, title, info, extra = '', square = false }) => page(
   <div class="abs" style="left:0;right:0;bottom:360px;display:flex;justify-content:center">${footer(34, 'color:#fff')}</div>`);
 const ST = [
   ['s01-greenland-vs-drcongo', { bg: 'st_GRL_COD', kicker: 'Your map has been lying to you', title: 'Greenland vs DR Congo', info: esc(HEX.GRL_COD[2]) }],
-  ['s02-usa-vs-australia', { bg: 'st_USA_AUS', kicker: 'Same latitude, side by side', title: 'USA vs Australia', info: esc(HEX.USA_AUS[2]) + '<br><span style="font-size:28px;opacity:.75">USA with Alaska (Hawaii stays home)</span>' }],
+  ['s02-usa-vs-australia', { bg: 'st_USA_AUS', kicker: 'Same latitude, side by side', title: 'USA vs Australia', info: esc(HEX.USA_AUS[2]) + '<br><span style="font-size:28px;opacity:.75">USA with Alaska and Hawaii</span>' }],
   ['s03-russia-vs-canada', { bg: 'st_RUS_CAN', kicker: 'The two biggest countries', title: 'Russia vs Canada', info: esc(HEX.RUS_CAN[2]) }],
   ['s04-density-lens', { bg: 'st_density', kicker: 'Data lens', title: 'Where the world is crowded', info: 'People per km² · tap Data in the app' }],
   ['s05-poll-iran-or-mongolia', { bg: 'hero_asia', square: true, kicker: 'Quick poll', title: 'Which is bigger: Iran or Mongolia?', info: '', extra: '<div class="abs" style="left:140px;right:140px;top:1080px;height:260px;border:4px dashed rgba(255,255,255,.35);border-radius:36px;display:flex;align-items:center;justify-content:center;font-size:30px;color:rgba(255,255,255,.55);font-weight:600">poll sticker here</div>' }],

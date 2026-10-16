@@ -1,5 +1,6 @@
 // Games: after a wrong answer, a line arcs from where you guessed to the right country, drawing itself
-// in over a moment, with a small dot at your guess and the distance at the top of the arc.
+// in over a moment, with a small dot at your guess and the distance at the top of the arc. The tag's Distance
+// tool draws the same line between two countries, just for information (a dot at both ends, names on the label).
 import * as THREE from 'three';
 import { LineSegments2 } from 'three/addons/lines/LineSegments2.js';
 import { LineSegmentsGeometry } from 'three/addons/lines/LineSegmentsGeometry.js';
@@ -17,8 +18,8 @@ export class MissLine {
     stage.append(this.label);
   }
 
-  /** from, to: points on the unit sphere; km: distance shown on the label. */
-  show(from, to, km) {
+  /** from, to: points on the unit sphere; km: distance shown on the label (after `label`); ends: a dot at `to` too. */
+  show(from, to, km, { label = '', ends = false } = {}) {
     this.hide();
     const a = from.clone().normalize(), b = to.clone().normalize();
     const ang = a.angleTo(b);
@@ -39,9 +40,14 @@ export class MissLine {
     const dot = new THREE.Mesh(new THREE.CircleGeometry(0.009, 24), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.95, depthWrite: false }));
     dot.position.copy(a).multiplyScalar(1.003); dot.lookAt(_c.copy(a).multiplyScalar(2)); dot.renderOrder = 5;
     const group = new THREE.Group(); group.add(line, dot);
+    if (ends) {
+      const d2 = new THREE.Mesh(dot.geometry, dot.material);
+      d2.position.copy(b).multiplyScalar(1.003); d2.lookAt(_c.copy(b).multiplyScalar(2)); d2.renderOrder = 5;
+      group.add(d2);
+    }
     this.globe.world.add(group);
     this.obj = { group, geom, lm, dot, t0: performance.now(), apex: a.clone().applyQuaternion(qi.identity().slerp(q, 0.5)).multiplyScalar(1 + h) };
-    this.label.textContent = `${new Intl.NumberFormat('en-US').format(km)} km`;
+    this.label.textContent = `${label}${new Intl.NumberFormat('en-US').format(km)} km`;
   }
 
   hide() {

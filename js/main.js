@@ -99,6 +99,7 @@ const egg = createEgg(stage, { track, muted: () => thrills.muted }); // tap Fran
 const tiny = new TinyMarkers(globe, layer, compare); // dots for Monaco & co., and taps that snap to them
 const music = createMusic(document.getElementById('music-toggle'), { autostart: !EMBED });
 const missLine = new MissLine(globe, layer, stage);
+const distLine = new MissLine(globe, layer, stage); // the tag's Distance tool: the same line, for information
 const currents = new Currents(globe);
 const popClock = createPopClock(document.getElementById('popclock'), globe);
 const ships = new Ships(globe);
@@ -133,7 +134,8 @@ const params = new URLSearchParams(location.search);
 let viewKey = data.views[params.get('view')] ? params.get('view') : data.defaultView;
 
 // ---------- state ----------
-let mode = 'browse';          // 'browse' | 'pick' | 'compare' | 'quiz'
+let mode = 'browse';          // 'browse' | 'pick' | 'measure' | 'compare' | 'quiz'
+let measureFrom = null;       // Distance: the first country, waiting for the second
 let pickFrom = null;          // country chosen first for comparison
 let pickIntent = 'compare';   // how it was lifted: 'move' (arrow keys carry it) or 'compare' (arrow keys aim the globe)
 let anchor = null;            // 3D point the pin (and popup) is attached to
@@ -147,6 +149,9 @@ const ui = createUI({
   },
   onCompareRequest: (o, e) => { liftCountry(o, 'compare'); if (e?.detail === 0) canvas.focus({ preventScroll: true }); }, // keyboard: aim and press Enter
   onMoveRequest: (o, e) => { liftCountry(o, 'move'); if (e?.detail === 0) canvas.focus({ preventScroll: true }); },      // keyboard: arrows carry it
+  onMeasureRequest: (o, e) => { startMeasure(o); if (e?.detail === 0) canvas.focus({ preventScroll: true }); }, // keyboard: aim and press Enter
+  onMeasureCancel: () => cancelMeasure(),
+  onTagName: o => { if (mode === 'browse' && o.key === 'FRA' && egg.tapped(o)) { closePopup(); announce('A big red button appeared on France.'); } },
   onCompareCancelPick: () => cancelPick(),
   onCompareReset: () => compare.resetPositions(),
   onCompareEnd: () => endCompare(),
@@ -187,7 +192,7 @@ thrills.onFirstScream = () => setTimeout(() => ui.showToast('Hold on tight! Soun
 function switchView(k) {
   viewKey = k;
   if (mode === 'compare') endCompare(true);
-  if (mode === 'pick') cancelPick();
+  if (mode === 'pick') cancelPick(); else if (mode === 'measure') cancelMeasure();
   // the pin goes: the same spot can belong to a different country in the new view (Crimea → Russia)
   if (guess) cancelGuess(); else if (selected || ui.popFor) closePopup();
   layer.setView(k);
@@ -249,7 +254,8 @@ function cancelGuess() {
 
 /** Select a country: drop the pin and show the small tag. The full card only opens on request (openInfo). */
 function openCountry(o, { fly = false, point = null } = {}) {
-  if (mode === 'pick') cancelPick();
+  if (mode === 'pick') cancelPick(); else if (mode === 'measure') cancelMeasure();
+  distLine.hide();
   selected = o;
   layer.setSelected(o);
   anchor = (point || compare.anchorFor(o)).clone().normalize(); // on land: France's pin belongs in France, Japan's on Honshu
@@ -335,7 +341,7 @@ function applyLens() {
 
 // ---------- dock: search, play, data ----------
 const GAME_VIEW = 'un';
-let viewBeforeGame = null;
+let viewBeforeGame = null, lensBeforeGame = null;
 function startGame(m, opts) { track(opts?.round ? 'play/challenge' : `play/${m}`); quiz.start(m, opts); }
 const search = createSearch({ getObjects: () => layer.view?.objects || [], onPick: o => { if (mode === 'quiz') return; if (mode === 'compare') endCompare(true); openCountry(o, { fly: true }); } });
 const quiz = createQuiz({
@@ -346,10 +352,15 @@ const quiz = createQuiz({
   onMode: on => {
     ui.showTip(null);
     if (on) {
-      if (mode === 'compare') endCompare(true); if (mode === 'pick') cancelPick(); closePopup(); mode = 'quiz'; layer.setHover(null);
+      if (mode === 'compare') endCompare(true); if (mode === 'pick') cancelPick(); if (mode === 'measure') cancelMeasure(); closePopup(); mode = 'quiz'; layer.setHover(null);
       // games play on the UN map: the internationally recognised countries the questions are about
       if (mode === 'quiz' && viewKey !== GAME_VIEW && !viewBeforeGame) { viewBeforeGame = viewKey; ui.setViewSilently(GAME_VIEW); switchView(GAME_VIEW); ui.showToast('Games use the UN map'); }
+      // …in political colours (a data lens would give answers away or hide them), and the globe holds still
+      if (lensKey !== 'none') { lensBeforeGame = lensKey; lensKey = 'none'; applyLens(); }
+      globe.hold('quiz', true); spin.stop();
     } else {
+      globe.hold('quiz', false); globe.pauseAuto(); // auto-rotate comes back after the usual idle time
+      if (lensBeforeGame) { lensKey = lensBeforeGame; lensBeforeGame = null; applyLens(); }
       if (guess) cancelGuess(); mode = 'browse'; native.then(n => n?.showInterstitial()); // an ad between games in the app, never mid-round
       if (viewBeforeGame && viewKey === GAME_VIEW) { ui.setViewSilently(viewBeforeGame); switchView(viewBeforeGame); } // back to the view you had
       viewBeforeGame = null;
@@ -371,7 +382,7 @@ function openMenu(k) {
     m.querySelectorAll('[data-play]').forEach(b => (b.onclick = () => { closeMenus(); if (b.dataset.play === 'cotd') goDaily(); else startGame(b.dataset.play); }));
   } else {
     m.innerHTML = LENS_ORDER.map(k2 => `<button type="button" role="menuitemradio" aria-checked="${k2 === lensKey}" data-lens="${k2}"><span class="m-ramp ${k2 === 'none' ? 'none' : ''}"></span><span><b>${LENSES[k2].short}</b><small>${k2 === 'none' ? 'Political colours' : LENSES[k2].label}</small></span></button>`).join('');
-    m.querySelectorAll('[data-lens]').forEach(b => (b.onclick = () => { lensKey = b.dataset.lens; closeMenus(); applyLens(); }));
+    m.querySelectorAll('[data-lens]').forEach(b => (b.onclick = () => { closeMenus(); if (mode === 'quiz') return; lensKey = b.dataset.lens; applyLens(); }));
   }
   m.hidden = false; document.querySelector(`[data-dock="${k}"]`).setAttribute('aria-expanded', 'true');
   m.querySelector('button')?.focus({ preventScroll: true });
@@ -412,6 +423,7 @@ tickSun(); setInterval(tickSun, 30000);
 /** Keyboard: put focus on one of the pin tag's buttons ('move' | 'compare' | 'info'). */
 function focusTag(act) { document.querySelector(`#pin-tag [data-act="${act}"]`)?.focus({ preventScroll: true }); }
 function closePopup() {
+  distLine.hide();
   ui.hidePopup(); ui.hideTag(); pin.hide(); anchor = null; selected = null; if (mode === 'browse') layer.setSelected(null); setParam('c', null);
   if (globe.hold('card', false)) globe.pauseAuto(); // card closed: idle auto-rotate resumes after the usual delay
 }
@@ -420,7 +432,7 @@ function closePopup() {
 function recenter() {
   if (mode === 'quiz') return;
   closeMenus();
-  if (mode === 'compare') endCompare(true); else if (mode === 'pick') cancelPick();
+  if (mode === 'compare') endCompare(true); else if (mode === 'pick') cancelPick(); else if (mode === 'measure') cancelMeasure();
   closePopup();
   spin.stop(); globe.flyHome();
   globe.resumeAuto();
@@ -437,6 +449,28 @@ function liftCountry(o, intent) {
   mode = 'pick'; document.body.classList.add('picking'); pickFrom = o; pickIntent = intent;
   closePopup(); compare.preview(o); sfx.play('snapOut'); ui.showPick(o, intent);
   track(intent === 'move' ? 'move' : 'compare-pick', o.key);
+}
+/** Distance: measure from this country to the next one tapped (a line like the game's, for information only). */
+function startMeasure(o) {
+  if (mode !== 'browse') return;
+  mode = 'measure'; measureFrom = o; document.body.classList.add('measuring');
+  distLine.hide(); ui.hidePopup(); ui.hideTag(); ui.showMeasure(o); // the pin stays on the first country
+  if (globe.hold('card', false)) globe.pauseAuto();
+}
+function cancelMeasure() {
+  if (mode !== 'measure') return;
+  mode = 'browse'; measureFrom = null; ui.hidePick(); document.body.classList.remove('measuring');
+  closePopup();
+}
+function finishMeasure(b) {
+  const a = measureFrom;
+  cancelMeasure();
+  const A = compare.anchorFor(a).clone().normalize(), B = compare.anchorFor(b).clone().normalize();
+  const km = Math.round(A.angleTo(B) * 6371.0088 / 10) * 10; // centre to centre of the main landmasses, rounded to 10 km
+  distLine.show(A, B, km, { label: `${a.unit.n} to ${b.unit.n}: `, ends: true });
+  flyToBoth(A, b);
+  announce(`${a.unit.n} to ${b.unit.n}: about ${km.toLocaleString('en-US')} kilometres.`);
+  track('distance', `${a.key},${b.key}`);
 }
 function cancelPick() {
   if (mode === 'pick' && compare.previewPiece) { compare.end(); sfx.play('snapIn'); } // the lifted piece settles back
@@ -571,6 +605,11 @@ function onClick(x, y) {
   const r = countryAt(x, y);
   if (r) ripple(x, y, !!r.o);
   if (mode === 'quiz') { if (r && quiz.waiting) proposeGuess(r); return; }
+  if (mode === 'measure') {
+    if (r?.o && r.o !== measureFrom) finishMeasure(r.o);
+    else ui.showToast(r?.o ? 'Pick a different country' : 'Tap a country');
+    return;
+  }
   if (mode === 'pick') {
     if (compare.hitPiece(rayAt(x, y))) return; // a tap on the lifted piece isn't a choice
     if (r?.o && r.o !== pickFrom) {
@@ -596,7 +635,7 @@ window.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
     const inCard = !!e.target.closest?.('#popup'), inTag = !!e.target.closest?.('#pin-tag');
     if (!Object.values(menus).every(m => m.hidden)) closeMenus();
-    else if (mode === 'compare') endCompare(); else if (mode === 'pick') cancelPick(); else if (mode === 'quiz') { if (guess) cancelGuess(); }
+    else if (mode === 'compare') endCompare(); else if (mode === 'pick') cancelPick(); else if (mode === 'measure') cancelMeasure(); else if (mode === 'quiz') { if (guess) cancelGuess(); }
     else if (ui.popFor) { closeCard(); if (inCard) focusTag('info'); } // card → tag (keep the keyboard where it was)
     else { closePopup(); if (inTag) canvas.focus({ preventScroll: true }); }
     return;
@@ -712,6 +751,22 @@ globe.resize();
 
 const camDir = new THREE.Vector3(), tmp = new THREE.Vector3();
 let prevNow = performance.now();
+// Close zoom: 1:10m borders and coasts instead of 1:50m. Downloaded the first time the globe comes near (about
+// 0.8 MB gzipped), built in slices, then swapped in and out by camera distance (with a little hysteresis).
+const DETAIL_LOAD = 2.6, DETAIL_ON = 2.0, DETAIL_OFF = 2.15;
+let hiState = null;
+function detailByZoom() {
+  const d = globe.camera.position.length();
+  if (!hiState && d < DETAIL_LOAD) {
+    hiState = 'loading';
+    import(new URL('../data/world-hi.js', import.meta.url).href)
+      .then(m => { layer.setDetailData(m.default); hiState = 'ready'; if (layer.detail) layer.prepareDetail(); })
+      .catch(() => { hiState = 'failed'; setTimeout(() => { hiState = null; }, 30000); }); // offline: try again later
+  }
+  if (d < DETAIL_ON && !layer.detail) { layer.setDetail(true); layer.prepareDetail(); }
+  else if (d > DETAIL_OFF && layer.detail) layer.setDetail(false);
+}
+
 function frame(now) {
   const t = now / 1000;
   const dt = Math.max(0, (now - prevNow) / 1000); prevNow = now;
@@ -723,9 +778,10 @@ function frame(now) {
   globe.controls.update();
   tickGlobe(globe, t);
   layer.tick(now);
+  detailByZoom();
   compare.tick(now);
   if (heldArrows.size && arrowPiece()) moveByKeys(dt, keyShift);
-  missLine.tick(now);
+  missLine.tick(now); distLine.tick(now);
   currents.tick(now);
   popClock.tick();
   ships.tick(now);
@@ -785,7 +841,7 @@ requestAnimationFrame(() => setTimeout(async () => {
 // Small public API for later integrations / debugging
 window.EarthInteractive = {
   globe, layer, compare, ads, data, thrills, spin, quiz, search, native, sfx, music, currents, ships, clouds, tiny, egg,
-  setLens: k => { lensKey = LENSES[k] ? k : 'none'; applyLens(); },
+  setLens: k => { if (mode === 'quiz') return false; lensKey = LENSES[k] ? k : 'none'; applyLens(); return true; },
   setView: k => { if (!data.views[k]) return false; ui.setViewSilently(k); switchView(k); return true; },
   compareKeys: (a, b) => { const A = layer.get(a), B = layer.get(b); if (!A || !B || A === B) return false; closePopup(); cancelPick(); mode = 'compare'; compare.start(A, B); return true; },
 };

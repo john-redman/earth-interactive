@@ -1,11 +1,12 @@
 # Source data
 
-Inputs for `npm run build:data`. Do not edit by hand — replace with a newer upstream copy and rebuild.
+Inputs for `npm run build:data` (`build-hires.mjs` reads the 1:10m countries for `data/world-hi.js`, the close-zoom shapes). Do not edit by hand — replace with a newer upstream copy and rebuild.
 
 | File | Upstream | Revision | Licence |
 |---|---|---|---|
 | `ne_50m_admin_0_countries.geojson` | [nvkelso/natural-earth-vector](https://github.com/nvkelso/natural-earth-vector) `geojson/` | `ca96624` (2022-06-02, Natural Earth v5.1.x) | Public domain |
 | `ne_50m_admin_0_breakaway_disputed_areas.geojson` | same | same | Public domain |
+| `ne_10m_admin_0_countries.geojson` | same, `geojson/ne_10m_admin_0_countries.geojson` @ `master` (2026-10-16) | properties cut to `ADM0_A3` and `NAME`, coordinates rounded to 1e-5° (≈1 m) | Public domain |
 | `mledoze-countries.json` | [mledoze/countries](https://github.com/mledoze/countries) `countries.json` | `c2ac004` (2026-09-29) | ODbL 1.0 |
 | `worldbank-wdi-2026-10.json` | World Bank [World Development Indicators](https://data.worldbank.org): `SP.POP.TOTL`, `NY.GDP.MKTP.CD` | retrieved 2026-10-05 (see below) | CC BY 4.0 |
 

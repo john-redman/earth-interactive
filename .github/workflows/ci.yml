@@ -23,4 +23,4 @@ jobs:
       - name: Generated data is up to date
         run: |
           npm run build:data
-          git diff --exit-code -- data/world.js || (echo "::error::data/world.js is stale — run 'npm run build:data' and commit" && exit 1)
+          git diff --exit-code -- data/world.js data/world-hi.js || (echo "::error::data/world.js or world-hi.js is stale — run 'npm run build:data' and commit" && exit 1)

@@ -197,7 +197,7 @@ Platform keys:
 - **X/Threads:** Closer than you think: put Australia next to the whole United States, Alaska included, and
   the US is only 22% larger. SITE?compare=USA,AUS #Geography #Australia #USA
 - **Bsky:** USA vs Australia at true scale. Alaska comes along, and the US is still only 22% larger than
-  Australia. (Hawaii stays home in this compare.) SITE?compare=USA,AUS
+  Australia. (Hawaii comes too.) SITE?compare=USA,AUS
 - **Masto:** The USA (Alaska included) vs Australia: only 22% apart. SITE?compare=USA,AUS #Geography #Maps
   #Australia #USA
 - **IG/FB:** How big is Australia, really? Set it beside the United States, Alaska and all: the US is only

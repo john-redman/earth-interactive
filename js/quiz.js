@@ -33,9 +33,8 @@ const MODES = {
   daily:   { label: 'Daily Challenge', count: 5, tiers: [400e3, 150e3, 50e3, 15e3, 2e3] },
 };
 
-/** How long a result stays up before the game moves on (ms): a miss has a line to follow and a distance to read. */
 const TAP = matchMedia('(pointer: coarse)').matches ? 'Tap' : 'Click';
-export const AUTO_MS = { right: 2600, miss: 5200, shown: 4200 };
+const KEYS = !matchMedia('(pointer: coarse)').matches; // a keyboard is likely: say Enter works too
 
 /** Points for a miss fall off with distance; a hint halves the maximum. */
 const pointsFor = (km, hinted) => Math.round((hinted ? 500 : 1000) * Math.exp(-km / 1500));
@@ -138,13 +137,10 @@ export function createQuiz({ data, layer, globe, flyTo, onExit, onMode, onMiss, 
     el.querySelector('.qz-score').textContent = int.format(total()) + ' pts';
     const dots = el.querySelectorAll('.qz-dots i'); dots[S.i].className = square(pts);
     const last = S.i === S.qs.length - 1;
-    // the result shows for a moment, then the game moves on by itself; the button fills up as the timer, can be
-    // pressed to go on at once, and pointing at the panel holds it (CSS pauses the fill)
-    const ms = o?.key === t.key ? AUTO_MS.right : point ? AUTO_MS.miss : AUTO_MS.shown;
-    el.querySelector('.qz-act').innerHTML = `<button class="btn small primary qz-next" type="button" data-a="next" style="--auto:${ms}ms"><span class="qz-fill" aria-hidden="true"></span><span>${last ? 'See results' : 'Next country'} →</span></button>`;
+    // the result stays until the player moves on: one big Next button (Enter works too)
+    el.querySelector('.qz-act').innerHTML = `<button class="btn primary qz-next" type="button" data-a="next"><span>${last ? 'See results' : 'Next country'}</span><span class="qz-arrow" aria-hidden="true">→</span>${KEYS ? '<kbd>Enter</kbd>' : ''}</button>`;
     const btn = el.querySelector('[data-a="next"]');
     btn.onclick = next;
-    btn.querySelector('.qz-fill').addEventListener('animationend', () => { if (S?.answered && !S.finished) next(); });
     btn.focus({ preventScroll: true });
   }
 

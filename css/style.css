@@ -420,11 +420,12 @@ body.quiz-on .recenter { display: none; }
 .qz-ok { color: #8ff0bf; font-weight: 800; } .qz-no { color: #ffb0b0; font-weight: 800; }
 .qz-act { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }
 .qz-act .btn:disabled { opacity: 0.45; cursor: default; }
-/* after an answer: the Next button fills up, then the game moves on (pointing at the panel holds it) */
-.qz-next { position: relative; overflow: hidden; isolation: isolate; }
-.qz-next .qz-fill { position: absolute; inset: 0; z-index: -1; background: rgba(255,255,255,0.22); transform-origin: left; transform: scaleX(0); animation: qzFill var(--auto, 3s) linear forwards; }
-.quiz:hover .qz-fill { animation-play-state: paused; }
-@keyframes qzFill { to { transform: scaleX(1); } }
+/* after an answer: one big Next button, the game waits for it (no timer) */
+.qz-next { flex: 1 1 100%; justify-content: center; gap: 10px; min-height: 48px; font-size: 16px; font-weight: 700; border-radius: 14px; }
+.qz-next .qz-arrow { font-size: 19px; line-height: 1; transition: translate 0.18s; }
+.qz-next:hover .qz-arrow { translate: 3px 0; }
+.qz-next kbd { font-family: inherit; font-size: 11px; font-weight: 600; line-height: 1; padding: 4px 6px; border-radius: 6px; background: rgba(255,255,255,0.18); opacity: 0.85; }
+.qz-next:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
 .qz-end { display: flex; align-items: baseline; gap: 10px; margin: 10px 0 4px; }
 .qz-end b { font-size: 40px; font-weight: 800; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
 .qz-end span { color: var(--muted); font-size: 14px; }
@@ -482,7 +483,7 @@ img.cotd-flag { width: 22px; height: 16px; object-fit: cover; border-radius: 3px
 .cotd-x { width: 30px; height: 30px; border: 0; border-radius: 50%; background: rgba(255,255,255,0.07); color: rgba(255,255,255,0.7); cursor: pointer; font-size: 11px; }
 .cotd-x:hover { background: rgba(255,255,255,0.15); color: #fff; }
 .cotd-main:focus-visible, .cotd-x:focus-visible { outline: 2px solid var(--accent-2); outline-offset: 2px; }
-body.card-open .cotd, body.quiz-on .cotd, body.comparing .cotd, body.picking .cotd { display: none; }
+body.card-open .cotd, body.quiz-on .cotd, body.comparing .cotd, body.picking .cotd, body.measuring .cotd { display: none; }
 /* the France easter egg (js/egg.js): a big red 3D button standing on France; pressed, its cap sinks into the base */
 .egg-btn { position: absolute; left: 0; top: 0; z-index: 24; width: 92px; height: 70px; transform-origin: 46px 56px; display: block; cursor: pointer; -webkit-tap-highlight-color: transparent; transition: opacity 0.2s; }
 .egg-btn.in { animation: eggUp 0.5s cubic-bezier(0.3, 1.5, 0.5, 1) backwards; }
@@ -497,7 +498,7 @@ body.card-open .cotd, body.quiz-on .cotd, body.comparing .cotd, body.picking .co
 .eb-top { position: absolute; left: 0; right: 0; top: 0; height: 32px; border-radius: 50%;
   background: radial-gradient(ellipse at 42% 38%, #ff6a5f, #e5241d 58%, #bd1712); box-shadow: inset 0 -2px 3px rgba(0,0,0,0.25); }
 .egg-btn.down .eb-cap { height: 36px; }        /* pressed: the cap sinks 14 px, its wall shortens */
-body.quiz-on .egg-btn, body.comparing .egg-btn, body.picking .egg-btn { display: none; }
+body.quiz-on .egg-btn, body.comparing .egg-btn, body.picking .egg-btn, body.measuring .egg-btn { display: none; }
 @media (max-width: 1099px) { .cotd { top: 136px; left: 20px; transform: none; } } /* under the view caption (no side ads here) */
 .pop-daily { background: rgba(120, 200, 255, 0.1); border-left-color: #7cc8ff; }
 .pop-daily span { color: #9fd8ff; }
@@ -576,6 +577,9 @@ html { -webkit-tap-highlight-color: transparent; text-rendering: optimizeLegibil
   .cmp-actions [data-act="image"] { padding: 0 10px; }
 }
 @media (max-width: 380px) { .vs-ico { display: none; } }
+/* the tag's four buttons on phones: tighter, and below 380 px words only */
+@media (max-width: 480px) { .tag-acts { gap: 5px; } .tag-btn { padding: 0 9px; gap: 4px; } }
+@media (max-width: 380px) { .tag-btn { padding: 0 8px; font-size: 12px; } .tag-btn svg { display: none; } }
 @media (min-width: 721px) and (max-width: 1179px) { /* tablets and small laptops: the links row needs the whole footer */
   .credit { display: none; }
   .site-links .sl-narrow { display: inline; }   /* the Credits link stands in for the credit line, as on phones */
@@ -633,4 +637,4 @@ html { -webkit-tap-highlight-color: transparent; text-rendering: optimizeLegibil
    would land on a random phase every frame and flicker */
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; } }
 /* the game's Next fill is a timer, not decoration: keep its real length */
-@media (prefers-reduced-motion: reduce) { .qz-next .qz-fill { animation-duration: var(--auto, 3s) !important; } }
+
