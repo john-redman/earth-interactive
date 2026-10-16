@@ -4,6 +4,14 @@ All notable changes to EarthInteractive are documented here.
 
 ## [Unreleased]
 
+### Changed (owner requests, 16 October)
+- **Sharper borders up close**: zoom in and coasts and borders switch to Natural Earth 1:10m (fjords, Greek islands, river borders), downloaded the first time you zoom in. The whole-globe view is unchanged.
+- **Hawaii travels with the USA** in Move and Compare (a state, not an overseas territory). The USA vs Australia ratio stays 22%.
+- **Distance**: a new button on the country tag. Tap another country and the game's arc shows how far apart they are, on desktop and phones.
+- **Games**: no more auto-continue. After each answer the game waits for a big **Next country** button (Enter works too). The globe stops turning during a game, and games always play in political colours (a data lens comes back afterwards).
+- **Sounds**: swiping the phone card up or down plays only the swipe (no marimba notes). The right-answer chime is quieter, levelled with the wrong-answer one.
+- **Phones**: a tap on the country tag counts as a tap on the country, so small countries the tag covers still answer repeated taps.
+
 ### Changed (owner requests, 12 October)
 - **Suez and Panama canals**: ships no longer sail across Egypt and Panama; both canals are drawn as water along their real courses, about a ship's width wide at any zoom.
 - **Tiny countries you can find**: Monaco, San Marino, Malta, Singapore and other small countries and islands show as a dot in their colour once you zoom in, and a tap near the dot selects them.

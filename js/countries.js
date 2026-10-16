@@ -31,6 +31,7 @@ export const R_FILL = 1.0015, R_LINE = 1.0028;
 const HATCH_DIRS = [new THREE.Vector3(0.8, 1, 0.6), new THREE.Vector3(-1, 0.7, 0.45), new THREE.Vector3(0.35, -0.6, 1)];
 const NO_HATCH = new THREE.Vector3(0.8, 1, 0.6);
 const LIFT = { pulse: 1.012, steady: 1.008 };   // how far a highlighted country rises off the globe
+const HI_PHONE_TOL = 0.02;                      // border simplification of the 1:10m shapes on phones (degrees)
 const SHIPS_ORDER = 2.5;                         // ships.js draws between the borders of countries and of overlays
 const _c = new THREE.Color();
 
@@ -188,6 +189,66 @@ export class CountryLayer {
     this.sockets = new Set();        // keys whose pieces are popped out
     this.fade = 1;
     this.camLocal = new THREE.Vector3();
+    this.hi = null;                  // data/world-hi.js (1:10m), loaded on the first close zoom
+    this.hiCache = new Map();        // its geom id → { multi, tri, bbox, fillPos, segs }
+    this.detail = false;             // wanted: zoomed in close enough for the 1:10m shapes
+  }
+
+  /** The 1:10m shapes: same units, same keys; units it lacks keep their 1:50m shape. */
+  setDetailData(hi) { this.hi = hi; }
+
+  hgeom(id) {
+    let g = this.hiCache.get(id);
+    if (g) return g;
+    const multi = decodeGeom(this.hi.geoms[id], this.hi.precision);
+    const tri = triangulate(multi);
+    const fillPos = new Float32Array(tri.positions.length);
+    for (let i = 0; i < fillPos.length; i++) fillPos[i] = tri.positions[i] * R_FILL;
+    // phones: lighter borders here too (0.02°, shared stretches alike), still far finer than the 1:50m ones
+    if (QUALITY.borderTolerance > 0) this.hiOwnerOf ||= buildTopology(this.hi);
+    const rings = QUALITY.borderTolerance > 0 ? borderRings(multi, HI_PHONE_TOL, this.hiOwnerOf) : tri.rings;
+    g = { multi, tri, bbox: bboxOf(multi), fillPos, segs: borderSegments(rings, R_LINE) };
+    this.hiCache.set(id, g);
+    return g;
+  }
+
+  /** The shape a country draws and picks with right now: 1:10m when zoomed in and ready, else 1:50m. */
+  shapeOf(o) { return this.detail && o.entry.hiBatch && o.hg ? o.hg : o.g; }
+
+  /** Build the 1:10m batch of the current view in ~12 ms slices (once per view). Resolves when it can show. */
+  async prepareDetail() {
+    const entry = this.view;
+    if (!this.hi || !entry || entry.hiBatch || entry.hiBuilding) return;
+    entry.hiBuilding = true;
+    const ids = this.hi.views[entry.key] || {};
+    let t = performance.now();
+    for (const o of entry.objects) {
+      if (ids[o.key] != null) o.hg = this.hgeom(ids[o.key]);
+      if (performance.now() - t > 12) { await new Promise(res => setTimeout(res, 0)); t = performance.now(); }
+    }
+    const b = this.makeBatch(entry, o => o.hg || o.g);
+    for (const m of [b.fill, ...b.lines]) m.visible = false;
+    entry.hiBatch = b; entry.hiBuilding = false;
+    if (entry === this.view) this.applyDetail();
+  }
+
+  /** Zoomed in close (on) or back out (off): swap the merged draws, and rebuild the countries drawn on their own. */
+  setDetail(on) {
+    if (this.detail === on) return;
+    this.detail = on;
+    this.applyDetail();
+  }
+
+  applyDetail() {
+    const entry = this.view;
+    if (!entry?.batch) return;
+    const hiOn = this.detail && !!entry.hiBatch;
+    const was = !!entry.hiShown;
+    entry.hiShown = hiOn;
+    for (const m of [entry.batch.fill, ...entry.batch.lines]) m.visible = !hiOn;
+    if (entry.hiBatch) for (const m of [entry.hiBatch.fill, ...entry.hiBatch.lines]) m.visible = hiOn;
+    if (was === hiOn) return;
+    for (const o of entry.objects) if (o.ovFill || o.ovLine) { this.dropOverlays(o); this.style(o); }
   }
 
   geom(id) {
@@ -273,14 +334,20 @@ export class CountryLayer {
    */
   ensureBatch(entry) {
     if (entry.batch) return entry.batch;
+    entry.batch = this.makeBatch(entry, o => o.g);
+    return entry.batch;
+  }
+
+  /** The merged draws of a view, from each country's shape geomOf(o) (1:50m, or 1:10m for close zoom). */
+  makeBatch(entry, geomOf) {
     const objs = [...entry.objects].sort((a, b) => a.fillOrder - b.fillOrder);
     let nv = 0, ni = 0;
-    for (const o of objs) { nv += o.g.fillPos.length / 3; ni += o.g.tri.index.length; }
+    for (const o of objs) { const g = geomOf(o); nv += g.fillPos.length / 3; ni += g.tri.index.length; }
     const pos = new Float32Array(nv * 3), cid = new Float32Array(nv), idx = new Uint32Array(ni);
     let v = 0, k = 0;
     for (const o of objs) {
-      const n = o.g.fillPos.length / 3, ti = o.g.tri.index;
-      pos.set(o.g.fillPos, v * 3); cid.fill(o.slot, v, v + n);
+      const g = geomOf(o), n = g.fillPos.length / 3, ti = g.tri.index;
+      pos.set(g.fillPos, v * 3); cid.fill(o.slot, v, v + n);
       for (let j = 0; j < ti.length; j++) idx[k + j] = ti[j] + v;
       v += n; k += ti.length;
     }
@@ -295,11 +362,11 @@ export class CountryLayer {
     const lm = batchLineMaterial(entry.styleTex);
     this.lineMaterials.add(lm);
     const lines = [objs.filter(o => o.lineOrder < SHIPS_ORDER), objs.filter(o => o.lineOrder >= SHIPS_ORDER)].filter(p => p.length).map(part => {
-      let ns = 0; for (const o of part) ns += o.g.segs.length / 6;
+      let ns = 0; for (const o of part) ns += geomOf(o).segs.length / 6;
       const segs = new Float32Array(ns * 6), cs = new Float32Array(ns), dist = new Float32Array(ns * 2);
       let s = 0;
       for (const o of part) {
-        const a = o.g.segs, n = a.length / 6;
+        const a = geomOf(o).segs, n = a.length / 6;
         segs.set(a, s * 6); cs.fill(o.slot, s, s + n);
         // the same running distances LineSegments2.computeLineDistances() gives a single country's border
         for (let j = 0; j < n; j++) {
@@ -320,10 +387,9 @@ export class CountryLayer {
       return line;
     });
     entry.group.add(fill, ...lines);
-    entry.batch = { fill, lines, material: lm };
     entry.styleTex.needsUpdate = true;
     this.resizeLines();
-    return entry.batch;
+    return { fill, lines, material: lm };
   }
 
   setView(viewKey) {
@@ -334,6 +400,8 @@ export class CountryLayer {
     this.ensureBatch(next);
     this.view = next; this.globe.world.add(next.group);
     this.hover = null; this.selected = null;
+    this.applyDetail();
+    if (this.detail) this.prepareDetail();
     // quick fade-in
     const t0 = performance.now();
     this.fadeAnim = now => { this.fade = Math.min(1, (now - t0) / 420); this.restyle(); if (this.fade >= 1) this.fadeAnim = null; };
@@ -346,9 +414,9 @@ export class CountryLayer {
     const cell = this.view.grid.get(Math.floor((lon + 180) / 10) + ':' + Math.floor((lat + 90) / 10)) || [];
     let best = null;
     for (const o of cell) {
-      const [x0, y0, x1, y1] = o.g.bbox;
+      const g = this.shapeOf(o), [x0, y0, x1, y1] = g.bbox;
       if (lon < x0 || lon > x1 || lat < y0 || lat > y1) continue;
-      if (pointInMulti(lon, lat, o.g.multi) && (!best || o.unit.area < best.unit.area)) best = o; // smallest wins (enclaves)
+      if (pointInMulti(lon, lat, g.multi) && (!best || o.unit.area < best.unit.area)) best = o; // smallest wins (enclaves)
     }
     return best;
   }
@@ -426,11 +494,12 @@ export class CountryLayer {
   syncOverlays(o, mark = this.marks?.get(o.key)) {
     const raised = !!this.raised?.has(o);
     const wantLine = raised || o === this.selected || o === this.hover || !!mark;
+    const shape = this.shapeOf(o);
     if (raised && !o.ovFill) {
       const g = new THREE.BufferGeometry();
-      g.setAttribute('position', new THREE.BufferAttribute(o.g.fillPos, 3));
-      g.setIndex(new THREE.BufferAttribute(o.g.tri.index, 1));
-      g.boundingSphere = (o.g.sphere ||= (g.computeBoundingSphere(), g.boundingSphere)).clone();
+      g.setAttribute('position', new THREE.BufferAttribute(shape.fillPos, 3));
+      g.setIndex(new THREE.BufferAttribute(shape.tri.index, 1));
+      g.boundingSphere = (shape.sphere ||= (g.computeBoundingSphere(), g.boundingSphere)).clone();
       const m = this.pool.fill.pop() || fillMaterial(o.color);
       m.uniforms.uHatch.value = o.hatch ? 1 : 0; m.uniforms.uHatchDir.value.copy(o.hatchDir);
       // drawn after its neighbours, over them: fills are opaque, so drawing a pixel twice is harmless
@@ -441,7 +510,7 @@ export class CountryLayer {
       o.ovFill.removeFromParent(); o.ovFill.geometry.dispose(); this.pool.fill.push(o.ovFill.material); o.ovFill = null;
     }
     if (wantLine && !o.ovLine) {
-      o.ovLine = new LineSegments2(new LineSegmentsGeometry().setPositions(o.g.segs), this.takeLine());
+      o.ovLine = new LineSegments2(new LineSegmentsGeometry().setPositions(shape.segs), this.takeLine());
       o.ovLine.computeLineDistances();
       o.ovLine.renderOrder = o.lineOrder;
       o.entry.group.add(o.ovLine);

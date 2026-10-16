@@ -73,14 +73,18 @@ const SOUNDS = {
   tap(t) { sample(t + PIN_LANDS - PLOP_PEAK, 'plop', 1); },
   // opening a panel: a swipe and two low marimba notes
   open(t) { sample(t, 'swipe', 1.1); tone(t + 0.05, 220, { dur: 0.42, gain: 0.32 }); tone(t + 0.05, 880, { dur: 0.18, gain: 0.05 }); tone(t + 0.12, 330, { dur: 0.5, gain: 0.26 }); tone(t + 0.12, 1320, { dur: 0.2, gain: 0.04 }); },
+  // the phone card growing or shrinking (swipe or handle): just the swipe, forwards or backwards
+  sheetUp(t) { sample(t, 'swipe', 1); },
+  sheetDown(t) { sample(t, 'swipeRev', 0.9); },
   // closing: the swipe in reverse, one soft knock
   close(t) { sample(t, 'swipeRev', 1); tone(t + 0.1, 160, { dur: 0.2, gain: 0.35, glide: 0.7 }); },
   // compare pieces snap out of the globe / settle back into their sockets
   snapOut(t) { sample(t, 'click', 1); },
   snapIn(t) { sample(t, 'clickRev', 1); },
   // games: a confirmed answer was right / wrong
-  correct(t) { sample(t, 'correct', 1); },
-  wrong(t) { sample(t, 'wrong', 1); },
+  // levelled to about -22 LUFS each (measured looped; the bright, short "correct" chime read far louder at 1)
+  correct(t) { sample(t, 'correct', 0.5); },
+  wrong(t) { sample(t, 'wrong', 0.62); },
   // any other button: a quiet tick
   tick(t) { tone(t, 420, { dur: 0.07, gain: 0.22, type: 'triangle', glide: 0.8 }); whoosh(t, { from: 1800, to: 3000, dur: 0.05, gain: 0.05, q: 2 }); },
 };
@@ -109,7 +113,8 @@ export function createSfx({ muted }) {
   // create the audio context and fetch the samples on the first touch, so the first sound isn't late
   addEventListener('pointerdown', () => { if (!muted() && setup()) sleepSoon(); }, { once: true, capture: true });
   const MAP = [
-    ['[data-act="info"], .pill-main, .cmp-grab, .pop-grab, [data-act="stats"]', 'open'],
+    ['.pop-grab', 'sheet'],                 // the card's handle: only the swipe (sheetUp / sheetDown)
+    ['[data-act="info"], .pill-main, .cmp-grab, [data-act="stats"]', 'open'],
     ['.pop-x:not(.pop-link), .pill-x, [data-act="done"], .qz-x', 'close'],
     ['[data-act="compare"]', null],         // the piece's snap-out click is its sound (a dedicated one comes later)
     ['#sound-toggle', null],                // the mute button speaks for itself
@@ -119,7 +124,8 @@ export function createSfx({ muted }) {
     const el = e.target.closest?.('button, a.btn, .chip');
     if (!el) return;
     // toggles (card handle, stats button) that are currently open are being closed
-    for (const [sel, name] of MAP) if (el.matches(sel)) { if (name) play(name === 'open' && el.getAttribute('aria-expanded') === 'true' ? 'close' : name); return; }
+    const open = el.getAttribute('aria-expanded') === 'true';
+    for (const [sel, name] of MAP) if (el.matches(sel)) { if (name) play(name === 'sheet' ? (open ? 'sheetDown' : 'sheetUp') : name === 'open' && open ? 'close' : name); return; }
     play('tick');
   }, { capture: true });
   return { play };

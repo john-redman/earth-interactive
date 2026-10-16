@@ -10,7 +10,7 @@ Static site, no bundler. `index.html` loads `js/main.js` as an ES module; an imp
 | `main.js` | App state machine (`browse`, `pick`, `compare`, `quiz`), pointer & keyboard routing, deep links, render loop | `window.EarthInteractive` (debug API) |
 | `globe.js` | Renderer, camera, OrbitControls (pinch zoom only), eased `zoomBy()`, idle auto-rotate flag, ocean shader (calm satellite blue, teal shallows from `data/ocean.png`, no waves), atmosphere, twinkling stars in three parallax layers, `fit()` sizing, `flyTo()` | `createGlobe`, `tickGlobe`, `LIGHT_DIR_VIEW`, `PINCH_MS` |
 | `geo.js` | lon/lat ⇄ unit sphere, triangulation on the sphere, border segments, walls, centroids, ray–sphere, point-in-polygon | many helpers |
-| `countries.js` | Builds each view as a few merged draws (one fill mesh, borders in two `LineSegments2`) styled per country through a float style texture; per-country overlay objects for highlighted / raised countries; palette, style states (hover, selected, dim, sockets, lens, quiz marks), picking grid | `CountryLayer`, `PALETTE`, `fillMaterial`, `lineMaterial` |
+| `countries.js` | Builds each view as a few merged draws (one fill mesh, borders in two `LineSegments2`) styled per country through a float style texture; per-country overlay objects for highlighted / raised countries; a second, 1:10m batch per view for close zoom (`setDetailData`, `prepareDetail`, `setDetail`, `shapeOf`); palette, style states (hover, selected, dim, sockets, lens, quiz marks), picking grid | `CountryLayer`, `PALETTE`, `fillMaterial`, `lineMaterial` |
 | `compare.js` | True-size compare: main-landmass extraction, pop-out pieces (top, walls, rim, shadow), side-by-side layout, dragging | `Compare` |
 | `spin.js` | Flywheel rotation of the camera around the globe, plus the eased idle auto-rotate | `Spin`, `SPIN` |
 | `thrills.js` | Rollercoaster audio: the recorded crowd loop, faded by spin speed | `Thrills`, `RideAudio`, `THRILLS` |
@@ -22,7 +22,7 @@ Static site, no bundler. `index.html` loads `js/main.js` as an ES module; an imp
 | `ads.js` | Side banners (≥ 1100 px) or one bottom banner (narrower screens), sizing; empty slots take no room on the public site (placeholders on localhost or `?ads=preview`) | `ADS`, `mountAds` |
 | `pin.js` | Map pin for the selected country: an SVG DOM overlay placed at the projected anchor each frame (crisp at any DPR), with a drop-in animation | `Pin` |
 | `load.js` | Streams `data/world.js` with loader progress, then evaluates it via a blob `import()` | `loadWorld`, `setLoader` |
-| `miss-line.js` | Games: arc from a wrong guess to the answer, drawn in, with a distance label | `MissLine` |
+| `miss-line.js` | Games: arc from a wrong guess to the answer, drawn in, with a distance label; the tag's Distance tool uses a second one | `MissLine` |
 | `currents.js` | Major ocean currents along their charted mean paths: a faint lighter sheen with meanders and weaving streamlines whose streaks drift downstream, labels (name, direction, strength) and ocean names; decluttered by zoom, hidden under data lenses | `Currents`, `CURRENTS`, `OCEANS` |
 | `ships.js` | Low-poly cartoon ships on sea lanes between big ports, one instanced draw call | `Ships`, `ROUTES` |
 | `clouds.js` | Light clouds over the open ocean, desktop only, masked away from big landmasses | `Clouds` |
@@ -75,3 +75,7 @@ Static site, no bundler. `index.html` loads `js/main.js` as an ES module; an imp
 1–9 = Natural Earth MAPCOLOR9 so neighbours differ). `mod`: geometry was changed by the view's rules.
 
 Geometries are shared between views when identical (292 geometries for ~750 view-units).
+
+`data/world-hi.js` (close zoom, `tools/build-hires.mjs`) has the same encoding with only shapes:
+`{ precision: 1000, tolerance: 0.008, views: { un|defacto|neutral: { [key]: geomId } }, geoms }`. A unit it lacks
+(the Vatican, under half a km² at 1:10m) keeps its 1:50m shape.

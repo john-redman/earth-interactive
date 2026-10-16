@@ -29,7 +29,7 @@ const ICONS = {
 const SHORT = { un: 'UN', defacto: 'De facto', neutral: 'Neutral' };
 const KIND_LABEL = { country: 'Country', territory: 'Territory', limited: 'Limited recognition', breakaway: 'Breakaway region', disputed: 'Disputed area' };
 
-export function createUI({ data, initialView, onView, onCompareRequest, onMoveRequest, onCompareCancelPick, onCompareReset, onCompareEnd, onClosePopup, onNeighbour, onShare, onInfo, onSound, onCompareImage, onSheet }) {
+export function createUI({ data, initialView, onView, onCompareRequest, onMoveRequest, onMeasureRequest, onMeasureCancel, onTagName, onCompareCancelPick, onCompareReset, onCompareEnd, onClosePopup, onNeighbour, onShare, onInfo, onSound, onCompareImage, onSheet }) {
   // ---------- view switch ----------
   const vs = $('#view-switch');
   const order = ['un', 'defacto', 'neutral'];
@@ -133,13 +133,13 @@ export function createUI({ data, initialView, onView, onCompareRequest, onMoveRe
   pop.addEventListener('click', e => {
     if (!pop.classList.contains('sheet')) return;
     if (e.target.closest('.pop-grab')) { setPeek(!pop.classList.contains('peek')); onSheet?.(); }
-    else if (pop.classList.contains('peek') && e.target.closest('.pop-head')) { setPeek(false); onSheet?.(); }
+    else if (pop.classList.contains('peek') && e.target.closest('.pop-head') && !e.target.closest('button, a')) { setPeek(false); onSound?.('sheetUp'); onSheet?.(); }
   });
   attachSheetDrag(pop, {
     enabled: () => pop.classList.contains('sheet'),
     states: () => ({ peek: 196, full: Math.min(pop.scrollHeight + 2, innerHeight * 0.7) }),
     current: () => pop.classList.contains('peek') ? 'peek' : 'full',
-    settle: state => { const was = pop.classList.contains('peek'); setPeek(state === 'peek'); if (was !== (state === 'peek')) { onSound?.(was ? 'open' : 'close'); onSheet?.(); } },
+    settle: state => { const was = pop.classList.contains('peek'); setPeek(state === 'peek'); if (was !== (state === 'peek')) { onSound?.(was ? 'sheetUp' : 'sheetDown'); onSheet?.(); } },
     dismiss: () => onClosePopup(),
   });
   // ---------- pin tag: flag + name + two choices, floating above the 3D pin ----------
@@ -152,6 +152,7 @@ export function createUI({ data, initialView, onView, onCompareRequest, onMoveRe
       <div class="tag-acts">
         <button type="button" class="tag-btn" data-act="move" title="Lift it out and drag it anywhere (or press and hold the country)">${ICON_MOVE}<span>Move</span></button>
         <button type="button" class="tag-btn" data-act="compare">${ICON_COMPARE}<span>Compare</span></button>
+        <button type="button" class="tag-btn" data-act="measure" title="Distance to another country">${ICON_DISTANCE}<span>Distance</span></button>
         <button type="button" class="tag-btn primary" data-act="info">${ICON_INFO}<span>Info</span></button>
       </div>`;
     // once ever, after the first country: what the buttons do
@@ -162,6 +163,8 @@ export function createUI({ data, initialView, onView, onCompareRequest, onMoveRe
     tag.hidden = false; tag.classList.remove('in'); void tag.offsetWidth; tag.classList.add('in');
     $('[data-act="compare"]', tag).onclick = e => onCompareRequest(o, e);
     $('[data-act="info"]', tag).onclick = e => onInfo?.(o, e);
+    $('[data-act="measure"]', tag).onclick = e => onMeasureRequest?.(o, e);
+    $('.tag-name', tag).onclick = () => onTagName?.(o); // a tap on the tag counts as a tap on the country (it covers small ones on phones)
   }
   function hideTag() { tagFor = null; tag.hidden = true; tag.classList.remove('confirm'); }
   /** In a game: the pin marks your guess and the tag asks to confirm it (no name, that would give it away). */
@@ -223,6 +226,14 @@ export function createUI({ data, initialView, onView, onCompareRequest, onMoveRe
     if (!again) { pick.classList.remove('in'); void pick.offsetWidth; pick.classList.add('in'); }
   }
   function hidePick() { pick.hidden = true; }
+  /** Distance: the first country is chosen, the next tap picks the second. */
+  function showMeasure(o) {
+    const keys = !matchMedia('(pointer: coarse)').matches;
+    pick.dataset.key = 'measure:' + o.key;
+    pick.innerHTML = `<span class="pulse"></span><span class="pk-text"><span>${keys ? 'Click' : 'Tap'} a country to measure from <b>${esc(o.unit.n)}</b></span><small>${keys ? 'Or aim with the arrow keys and press Enter' : 'The line runs between the two countries'}</small></span><button type="button" class="btn small ghost">Cancel</button>`;
+    pick.hidden = false; $('button', pick).onclick = () => onMeasureCancel?.();
+    pick.classList.remove('in'); void pick.offsetWidth; pick.classList.add('in');
+  }
   let cmpOpen = false; // stats table expanded; kept while the same comparison stays up
   const pill = $('#compare-pill');
   pill.innerHTML = `<button type="button" class="pill-main" data-act="stats" aria-controls="compare-bar">${ICON_COMPARE}<span>Compare stats</span></button>`
@@ -340,11 +351,12 @@ export function createUI({ data, initialView, onView, onCompareRequest, onMoveRe
   const toast = $('#toast'); let toastT;
   function showToast(msg) { toast.textContent = msg; toast.hidden = false; toast.classList.remove('in'); void toast.offsetWidth; toast.classList.add('in'); clearTimeout(toastT); toastT = setTimeout(() => (toast.hidden = true), 2600); }
 
-  return { showPopup, hidePopup, placePopup, get popFor() { return popFor; }, showTag, hideTag, showConfirm, placeTag, get tagFor() { return tagFor; }, showPick, hidePick, showCompare, showTip, dismissHint, showToast, setViewSilently(k) { current = k; paintSwitch(); } };
+  return { showPopup, hidePopup, placePopup, get popFor() { return popFor; }, showTag, hideTag, showConfirm, placeTag, get tagFor() { return tagFor; }, showPick, hidePick, showMeasure, showCompare, showTip, dismissHint, showToast, setViewSilently(k) { current = k; paintSwitch(); } };
 }
 
 const ICON_LINK = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 14a4 4 0 005.7 0l3-3a4 4 0 00-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 00-5.7 0l-3 3a4 4 0 005.7 5.7l1-1"/></svg>';
 const ICON_INFO = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 11v5.5M12 7.6v.4"/></svg>';
 const ICON_MOVE = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v18M3 12h18M9 5.5L12 2.5l3 3M9 18.5l3 3 3-3M5.5 9L2.5 12l3 3M18.5 9l3 3-3 3"/></svg>';
+const ICON_DISTANCE = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="17" r="2.2"/><circle cx="19" cy="17" r="2.2"/><path d="M6.5 15C9 8.5 15 8.5 17.5 15" stroke-dasharray="2.4 2.6"/></svg>';
 const ICON_COMPARE = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="7" width="8" height="10" rx="2"/><rect x="13" y="4" width="8" height="16" rx="2"/></svg>';
 const ICON_IMAGE = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="4.5" width="17" height="15" rx="2.5"/><circle cx="9" cy="10" r="1.8"/><path d="M20.5 16l-5-5-8 8.5"/></svg>';

@@ -14,6 +14,8 @@ const liftFor = span => THREE.MathUtils.clamp(span * 0.03, 0.004, 0.038);
 const SHADOW_LAYERS = [0.6, 0.75, 0.9, 1.05, 1.2], SHADOW_ALPHA = 0.095, SHADOW_REACH = 1.6;
 // islands and exclaves this close to the rest of a country (coast to coast) lift out with it
 export const PIECE_GAP_KM = 1500;
+// countries whose far parts are full members, not overseas possessions: their pieces always carry everything (Hawaii)
+export const WHOLE_PIECE = new Set(['USA']);
 const _L = new THREE.Vector3(), _T = new THREE.Vector3(), _S = new THREE.Vector3();
 
 export class Compare {
@@ -60,10 +62,12 @@ export class Compare {
   /**
    * What lifts out when a country is moved or compared: the main landmass and every island or exclave within
    * PIECE_GAP_KM of a part already in (coast to coast, hopping from island to island), so Alaska comes with the USA
-   * and all of the Galápagos with Ecuador. Far-flung overseas parts (Hawaii, French Guiana) stay home.
+   * and all of the Galápagos with Ecuador. Far-flung overseas parts (French Guiana) stay home, except for the
+   * countries in WHOLE_PIECE (Hawaii is a US state, so it travels with the USA).
    */
   pieceShapeFor(o) {
     if (o._piece) return o._piece;
+    if (WHOLE_PIECE.has(o.key)) return (o._piece = this.shapeOf(o, this.partsOf(o)));
     const parts = this.partsOf(o), main = parts.reduce((a, b) => (b.area > a.area ? b : a));
     const gap = PIECE_GAP_KM / 6371, cosGap = Math.cos(gap);
     const near = (a, b) => {
