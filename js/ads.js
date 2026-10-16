@@ -46,6 +46,7 @@ export function mountAds(globe) {
     if (on && (!size || size[0] !== fit[0] || size[1] !== fit[1])) { size = fit; paint(); }
     const inset = on ? size[0] + 40 : 0;
     window.__adInset = inset;
+    document.documentElement.style.setProperty('--ad-inset', inset + 'px'); // panels docked on the right keep clear of the side ad
     globe.insetX = inset;
     // narrow screens: one banner under the stage (the stage shrinks, so no control ever sits on top of it)
     const bfit = !on && ADS.enabled && vh >= 480 && filled('bottom') ? ADS.bottomSizes.find(([w]) => w <= vw - 16) || null : null;

@@ -22,6 +22,8 @@ Static site, no bundler. `index.html` loads `js/main.js` as an ES module; an imp
 | `ads.js` | Side banners (≥ 1100 px) or one bottom banner (narrower screens), sizing; empty slots take no room on the public site (placeholders on localhost or `?ads=preview`) | `ADS`, `mountAds` |
 | `pin.js` | Map pin for the selected country: an SVG DOM overlay placed at the projected anchor each frame (crisp at any DPR), with a drop-in animation | `Pin` |
 | `load.js` | Streams `data/world.js` with loader progress, then evaluates it via a blob `import()` | `loadWorld`, `setLoader` |
+| `rankings.js` | Rankings panel: countries of the view ranked by population (default), area, density, GDP or GDP per person | `createRankings`, `rankList`, `RANK_BY` |
+| `namibia.js` | Easter egg (keep it off the public pages): ship aground on the Skeleton Coast with a fog horn, oryx run | `createNamibiaEgg` |
 | `miss-line.js` | Games: arc from a wrong guess to the answer, drawn in, with a distance label; the tag's Distance tool uses a second one | `MissLine` |
 | `currents.js` | Major ocean currents along their charted mean paths: a faint lighter sheen with meanders and weaving streamlines whose streaks drift downstream, labels (name, direction, strength) and ocean names; decluttered by zoom, hidden under data lenses | `Currents`, `CURRENTS`, `OCEANS` |
 | `ships.js` | Low-poly cartoon ships on sea lanes between big ports, one instanced draw call | `Ships`, `ROUTES` |

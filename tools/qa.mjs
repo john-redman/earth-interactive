@@ -501,6 +501,38 @@ for (const [dev, vp, touch] of [['desktop', { width: 1280, height: 800 }, false]
     ok('zoomed out: back to the 1:50m ones', await until(() => !window.EarthInteractive.layer.view.hiShown && window.EarthInteractive.layer.view.batch.fill.visible));
   });
 
+  await t('rankings and Namibia', async () => {
+    await go();
+    await E(() => document.querySelector('[data-dock="rank"]').click());
+    ok('Rankings opens ranked by population', await until(() => !document.getElementById('rankings').hidden) && await E(() => document.querySelector('.rk-chip[aria-checked="true"]')?.dataset.k === 'pop' && /rank=pop/.test(location.search)));
+    const first = await E(() => [...document.querySelectorAll('.rk-row')].slice(0, 2).map(r => [r.querySelector('.rk-n').textContent, r.querySelector('.rk-name').textContent, r.querySelector('.rk-v').textContent]));
+    ok('…each row has its rank and value', first[0][0] === '1' && first[1][0] === '2' && /\d/.test(first[0][2]), first);
+    await E(() => document.querySelector('.rk-chip[data-k="area"]').click());
+    ok('rank by area: Russia first', await until(() => document.querySelector('.rk-row .rk-name')?.textContent === 'Russia' && /rank=area/.test(location.search)));
+    await E(() => document.querySelector('.rk-order').click());
+    ok('lowest first flips the list', await until(() => document.querySelector('.rk-row .rk-name')?.textContent !== 'Russia'));
+    const vis2 = await E(() => { const el = document.getElementById('rankings'); el.getAnimations().forEach(a => a.finish()); const r = el.getBoundingClientRect(); return r.right <= innerWidth && r.bottom <= innerHeight && r.left >= 0; });
+    ok('the panel fits on screen', vis2);
+    await E(() => document.querySelectorAll('.rk-row')[3].click());
+    ok('a row closes the panel and pins that country', await until(() => document.getElementById('rankings').hidden && !document.getElementById('pin-tag').hidden));
+    await go('?rank=gdp');
+    ok('?rank=gdp opens it ranked by GDP', await until(() => !document.getElementById('rankings').hidden && document.querySelector('.rk-chip[aria-checked="true"]')?.dataset.k === 'gdp'));
+    await p.keyboard.press('Escape');
+    ok('Escape closes it', await until(() => document.getElementById('rankings').hidden));
+    // Namibia: five taps start the show; frozen moments for the slow headless clock
+    // (headless taps are slow, so the taps are checked for reaching it, and the five-in-6-s rule is driven directly)
+    const nam = await aim('NAM', 2.2);
+    await E(() => { const N = window.EarthInteractive.namibia, f = N.tapped; window.__namTaps = 0; N.tapped = o => { if (o?.key === 'NAM') window.__namTaps++; return f(o); }; });
+    for (let i = 0; i < 3 && !(await E(() => window.__namTaps)); i++) { await tap(nam); await p.waitForTimeout(600); } // a slow headless click can read as a drag
+    ok('a tap on Namibia reaches the easter egg', await until(() => window.__namTaps >= 1, null, 5000));
+    await E(() => { const X = window.EarthInteractive; for (let i = 0; i < 5; i++) X.namibia.tapped(X.layer.get('NAM')); });
+    ok('five taps on Namibia start the show', await E(() => window.EarthInteractive.namibia.running));
+    await until(() => !window.EarthInteractive.globe.flight);
+    await E(() => window.EarthInteractive.namibia.seek(9000, true));
+    ok('…a wreck on the coast and three oryx running', await until(() => window.EarthInteractive.namibia.wreck.visible && [...document.querySelectorAll('.oryx')].filter(e => !e.hidden).length === 3, null, 20000),
+      await E(() => ({ cls: document.body.className, ox: [...document.querySelectorAll('.oryx')].map(e => e.hidden), wreck: window.EarthInteractive.namibia.wreck.visible })));
+  });
+
   await t('other sizes', async () => {
     // the in-between sizes the two main ones miss: small, standard and landscape phones; tablets; a short laptop
     const sizes = touch ? [[320, 568], [390, 844], [844, 390]] : [[768, 1024], [1024, 768], [1366, 657]];

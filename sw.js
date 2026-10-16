@@ -10,7 +10,7 @@ const CACHE = `earth-${VERSION}`;
 const CORE = [
   './', 'index.html', 'css/style.css', 'manifest.webmanifest', 'icons/icon.svg',
   'js/main.js', 'js/load.js', 'js/perf.js', 'js/globe.js', 'js/countries.js', 'js/compare.js', 'js/geo.js',
-  'js/spin.js', 'js/thrills.js', 'js/sun.js', 'js/lens.js', 'js/search.js', 'js/quiz.js', 'js/ui.js', 'js/ads.js', 'js/flags.js',
+  'js/spin.js', 'js/thrills.js', 'js/sun.js', 'js/lens.js', 'js/search.js', 'js/rankings.js', 'js/namibia.js', 'js/quiz.js', 'js/ui.js', 'js/ads.js', 'js/flags.js',
   'js/pin.js', 'js/leaderboard.js', 'js/net/api.js', 'js/net/profanity.js', 'js/net/names.js', 'js/sheet-drag.js', 'js/app-links.js', 'js/site.js', 'js/analytics.js',
   'css/leaderboard.css', 'css/app-links.css',
   'vendor/fonts/plus-jakarta-sans/plus-jakarta-sans-latin.woff2', 'vendor/fonts/plus-jakarta-sans/plus-jakarta-sans-latin-ext.woff2',

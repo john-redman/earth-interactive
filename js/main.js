@@ -11,6 +11,7 @@ import { Spin } from './spin.js';
 import { SKY, updateSun } from './sun.js';
 import { LENSES, LENS_ORDER, buildLens, renderLegend } from './lens.js';
 import { createSearch } from './search.js';
+import { createRankings, RANK_BY } from './rankings.js';
 import { createQuiz } from './quiz.js';
 import { shareBase } from './site.js';
 import { Pin } from './pin.js';
@@ -28,6 +29,7 @@ import { flagImg } from './flags.js';
 import { shareCompareImage } from './share-image.js';
 import { track } from './analytics.js';
 import { createEgg } from './egg.js';
+import { createNamibiaEgg } from './namibia.js';
 import { TinyMarkers } from './tiny.js';
 import { TIER } from './perf.js';
 
@@ -103,6 +105,8 @@ const distLine = new MissLine(globe, layer, stage); // the tag's Distance tool: 
 const currents = new Currents(globe);
 const popClock = createPopClock(document.getElementById('popclock'), globe);
 const ships = new Ships(globe);
+const namibia = createNamibiaEgg({ globe, layer, ships, stage, track, muted: () => thrills.muted, // tap Namibia five times
+  onFly: (dir, dist) => { spin.stop(); globe.flyTo(dir, dist, 1400); } });
 const clouds = TIER === 'high' ? new Clouds(globe) : null; // desktop only: a full-globe noise shader is too much for phones
 const cotdKey = countryOfTheDay(data);
 /** Fly to today's country and open its card (from the chip or the Play menu). */
@@ -151,7 +155,11 @@ const ui = createUI({
   onMoveRequest: (o, e) => { liftCountry(o, 'move'); if (e?.detail === 0) canvas.focus({ preventScroll: true }); },      // keyboard: arrows carry it
   onMeasureRequest: (o, e) => { startMeasure(o); if (e?.detail === 0) canvas.focus({ preventScroll: true }); }, // keyboard: aim and press Enter
   onMeasureCancel: () => cancelMeasure(),
-  onTagName: o => { if (mode === 'browse' && o.key === 'FRA' && egg.tapped(o)) { closePopup(); announce('A big red button appeared on France.'); } },
+  onTagName: o => {
+    if (mode !== 'browse') return;
+    if (o.key === 'FRA' && egg.tapped(o)) { closePopup(); announce('A big red button appeared on France.'); }
+    if (o.key === 'NAM' && namibia.tapped(o)) { closePopup(); announce(NAMIBIA_SAYS); }
+  },
   onCompareCancelPick: () => cancelPick(),
   onCompareReset: () => compare.resetPositions(),
   onCompareEnd: () => endCompare(),
@@ -196,6 +204,7 @@ function switchView(k) {
   // the pin goes: the same spot can belong to a different country in the new view (Crimea → Russia)
   if (guess) cancelGuess(); else if (selected || ui.popFor) closePopup();
   layer.setView(k);
+  rankings.refresh(); // the same ranking, this view's countries (Kosovo, Taiwan… come and go)
   const url = new URL(location.href); url.searchParams.set('view', k); history.replaceState(null, '', url);
   applyLens();
 }
@@ -352,7 +361,7 @@ const quiz = createQuiz({
   onMode: on => {
     ui.showTip(null);
     if (on) {
-      if (mode === 'compare') endCompare(true); if (mode === 'pick') cancelPick(); if (mode === 'measure') cancelMeasure(); closePopup(); mode = 'quiz'; layer.setHover(null);
+      if (mode === 'compare') endCompare(true); if (mode === 'pick') cancelPick(); if (mode === 'measure') cancelMeasure(); closePopup(); rankings.hide(); mode = 'quiz'; layer.setHover(null);
       // games play on the UN map: the internationally recognised countries the questions are about
       if (mode === 'quiz' && viewKey !== GAME_VIEW && !viewBeforeGame) { viewBeforeGame = viewKey; ui.setViewSilently(GAME_VIEW); switchView(GAME_VIEW); ui.showToast('Games use the UN map'); }
       // …in political colours (a data lens would give answers away or hide them), and the globe holds still
@@ -389,7 +398,18 @@ function openMenu(k) {
 }
 document.getElementById('dock').addEventListener('click', e => {
   const b = e.target.closest('[data-dock]'); if (!b) return;
-  if (b.dataset.dock === 'search') { closeMenus(); search.open(); } else openMenu(b.dataset.dock);
+  if (b.dataset.dock === 'search') { closeMenus(); search.open(); } else if (b.dataset.dock === 'rank') { closeMenus(); rankings.toggle(); } else openMenu(b.dataset.dock);
+});
+// Rankings: ?rank=gdp opens it ranked by GDP (population by default)
+const rankings = createRankings({
+  getObjects: () => layer.view?.objects || [],
+  onPick: o => { if (mode === 'quiz') return; if (mode === 'compare') endCompare(true); openCountry(o, { fly: true }); },
+  onToggle: (on, k) => {
+    document.body.classList.toggle('ranking-open', on);
+    const btn = document.querySelector('[data-dock="rank"]'); btn.setAttribute('aria-expanded', String(on)); btn.classList.toggle('on', on);
+    setParam('rank', on ? k : null);
+    if (!on && document.activeElement === document.body) btn.focus({ preventScroll: true });
+  },
 });
 document.addEventListener('pointerdown', e => { if (!e.target.closest('.dock')) closeMenus(); });
 
@@ -599,6 +619,7 @@ window.addEventListener('pointerup', endPointer);
 canvas.addEventListener('contextmenu', e => { if (e.pointerType !== 'mouse') e.preventDefault(); }); // press-and-hold lifts a country, no menu
 window.addEventListener('pointercancel', endPointer);
 
+const NAMIBIA_SAYS = 'A ship sounded its horn and ran aground on the Skeleton Coast. Three oryx come running to look.';
 function onClick(x, y) {
   ui.showTip(null);
   if (mode === 'compare') return;
@@ -620,16 +641,18 @@ function onClick(x, y) {
   }
   // France, tapped again and again (the easter egg): no new pin drop while France is pinned or its button is up;
   // a tap anywhere else (which also puts the button away) starts afresh
-  const again = r?.o?.key === 'FRA' && (r.o === selected || egg.active);
+  const again = (r?.o?.key === 'FRA' && (r.o === selected || egg.active)) || (r?.o?.key === 'NAM' && (r.o === selected || namibia.running));
   if (again) { /* no new drop, no plop */ }
   else if (r?.o) { openCountry(r.o, { point: r.point }); sfx.play('tap'); }
   else closePopup();
   if (egg.tapped(r?.o)) { closePopup(); announce('A big red button appeared on France.'); } // it stands where the pin was
+  if (namibia.tapped(r?.o)) { closePopup(); announce(NAMIBIA_SAYS); }
 }
 
 
 window.addEventListener('keydown', e => {
   if (search.isOpen) { if (e.key === 'Escape') search.close(); return; } // Escape from outside the box, or the app's back button
+  if (e.key === 'Escape' && rankings.isOpen && Object.values(menus).every(m => m.hidden)) { rankings.hide(); return; }
   if (e.target.closest?.('input, textarea')) return;
   if ((e.key === '/' || (e.key.toLowerCase() === 'k' && (e.metaKey || e.ctrlKey))) && mode !== 'quiz') { e.preventDefault(); closeMenus(); search.open(); return; }
   if (e.key === 'Escape') {
@@ -656,7 +679,7 @@ window.addEventListener('keydown', e => {
     return;
   }
   // arrow keys, while held: they carry a lifted country (Move, Compare) or else turn the globe, smoothly, every frame
-  if (e.key.startsWith('Arrow') && !e.metaKey && !e.ctrlKey && !e.altKey && !e.target.closest?.('[role="menu"], [role="radiogroup"], #popup')) {
+  if (e.key.startsWith('Arrow') && !e.metaKey && !e.ctrlKey && !e.altKey && !e.target.closest?.('[role="menu"], [role="radiogroup"], #popup, #rankings')) {
     if (mode === 'browse' && selected) { // an arrow while a country is pinned: let it go and carry on turning
       const hadFocus = !!e.target.closest?.('#pin-tag');
       closePopup(); if (hadFocus) canvas.focus({ preventScroll: true });
@@ -785,6 +808,7 @@ function frame(now) {
   currents.tick(now);
   popClock.tick();
   ships.tick(now);
+  namibia.tick(now);
   clouds?.tick(now);
   tickNight(dt);
   if (guess && !quiz.waiting) cancelGuess(); // the round moved on (hint, Show me, next)
@@ -825,6 +849,8 @@ requestAnimationFrame(() => setTimeout(async () => {
   layer.setView(viewKey);
   applyLens();
   document.body.classList.add('ready');
+  const rk = params.get('rank')?.toLowerCase();
+  if (rk && RANK_BY[rk] && !params.get('play')) rankings.show(rk);
   showIntro(stage); // first visit: a finger shows the globe can be spun
   // deep links: ?c=FRA · ?compare=FRA,DEU · ?play=daily · ?lens=pop|density|gdppc|area (set above)
   const c = params.get('c')?.toUpperCase(), cmp = params.get('compare')?.toUpperCase().split(','), play = params.get('play')?.toLowerCase();
@@ -840,7 +866,7 @@ requestAnimationFrame(() => setTimeout(async () => {
 
 // Small public API for later integrations / debugging
 window.EarthInteractive = {
-  globe, layer, compare, ads, data, thrills, spin, quiz, search, native, sfx, music, currents, ships, clouds, tiny, egg,
+  globe, layer, compare, ads, data, thrills, spin, quiz, search, native, sfx, music, currents, ships, clouds, tiny, egg, namibia, rankings,
   setLens: k => { if (mode === 'quiz') return false; lensKey = LENSES[k] ? k : 'none'; applyLens(); return true; },
   setView: k => { if (!data.views[k]) return false; ui.setViewSilently(k); switchView(k); return true; },
   compareKeys: (a, b) => { const A = layer.get(a), B = layer.get(b); if (!A || !B || A === B) return false; closePopup(); cancelPick(); mode = 'compare'; compare.start(A, B); return true; },
